@@ -1,4 +1,4 @@
-package com.myodov.unicherrypicker.launcher
+package com.myodov.unicherrypicker
 
 object LoggingConfigurator {
 
@@ -12,7 +12,6 @@ object LoggingConfigurator {
     import ch.qos.logback.core.{Appender, FileAppender, Layout}
     import com.github.serioussam.syslogappender.{Protocol, SyslogAppender, SyslogConfig}
     import org.slf4j.LoggerFactory
-
 
     val ctx: LoggerContext = LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext]
     val rootLogger = ctx.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)

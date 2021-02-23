@@ -10,7 +10,6 @@ val postgresqlVersion = "42.2.5"
 val scalaLoggingVersion = "3.9.2"
 val scalaTestVersion = "3.0.8"
 val scalikeJdbcVersion = "3.3.5"
-val slf4jVersion = "1.7.26"
 val syslogAppenderVersion = "1.0.0"
 val web3jVersion = "4.8.4"
 
@@ -22,33 +21,58 @@ lazy val commonSettings = Seq(
   version := "0.1.2",
   scalaVersion := "2.13.0",
   libraryDependencies ++= Seq(
-    "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingVersion,
     "org.scalatest" %% "scalatest" % scalaTestVersion % Test,
-    "com.typesafe" % "config" % configLibVersion % Test, // so the specs can read the settings from conf files
+    "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingVersion,
   ),
 )
 
 // Common modules
 
 lazy val api = (project in file("api"))
-  .settings(commonSettings: _*)
   .settings(
-    name := "uni_cherrypicker__api",
+    commonSettings,
+    name := "unicherrypicker__api",
+  )
+
+// Separate module to handle reading the HOCON conf files.
+// Used from CLI launcher, and from "test" targets of other modules.
+lazy val confreader = (project in file("confreader"))
+  .settings(
+    commonSettings,
+    name := "unicherrypicker__confreader",
+    libraryDependencies ++= Seq(
+      // Parse HOCON config files
+      "com.typesafe" % "config" % configLibVersion,
+    ),
+  )
+
+// Separate module to handle logging configuration.
+// Used from CLI launcher, and from "test" targets of other modules.
+lazy val logging = (project in file("logging"))
+  .settings(
+    commonSettings,
+    name := "unicherrypicker__logging",
+    libraryDependencies ++= Seq(
+      // Default logging output
+      "ch.qos.logback" % "logback-classic" % logbackVersion,
+      // Support for logging output to syslog
+      "com.github.serioussam" % "syslogappender" % syslogAppenderVersion,
+    ),
   )
 
 lazy val cherrypicker = (project in file("cherrypicker"))
-  .settings(commonSettings: _*)
   .settings(
-    name := "uni_cherrypicker__picker",
+    commonSettings,
+    name := "unicherrypicker__picker",
   )
   .dependsOn(api)
 
 // Storages
 
 lazy val db_postgresql_storage = (project in file("storages/db_postgresql_storage"))
-  .settings(commonSettings: _*)
   .settings(
-    name := "uni_cherrypicker__db_postgresql_storage",
+    commonSettings,
+    name := "unicherrypicker__db_postgresql_storage",
     libraryDependencies ++= Seq(
       "org.postgresql" % "postgresql" % postgresqlVersion,
       "org.flywaydb" % "flyway-core" % flywayDbVersion,
@@ -56,30 +80,24 @@ lazy val db_postgresql_storage = (project in file("storages/db_postgresql_storag
   )
   .dependsOn(api)
 
-lazy val ethereum_rpc_well = (project in file("connectors/ethereum_rpc_connector"))
-  .settings(commonSettings: _*)
+lazy val ethereum_rpc_connector = (project in file("connectors/ethereum_rpc_connector"))
   .settings(
-    name := "uni_cherrypicker__ethereum_rpc_well",
+    commonSettings,
+    name := "unicherrypicker__ethereum_rpc_connector",
     libraryDependencies ++= Seq(
       "org.web3j" % "core" % web3jVersion,
     ),
   )
-  .dependsOn(api)
+  .dependsOn(api, confreader % "test->compile", logging % "test->compile")
 
 // Launcher
 
 lazy val launcher = (project in file("launcher"))
-  .settings(commonSettings: _*)
   .settings(
-    name := "uni_cherrypicker",
+    commonSettings,
+    name := "unicherrypicker",
     resolvers += Resolver.bintrayRepo("serioussam", "oss"),
     libraryDependencies ++= Seq(
-      // Default logging output
-      "ch.qos.logback" % "logback-classic" % logbackVersion,
-      // Support for logging output to syslog
-      "com.github.serioussam" % "syslogappender" % syslogAppenderVersion,
-      // Parse HOCON config files
-      "com.typesafe" % "config" % configLibVersion,
       // Parse command line arguments
       "com.github.scopt" %% "scopt" % scoptVersion,
     ),
@@ -88,4 +106,4 @@ lazy val launcher = (project in file("launcher"))
     //    discoveredMainClasses in Compile := Seq(),
   )
   .enablePlugins(JavaAppPackaging)
-  .dependsOn(api, cherrypicker, db_postgresql_storage, ethereum_rpc_well)
+  .dependsOn(api, confreader, logging, cherrypicker, db_postgresql_storage, ethereum_rpc_connector)

@@ -1,5 +1,6 @@
 package com.myodov.unicherrypicker.launcher
 
+import com.myodov.unicherrypicker.LoggingConfigurator
 import com.myodov.unicherrypicker.storages.PostgreSQLStorage
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
