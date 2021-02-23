@@ -6,8 +6,11 @@ import com.myodov.unicherrypicker.api.dlt.{Block, EthereumBlock}
 import com.typesafe.scalalogging.Logger
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameterNumber
-import org.web3j.protocol.core.methods.response.EthBlock
+import org.web3j.protocol.core.methods.response.{EthBlock, Transaction}
+import org.web3j.protocol.core.methods.response.EthBlock.TransactionObject
 import org.web3j.protocol.http.HttpService
+
+import scala.jdk.CollectionConverters._
 
 /** Connector that handles a connection to single Ethereum node via RPC, and communicates with it.
  * */
@@ -44,7 +47,13 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) {
     try {
       val block: EthBlock.Block = web3j.ethGetBlockByNumber(new DefaultBlockParameterNumber(blockNumber.bigInteger), true).send.getBlock
       assert(blockNumber == BigInt(block.getNumber))
-      Some(EthereumBlock(
+
+      val transactions: List[EthBlock.TransactionResult[_]] = block.getTransactions.asScala.toList
+      for (trr <- transactions) {
+        val tr: Transaction = trr.asInstanceOf[TransactionObject].get
+        println(s"TR: Hash ${tr.getHash}")
+      }
+      Option(EthereumBlock(
         blockNumber,
         block.getHash,
         Some(block.getParentHash),

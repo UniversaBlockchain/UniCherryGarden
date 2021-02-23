@@ -1,4 +1,4 @@
-package com.myodov.unicherrypicker.connectors
+package com.myodov.unicherrypicker.eth
 
 import org.scalatest.FlatSpec
 

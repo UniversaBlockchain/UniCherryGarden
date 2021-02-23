@@ -1,4 +1,4 @@
-package com.myodov.unicherrypicker.connectors
+package com.myodov.unicherrypicker.eth
 
 /** Various helpers and utils to deal with Ethereum data. */
 object EthUtils {
@@ -7,7 +7,7 @@ object EthUtils {
   private val ADDRESS_HASH_LENGTH = 42
 
   /** Check if the `hash` is valid for usage in Ethereum. */
-  private[connectors] def isValidHash(hash: String, length: Int): Boolean = {
+  private[eth] def isValidHash(hash: String, length: Int): Boolean = {
     assert(hash != null)
     assert(length > 2)
     (hash.length == length) && hash.startsWith("0x") && hash.matches("^0x[0-9a-f]+$")

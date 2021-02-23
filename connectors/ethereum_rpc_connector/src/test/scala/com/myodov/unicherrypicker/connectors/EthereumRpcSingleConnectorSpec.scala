@@ -10,13 +10,13 @@ class EthereumRpcSingleConnectorSpec extends FlatSpec {
   lazy val config = ConfigFactory.load()
   lazy val sharedConnector = EthereumRpcSingleConnector(config.getStringList("ethereum.rpc_servers").get(0))
 
-  "latestSyncedBlockNumber" should "return some valid number" in {
+  "latestSyncedBlockNumber()" should "return some valid number" in {
     assert(
       sharedConnector.latestSyncedBlockNumber.get > 11500000
     )
   }
 
-  "readBlock" should "read and parse a block from Ethereum blockchain" in {
+  "readBlock()" should "read and parse a block from Ethereum blockchain" in {
     assertResult(
       Some(EthereumBlock(
         11906373,
