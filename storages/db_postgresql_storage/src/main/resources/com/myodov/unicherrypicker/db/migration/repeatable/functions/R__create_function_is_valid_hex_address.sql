@@ -5,9 +5,14 @@ CREATE OR REPLACE FUNCTION ucp_is_valid_hex_address(_address VARCHAR, _length IN
 AS
 $$
 SELECT
-    (length($1) = $2 AND
-     (left($1, 2) = '0x' AND
-      right($1, _length - 2) = lower(right($1, _length - 2)))) :: BOOLEAN
+    (
+        -- The length of the hash is correct,
+            length($1) = $2 AND
+            -- ... it starts from "0x"
+            left($1, 2) = '0x' AND
+            -- ... and after first two letters, all remaining letters are hexadecimal.
+            right($1, _length - 2) ~ '^[0-9a-f]+$'
+        ) :: BOOLEAN
 $$;
 
 COMMENT ON FUNCTION ucp_is_valid_hex_address IS
