@@ -3,6 +3,7 @@
 .idea/
 *nogit*
 .java-version
+logs/
 
 ### SBT ignores
 

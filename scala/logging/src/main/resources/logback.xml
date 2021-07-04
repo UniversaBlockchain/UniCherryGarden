@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!--    <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>-->
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!--
+    <appender name="SYSLOG-TCP" class="com.github.serioussam.syslogappender.SyslogAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </layout>
+
+        <syslogConfig class="com.github.serioussam.syslogappender.SyslogConfig">
+            <host>localhost</host>
+            <port>5140</port>
+            <programName>UniCherryGarden</programName>
+            <protocol>TCP</protocol>
+        </syslogConfig>
+    </appender>
+    -->
+
+    <logger name="ch.qos.logback" level="ERROR"/>
+    <logger name="org.web3j.protocol.http.HttpService" level="ERROR"/>
+    <logger name="org.flywaydb.core" level="WARN"/>
+    <logger name="scalikejdbc" level="WARN"/>
+    <logger name="com.myodov.unicherrygarden" level="DEBUG"/>
+
+    <root level="DEBUG">
+        <appender-ref ref="STDOUT"/>
+        <!--        <appender-ref ref="SYSLOG-TCP"/>-->
+    </root>
+</configuration>
