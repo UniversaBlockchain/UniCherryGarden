@@ -1,5 +1,7 @@
 package com.myodov.unicherrygarden.api.dlt
 
+import com.myodov.unicherrygarden.ethereum.EthUtils
+
 /** Some cryptocurrency (or probably a token) in Ethereum blockchain. */
 trait Currency {
   def isToken: Boolean
@@ -25,7 +27,7 @@ trait Token extends Currency {
    * */
   def uid: String
 
-  require(uid != null && EthUtils.Hashes.isValidAddressHash(uid))
+  require(uid != null && EthUtils.Addresses.isValidAddress(uid))
 }
 
 //class DummyCurrency(val name: String, val network: Network, val isToken: Boolean)

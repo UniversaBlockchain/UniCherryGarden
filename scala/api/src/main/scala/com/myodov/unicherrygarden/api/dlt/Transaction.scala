@@ -12,11 +12,11 @@ trait Transaction {
 
   /** Sender of the transaction (address). */
   val from: String
-  require(from != null && EthUtils.Hashes.isValidAddressHash(from))
+  require(from != null && EthUtils.Addresses.isValidAddress(from))
 
   /** Receiver of the transaction (address). */
   val to: String
-  require(to != null && EthUtils.Hashes.isValidAddressHash(to))
+  require(to != null && EthUtils.Addresses.isValidAddress(to))
 
   //  val transactionFee: BigDecimal
   //  require(transactionFee != null && transactionFee >= 0)

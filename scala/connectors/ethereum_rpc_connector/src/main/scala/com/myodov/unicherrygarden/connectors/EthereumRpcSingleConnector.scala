@@ -4,6 +4,7 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 import com.myodov.unicherrygarden.api.dlt
+import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.typesafe.scalalogging.LazyLogging
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameterNumber
@@ -264,7 +265,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
             from = Option(trw3j.getFrom),
             to = None,
             currency = dlt.Ether.ETHER,
-            amount = EthUtils.Wei.valueFromWeis(trw3j.getGasPrice) * BigDecimal(receiptsByTrHash(trw3j.getHash).getGasUsed),
+            amount = BigDecimal(EthUtils.Wei.valueFromWeis(trw3j.getGasPrice)) * BigDecimal(receiptsByTrHash(trw3j.getHash).getGasUsed),
             tr = addressFilteredEthTransactionsByHash(trw3j.getHash)
           )
         )

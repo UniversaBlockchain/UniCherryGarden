@@ -121,6 +121,7 @@ lazy val api = (project in file("scala/api"))
     commonScalaSettings,
     name := "unicherrygarden__api",
   )
+  .dependsOn(ethUtils)
 
 // Separate module to handle reading the HOCON conf files.
 // Used from CLI launcher, and from "test" targets of other modules.

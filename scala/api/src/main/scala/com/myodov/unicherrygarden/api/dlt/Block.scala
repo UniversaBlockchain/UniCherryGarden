@@ -2,6 +2,8 @@ package com.myodov.unicherrygarden.api.dlt
 
 import java.time.Instant
 
+import com.myodov.unicherrygarden.ethereum.EthUtils
+
 /** This is a single block in blockchain, containing one or more transactions. */
 trait Block {
   /** Return the block number, typically sequentially increasing.

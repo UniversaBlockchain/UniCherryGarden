@@ -14,7 +14,7 @@ public class KeygenImplTest {
     @Test
     public void testGeneratePrivateKey() {
         final PrivateKey pk = KeygenImpl.generatePrivateKey();
-        logger.debug("Private key is {}", pk);
+        logger.debug("Private key is {}; bytes is {}", pk, pk.getBytesHex());
 
         assertNotNull(pk);
 
