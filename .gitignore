@@ -4,6 +4,7 @@
 *nogit*
 .java-version
 logs/
+.bsp
 
 ### SBT ignores
 

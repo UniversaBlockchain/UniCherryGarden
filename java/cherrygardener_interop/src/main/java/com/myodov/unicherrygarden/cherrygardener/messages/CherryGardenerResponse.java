@@ -1,4 +1,4 @@
 package com.myodov.unicherrygarden.cherrygardener.messages;
 
-public interface CherryGardenerResponse extends CherryGardenerActorIncomingMessage {
+public interface CherryGardenerResponse extends Serializable {
 }

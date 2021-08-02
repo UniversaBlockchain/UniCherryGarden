@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Logback configuration for various daemons/components of UniCherryGarden server. -->
+<!-- Logback configuration for CherryGardener CLI. -->
 <configuration>
     <!--    <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>-->
 
@@ -25,9 +25,6 @@
     -->
 
     <logger name="ch.qos.logback" level="ERROR"/>
-    <logger name="org.web3j.protocol.http.HttpService" level="ERROR"/>
-    <logger name="org.flywaydb.core" level="WARN"/>
-    <logger name="scalikejdbc" level="WARN"/>
     <logger name="com.myodov.unicherrygarden" level="DEBUG"/>
 
     <root level="DEBUG">

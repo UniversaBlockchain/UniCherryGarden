@@ -18,6 +18,7 @@ val web3jVersion = "4.8.4"
 val javaSlf4jVersion = "1.7.30"
 val javaJunitVersion = "4.13.2"
 val javaCheckerVersion = "3.14.0"
+val javaCommonsCLIVersion = "1.4"
 
 // Common settings
 
@@ -52,6 +53,7 @@ lazy val commonAkkaMicroserviceSettings = Seq(
     "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
     //    "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
     "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
+    "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
     "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
   ),
 )
@@ -89,9 +91,9 @@ lazy val cherryGardenerInterop = (project in file("java/cherrygardener_interop")
   )
   .dependsOn(ethUtils)
 
-// (Java-based) Client connector to CherryGardener;
+// (Java-based) Client connector (API library) to CherryGardener;
 // allows external clients to use high-level CherryGardener interface
-// to Ethereum blockchain
+// to Ethereum blockchain.
 lazy val cherryGardenerConnector = (project in file("java/cherrygardener_connector"))
   .settings(
     commonSettings,
@@ -107,6 +109,20 @@ lazy val cherryGardenerConnector = (project in file("java/cherrygardener_connect
   )
   .enablePlugins(JavaAppPackaging)
   .dependsOn(cherryGardenerInterop)
+
+lazy val cherryGardenerConnectorCLI = (project in file("java/cherrygardener_connector_cli"))
+  .settings(
+    commonSettings,
+    commonJavaSettings,
+    commonAkkaMicroserviceSettings,
+    name := "unicherrygarden__cherrygardener_connector_cli",
+    libraryDependencies ++= Seq(
+      "commons-cli" % "commons-cli" % javaCommonsCLIVersion,
+      "ch.qos.logback" % "logback-classic" % logbackVersion,
+    ),
+  )
+  .enablePlugins(JavaAppPackaging)
+  .dependsOn(cherryGardenerConnector)
 
 
 //

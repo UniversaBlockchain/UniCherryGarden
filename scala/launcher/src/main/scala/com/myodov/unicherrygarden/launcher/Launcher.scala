@@ -4,7 +4,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.ClusterEvent.MemberEvent
 import akka.cluster.typed.{Cluster, Subscribe}
-import com.myodov.unicherrygarden.cherrygardener.messages.{Balances, CherryGardenerActorIncomingMessage, CherryGardenerActorOutgoingMessage, CherryGardenerResponse}
+import com.myodov.unicherrygarden.cherrygardener.messages.{CherryGardenerRequest, CherryGardenerResponse}
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.myodov.unicherrygarden.{CherryGardener, CherryPicker, CherryPlanter, LoggingConfigurator}
@@ -14,10 +14,10 @@ import scopt.OParser
 
 object CLIMode extends Enumeration {
   type CLIMode = Value
-  val Init, Wipe, LaunchGardenWatcher, LaunchPickerPlanter = Value
+  val Init, Wipe, LaunchGardenWatcher, LaunchGardener = Value
 }
 
-/** The primary launcher for '''UniCherrygarden''' (and all its major subsystems). */
+/** The primary launcher for '''UniCherryGarden''' (and all its major subsystems). */
 object LauncherApp extends App with LazyLogging {
   lazy val config = ConfigFactory.load()
 
@@ -29,18 +29,18 @@ object LauncherApp extends App with LazyLogging {
     val parser = {
       import builder._
       OParser.sequence(
-        programName("UniCherrygarden"),
-        head("UniCherrygarden", "0.0.5"),
+        programName("UniCherryGarden"),
+        head("UniCherryGarden", "0.0.5"),
         help('h', "help").text("print help"),
         version('v', "version").text("print version"),
-        cmd("init").text("Initializes UniCherrygarden database.")
+        cmd("init").text("Initializes UniCherryGarden database.")
           .action((_, c) => c.copy(mode = CLIMode.Init)),
-        cmd("wipe").text("Initializes UniCherrygarden database, wiping it in the process (DO NOT EVER USE IN PRODUCTION!)")
+        cmd("wipe").text("Initializes UniCherryGarden database, wiping it in the process (DO NOT EVER USE IN PRODUCTION!)")
           .action((_, c) => c.copy(mode = CLIMode.Wipe)),
         cmd("launch-gardenwatcher").text("Launches GardenWatcher watchdog.")
           .action((_, c) => c.copy(mode = CLIMode.LaunchGardenWatcher)),
-        cmd("launch-cherrypicker-cherryplanter").text("Launches CherryPicker and CherryPlanter processes altogether.")
-          .action((_, c) => c.copy(mode = CLIMode.LaunchPickerPlanter)),
+        cmd("launch-gardener").text("Launches CherryGardener (including CherryPicker and CherryPlanter) processes altogether.")
+          .action((_, c) => c.copy(mode = CLIMode.LaunchGardener)),
         note(
           """
 You can choose a different HOCON configuration file instead of the regular application.conf using the standard approach, passing the following argument to VM:
@@ -87,17 +87,12 @@ You can choose a different HOCON configuration file instead of the regular appli
 
   /** Launches the GardenWatcher watchdog (usually executed in a standalone process). */
   private[this] def launchWatcher(): Unit = {
-    //    val pgStorage = getPgStorage(wipe = false)
-    //    val ethereumConnector = getEthereumConnector
-    //
-    //    //    actorSystem ! LauncherActor.LaunchCherryPicker(pgStorage, ethereumConnector)
-    //    //    actorSystem ! LauncherActor.LaunchCherryPlanter(pgStorage, ethereumConnector)
     actorSystem ! LauncherActor.LaunchGardenWatcher()
   }
 
-  /** Launches the CherryPicker and CherryPlanter processes
+  /** Launches the CherryGardener (and, inside it, CherryPicker and CherryPlanter) Akka actors
    * (which are usually launcher together at the moment). */
-  private[this] def launchPickerPlanter(): Unit = {
+  private[this] def launchGardener(): Unit = {
     val pgStorage = getPgStorage(wipe = false)
     val ethereumConnector = getEthereumConnector
 
@@ -116,7 +111,7 @@ You can choose a different HOCON configuration file instead of the regular appli
           case CLIMode.Init => init(wipe = false)
           case CLIMode.Wipe => init(wipe = true)
           case CLIMode.LaunchGardenWatcher => launchWatcher
-          case CLIMode.LaunchPickerPlanter => launchPickerPlanter
+          case CLIMode.LaunchGardener => launchGardener
           case unhandledMode => println(s"Unhandled mode $unhandledMode!")
         }
       case _ =>
@@ -131,7 +126,9 @@ You can choose a different HOCON configuration file instead of the regular appli
 /** The Akka guardian actor that launches all necessary components of CherryGarden. */
 object LauncherActor extends LazyLogging {
 
-  trait LaunchComponent extends CherryGardenerActorIncomingMessage {}
+  trait Message {}
+
+  trait LaunchComponent extends Message {}
 
   /** Messages supported by this actor. */
   //  final case class LaunchCherryPicker(pgStorage: PostgreSQLStorage,
@@ -147,7 +144,7 @@ object LauncherActor extends LazyLogging {
   final case class LaunchCherryGardener(pgStorage: PostgreSQLStorage,
                                         ethereumConnector: EthereumRpcSingleConnector) extends LaunchComponent
 
-  def apply(): Behavior[CherryGardenerActorIncomingMessage] =
+  def apply(): Behavior[Message] =
     Behaviors.receive { (context, message) =>
       message match {
         //        case LauncherActor.LaunchCherryPicker(pgStorage, ethereumConnector) => {
@@ -171,8 +168,8 @@ object LauncherActor extends LazyLogging {
           val cherryPlanter: ActorRef[CherryPlanter.CherryPlanterMessage] =
             context.spawn(CherryPlanter(pgStorage, ethereumConnector), "CherryPlanter")
 
-          logger.info(s"Launched CherryGardener")
-          val cherryGardener: ActorRef[CherryGardenerActorOutgoingMessage] =
+          logger.info(s"Launched CherryGardener (which now knows about CherryPicker and CherryPlanter)")
+          val cherryGardener: ActorRef[CherryGardenerRequest] =
             context.spawn(
               CherryGardener(pgStorage, ethereumConnector, Option(cherryPicker), Option(cherryPlanter)),
               "CherryGardener")
@@ -181,16 +178,15 @@ object LauncherActor extends LazyLogging {
           val clusterSubscriber = context.spawn(ClusterSubscriber(), "ClusterSubscriber")
 
           val cluster = Cluster(context.system)
-          val manager = cluster.manager
           cluster.subscriptions ! Subscribe(clusterSubscriber: ActorRef[MemberEvent], classOf[MemberEvent])
         }
         // CherryGardenerResponse and further are Java interfaces, so we cannot use convenient
         // unapply-based pattern matching.
         case response: CherryGardenerResponse => {
           response match {
-            case getBalanceResp: Balances.GetBalanceResp => {
-              logger.debug(s"Received GetBalanceResponse: $getBalanceResp")
-            }
+//            case getBalanceResp: Balances.GetBalanceResp => {
+//              logger.debug(s"Received GetBalanceResponse: $getBalanceResp")
+//            }
             case unknownResponse =>
               logger.error(s"Unexpected CherryGardener response: $unknownResponse")
           }
@@ -204,20 +200,12 @@ object LauncherActor extends LazyLogging {
     }
 }
 
+/** Tiny Akka actor to notice and log all the changes in Akka cluster subscriptions. */
 object ClusterSubscriber extends LazyLogging {
   def apply(): Behavior[MemberEvent] = Behaviors.receiveMessage {
     (message: MemberEvent) => {
-      logger.debug(s"Cluster event! $message")
+      logger.info(s"Cluster subscription change: $message")
       Behaviors.same
     }
   }
-
-  //  override def receive: Receive = {
-  //    {
-  //      case s: String =>
-  //        log.info("Got {}", s)
-  //      case SubscribeAck(Subscribe("content", None, `self`)) =>
-  //        log.info("subscribing")
-  //    }
-  //  }
 }

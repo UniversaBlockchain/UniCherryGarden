@@ -1,10 +1,10 @@
 package com.myodov.unicherrygarden.cherrygardener.connector.api;
 
+import com.myodov.unicherrygarden.cherrygardener.connector.api.types.Currency;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Currency;
 import java.util.Optional;
 
 /**
