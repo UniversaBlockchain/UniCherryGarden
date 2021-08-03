@@ -1,7 +1,13 @@
 package com.myodov.unicherrygarden.cherrygardener.connector.impl;
 
+import akka.actor.Address;
+import akka.actor.AddressFromURIString;
+import akka.actor.typed.ActorRef;
 import akka.actor.typed.ActorSystem;
 import akka.actor.typed.javadsl.AskPattern;
+import akka.cluster.typed.Cluster;
+import akka.cluster.typed.ClusterCommand;
+import akka.cluster.typed.JoinSeedNodes;
 import com.myodov.unicherrygarden.cherrygardener.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.cherrygardener.connector.api.types.Currency;
 import com.myodov.unicherrygarden.ethereum.Ethereum;
@@ -18,7 +24,9 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
 
 /**
  * The implementation of CherryGardener client connector API.
@@ -34,28 +42,49 @@ public class ClientConnectorImpl implements ClientConnector {
     @NonNull
     private final ActorSystem<ConnectorActor.Message> actorSystem;
 
+    private final boolean offlineMode;
+
     /**
      * Constructor of CherryGardener client connector.
      *
-     * @param gardenerAkkaUrl URL of CherryGardener service, that
+     * @param gardenerUrls the list of URLs of CherryGardener service (strings containing host and port),
+     *                     e.g. <code>List.of("127.0.0.1:2551", "127.0.0.1:2552")</code>.
+     *                     If the list is empty, the connector is executed in “offline mode”,
+     *                     capable to perform only the operations which are executed locally.
      */
-    public ClientConnectorImpl(@NonNull String gardenerAkkaUrl,
-                               @NonNull String gardenWatcherAkkaUrl) {
-        assert gardenerAkkaUrl != null;
-        assert gardenWatcherAkkaUrl != null;
-        logger.info("Launching CherryGardener connector: gardener url {}, garden watcher url {}",
-                gardenerAkkaUrl, gardenWatcherAkkaUrl);
+    public ClientConnectorImpl(@NonNull List<String> gardenerUrls) throws CompletionException {
+        assert gardenerUrls != null;
+        logger.info("Launching CherryGardener connector: gardener urls {}", gardenerUrls);
+        offlineMode = gardenerUrls.isEmpty();
 
         actorSystem = ActorSystem.create(ConnectorActor.create(), "CherryGarden");
+        if (offlineMode) {
+            logger.warn("Creating Connector in offline mode!");
+        } else {
+            final List<Address> seedNodes = gardenerUrls.stream()
+                    .map(url -> AddressFromURIString.parse(String.format("akka://CherryGarden@%s", url)))
+                    .collect(Collectors.toList());
+            logger.info("Connecting to {}", seedNodes);
 
-        logger.debug("Waiting to boot...");
-        final CompletionStage<ConnectorActor.WaitForBootCommand.BootCompleted> stage = AskPattern.ask(
-                actorSystem,
-                ConnectorActor.WaitForBootCommand::new,
-                LAUNCH_TIMEOUT,
-                actorSystem.scheduler());
-        final ConnectorActor.WaitForBootCommand.BootCompleted bootCompleted = stage.toCompletableFuture().join();
-        logger.debug("Boot is completed!");
+            final Cluster cluster = Cluster.get(actorSystem);
+            final ActorRef<ClusterCommand> clusterManager = cluster.manager();
+            clusterManager.tell(new JoinSeedNodes(seedNodes));
+
+            logger.debug("Waiting to boot...");
+            try {
+                final CompletionStage<ConnectorActor.WaitForBootCommand.BootCompleted> stage = AskPattern.ask(
+                        actorSystem,
+                        ConnectorActor.WaitForBootCommand::new,
+                        LAUNCH_TIMEOUT,
+                        actorSystem.scheduler());
+                final ConnectorActor.WaitForBootCommand.BootCompleted bootCompleted = stage.toCompletableFuture().join();
+            } catch (CompletionException exc) {
+                logger.error("Could not boot ClientConnector; shutting down Akka", exc);
+                shutdown();
+                throw exc;
+            }
+            logger.debug("Boot is completed!");
+        }
     }
 
     @Override
