@@ -8,6 +8,10 @@ import akka.actor.typed.javadsl.AskPattern;
 import akka.cluster.typed.Cluster;
 import akka.cluster.typed.ClusterCommand;
 import akka.cluster.typed.JoinSeedNodes;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.myodov.unicherrygarden.cherrygardener.connector.api.AddressOwnershipConfirmator;
 import com.myodov.unicherrygarden.cherrygardener.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.cherrygardener.connector.api.types.Currency;
 import com.myodov.unicherrygarden.ethereum.Ethereum;
@@ -24,6 +28,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
@@ -35,6 +40,9 @@ import java.util.stream.Collectors;
  * and by default, it uses {@link ConnectorActor} as the primary
  */
 public class ClientConnectorImpl implements ClientConnector {
+    @NonNull
+    protected static final AddressOwnershipConfirmator confirmator = new AddressOwnershipConfirmatorImpl();
+
     public static final Duration LAUNCH_TIMEOUT = Duration.ofSeconds(10);
 
     final Logger logger = LoggerFactory.getLogger(ClientConnectorImpl.class);
@@ -130,5 +138,17 @@ public class ClientConnectorImpl implements ClientConnector {
         System.err.printf("Received getCurrencies response: %s\n", result.response.value);
         return List.of();
 //        return result.response;
+    }
+
+    @Override
+    @NonNull
+    public Optional<String> getMessageSigner(@NonNull String msg, @NonNull String sig) {
+        return confirmator.getMessageSigner(msg, sig);
+    }
+
+    @Override
+    @NonNull
+    public Optional<AddressOwnershipMessageValidation> validateMessage(@NonNull String signatureMessage) {
+        return confirmator.validateMessage(signatureMessage);
     }
 }

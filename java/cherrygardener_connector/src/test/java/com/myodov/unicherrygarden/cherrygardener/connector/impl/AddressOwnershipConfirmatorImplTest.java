@@ -7,8 +7,7 @@ import org.junit.Test;
 import java.security.SignatureException;
 import java.util.Optional;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.*;
 
 public class AddressOwnershipConfirmatorImplTest {
     final AddressOwnershipConfirmator confirmator = new AddressOwnershipConfirmatorImpl();
@@ -19,12 +18,6 @@ public class AddressOwnershipConfirmatorImplTest {
 
     static final String MSG1 = "JohnDoe";
     static final String MSG1_SIG = "0xb19e7896f26cbfa692e512950ec75ae6380b0ca5174c959b9561486b8efb5dd45d54b7b723851633b4e428a5a7ede78be90b97d3f6177cf86ff366bb653d64241c";
-//    {
-//  "address": "0x34e1e4f805fcdc936068a760b2c17bc62135b5ae",
-//  "msg": "JohnDoe",
-//  "sig": "0xb19e7896f26cbfa692e512950ec75ae6380b0ca5174c959b9561486b8efb5dd45d54b7b723851633b4e428a5a7ede78be90b97d3f6177cf86ff366bb653d64241c",
-//  "version": "2"
-//}
 
     static final String MSG2 = (
             "I am John Doe, confirming that I own and control the address 0x34e1E4F805fCdC936068A760b2C17BC62135b5AE for the needs of CherryGarden service.\n" +
@@ -102,14 +95,152 @@ public class AddressOwnershipConfirmatorImplTest {
         );
     }
 
-    //    {
-//        "address": "0x34e1e4f805fcdc936068a760b2c17bc62135b5ae",
-//            "msg": "I am John Doe, confirming that I own and control the address 0x34e1E4F805fCdC936068A760b2C17BC62135b5AE for the needs of CherryGarden service.\nName: John Doe\nAccount id: JohnDoe42\nDate: July 5 2021 \nAddress: 0x34e1E4F805fCdC936068A760b2C17BC62135b5AE\nService: CherryGarden",
-//            "sig": "0x9af352d971b4ac4d524652790feb987a461d7b811e46faa56bc7da734bef0fcc6ad9151333f3d76d662654a9237ef1cade723010f3217673464200ede47802f41b",
-//            "version": "2"
-//    }
     @Test
     public void testValidateMessage() throws SignatureException {
+        assertFalse(
+                "Invalid JSON",
+                confirmator.validateMessage(
+                        "BAD JSON {\n" +
+                                "  \"address\": \"0x34e1e4f805fcdc936068a760b2c17bc62135b5ae\",\n" +
+                                "  \"msg\": \"JohnDoe\",\n" +
+                                "  \"sig\": \"0xb19e7896f26cbfa692e512950ec75ae6380b0ca5174c959b9561486b8efb5dd45d54b7b723851633b4e428a5a7ede78be90b97d3f6177cf86ff366bb653d64241c\",\n" +
+                                "  \"version\": \"2\"\n" +
+                                "}"
+                ).isPresent()
+        );
 
+        assertFalse(
+                "Bad address in JSON",
+                confirmator.validateMessage(
+                        "{\n" +
+                                "  \"address\": \"0x34e1e4f805fcdc936068a760b2c17bc62135b5aeDD\",\n" +
+                                "  \"msg\": \"JohnDoe\",\n" +
+                                "  \"sig\": \"0xb19e7896f26cbfa692e512950ec75ae6380b0ca5174c959b9561486b8efb5dd45d54b7b723851633b4e428a5a7ede78be90b97d3f6177cf86ff366bb653d64241c\",\n" +
+                                "  \"version\": \"2\"\n" +
+                                "}"
+                ).isPresent()
+        );
+
+        assertFalse(
+                "No address field",
+                confirmator.validateMessage(
+                        "{\n" +
+                                "  \"msg\": \"JohnDoe\",\n" +
+                                "  \"sig\": \"0xb19e7896f26cbfa692e512950ec75ae6380b0ca5174c959b9561486b8efb5dd45d54b7b723851633b4e428a5a7ede78be90b97d3f6177cf86ff366bb653d64241c\",\n" +
+                                "  \"version\": \"2\"\n" +
+                                "}"
+                ).isPresent()
+        );
+
+        assertFalse(
+                "No msg field",
+                confirmator.validateMessage(
+                        "{\n" +
+                                "  \"address\": \"0x34e1e4f805fcdc936068a760b2c17bc62135b5ae\",\n" +
+                                "  \"sig\": \"0xb19e7896f26cbfa692e512950ec75ae6380b0ca5174c959b9561486b8efb5dd45d54b7b723851633b4e428a5a7ede78be90b97d3f6177cf86ff366bb653d64241c\",\n" +
+                                "  \"version\": \"2\"\n" +
+                                "}"
+                ).isPresent()
+        );
+
+        assertFalse(
+                "No sig field",
+                confirmator.validateMessage(
+                        "{\n" +
+                                "  \"address\": \"0x34e1e4f805fcdc936068a760b2c17bc62135b5ae\",\n" +
+                                "  \"msg\": \"JohnDoe\",\n" +
+                                "  \"version\": \"2\"\n" +
+                                "}"
+                ).isPresent()
+        );
+
+        assertFalse(
+                "Unparseable signature",
+                confirmator.validateMessage(
+                        "{\n" +
+                                "  \"address\": \"0x34e1e4f805fcdc936068a760b2c17bc62135b5ae\",\n" +
+                                "  \"msg\": \"JohnDoe\",\n" +
+                                "  \"sig\": \"0xb19e7896f26cbfa692e512950ec75ae6380b0ca5174c959b9561486b8efb5dd45d54b7b723851633b4e428a5a7ede78be90b97d3f6177cf86ff366bb653d64241cGH\",\n" +
+                                "  \"version\": \"2\"\n" +
+                                "}"
+                ).isPresent()
+        );
+
+        // Bad (incalculatable) signature
+        {
+            final Optional<AddressOwnershipConfirmator.AddressOwnershipMessageValidation> addressOwnershipMessageValidation = confirmator.validateMessage(
+                    "{\n" +
+                            "  \"address\": \"0x34e1e4f805fcdc936068a760b2c17bc62135b5ae\",\n" +
+                            "  \"msg\": \"JohnDoe\",\n" +
+                            "  \"sig\": \"0xb19e7896f26cbfa692e512950ec75ae6380b0ca5174c959b9561486b8efb5dd45d54b7b723851633b4e428a5a7ede78be90b97d3f6177cf86ff366bb653d64241d\",\n" +
+                            "  \"version\": \"2\"\n" +
+                            "}"
+            );
+            assertFalse(addressOwnershipMessageValidation.isPresent());
+        }
+
+        // Mismatching signature
+        {
+            final Optional<AddressOwnershipConfirmator.AddressOwnershipMessageValidation> addressOwnershipMessageValidation = confirmator.validateMessage(
+                    "{\n" +
+                            "  \"address\": \"0x34e1e4f805fcdc936068a760b2c17bc62135b5ad\",\n" +
+                            "  \"msg\": \"JohnDoe\",\n" +
+                            "  \"sig\": \"0xb19e7896f26cbfa692e512950ec75ae6380b0ca5174c959b9561486b8efb5dd45d54b7b723851633b4e428a5a7ede78be90b97d3f6177cf86ff366bb653d64241c\",\n" +
+                            "  \"version\": \"2\"\n" +
+                            "}"
+            );
+
+            assertTrue(
+                    addressOwnershipMessageValidation.isPresent()
+            );
+
+            assertEquals(
+                    "0x34e1e4f805fcdc936068a760b2c17bc62135b5ad",
+                    addressOwnershipMessageValidation.get().declaredAddress
+            );
+            assertEquals(
+                    "0x34e1e4f805fcdc936068a760b2c17bc62135b5ae",
+                    addressOwnershipMessageValidation.get().signingAddress
+            );
+            assertEquals(
+                    "JohnDoe",
+                    addressOwnershipMessageValidation.get().message
+            );
+            assertFalse(
+                    addressOwnershipMessageValidation.get().addressIsMatching()
+            );
+        }
+
+        // Valid signature
+        {
+            final Optional<AddressOwnershipConfirmator.AddressOwnershipMessageValidation> addressOwnershipMessageValidation = confirmator.validateMessage(
+                    "{\n" +
+                            "  \"address\": \"0x34e1e4f805fcdc936068a760b2c17bc62135b5ae\",\n" +
+                            "  \"msg\": \"JohnDoe\",\n" +
+                            "  \"sig\": \"0xb19e7896f26cbfa692e512950ec75ae6380b0ca5174c959b9561486b8efb5dd45d54b7b723851633b4e428a5a7ede78be90b97d3f6177cf86ff366bb653d64241c\",\n" +
+                            "  \"version\": \"2\"\n" +
+                            "}"
+            );
+
+            assertTrue(
+                    addressOwnershipMessageValidation.isPresent()
+            );
+
+            assertEquals(
+                    "0x34e1e4f805fcdc936068a760b2c17bc62135b5ae",
+                    addressOwnershipMessageValidation.get().declaredAddress
+            );
+            assertEquals(
+                    "0x34e1e4f805fcdc936068a760b2c17bc62135b5ae",
+                    addressOwnershipMessageValidation.get().signingAddress
+            );
+            assertEquals(
+                    "JohnDoe",
+                    addressOwnershipMessageValidation.get().message
+            );
+            assertTrue(
+                    addressOwnershipMessageValidation.get().addressIsMatching()
+            );
+        }
     }
 }

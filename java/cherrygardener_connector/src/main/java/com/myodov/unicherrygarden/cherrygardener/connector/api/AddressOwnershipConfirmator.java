@@ -1,5 +1,6 @@
 package com.myodov.unicherrygarden.cherrygardener.connector.api;
 
+import com.myodov.unicherrygarden.ethereum.EthUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.Optional;
@@ -18,10 +19,12 @@ import java.util.Optional;
  *     </li>
  *     <ul>
  *         <li>A typical message you build can look like this:
- *         “<b>I, John Doe, on 31/12/2021 confirm that I own and control the address 0x34e1E4F805fCdC936068A760b2C17BC62135b5AE for the needs of CherryGarden service.</b>”.
+ *         “<b>I, John Doe, on 31/12/2021 confirm that I own and control the address
+ *         0x34e1E4F805fCdC936068A760b2C17BC62135b5AE for the needs of CherryGarden service.</b>”.
  *         </li>
- *         <li>The message (which you build) should be either stored in your database (to validate it through equivalence)
- *         or be parseable on your side. You choose your own method how to validate the message contents – but you need to validate
+ *         <li>The message (which you build) should be either stored in your database (to validate
+ *         it through equivalence) or be parseable on your side.
+ *         You choose your own method how to validate the message contents – but you need to validate
  *         the contents too, not just the signature. And you need to validate the contents yourself, preferably
  *         even before the signature is verified.</li>
  *         <li>Note that the message can be multi-line, and each byte of it matters.
@@ -69,8 +72,84 @@ public interface AddressOwnershipConfirmator {
     @NonNull
     Optional<String> getMessageSigner(@NonNull String msg, @NonNull String sig);
 
-//    /**
-//     * Check if the <code>message</code> is signed by the owner of <code>isSignedByAddress</code>.`
-//     */
-//    boolean validateMessage(@NonNull String message, @NonNull String isSignedByAddress);
+    class AddressOwnershipMessageValidation {
+        /**
+         * The message to be signed.
+         */
+        @NonNull
+        public final String message;
+
+        /**
+         * The address declared in the signature.
+         */
+        @NonNull
+        public final String declaredAddress;
+
+        /**
+         * The address that actually .
+         */
+        @NonNull
+        public final String signingAddress;
+
+        public AddressOwnershipMessageValidation(@NonNull String message,
+                                                 @NonNull String declaredAddress,
+                                                 @NonNull String signingAddress) {
+            assert message != null;
+
+            assert declaredAddress != null;
+            assert EthUtils.Addresses.isValidAddress(declaredAddress): declaredAddress;
+
+            assert signingAddress != null;
+            assert EthUtils.Addresses.isValidAddress(signingAddress): signingAddress;
+
+            this.message = message;
+            this.declaredAddress = declaredAddress;
+            this.signingAddress = signingAddress;
+        }
+
+        /**
+         * Whether the address declared in the signature actually matches the address
+         * that signed the message.
+         */
+        public boolean addressIsMatching() {
+            return signingAddress.equals(declaredAddress);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("AddressOwnershipConfirmator.AddressOwnershipMessageValidation(%s)",
+                    addressIsMatching() ? "valid" : "invalid");
+        }
+    }
+
+    /**
+     * Check if the <code>signatureMessage</code> is signed by the owner of <code>isSignedByAddress</code>.`
+     * <code>signatureMessage</code> should have the contents like MyEtherWallet/MyCrypto generates,
+     * a JSON-like structure like this:
+     * <pre>
+     * {
+     *     "address": "0x34e1e4f805fcdc936068a760b2c17bc62135b5ae",
+     *     "msg": "I, John Doe, on 31/12/2021 confirm that I own and control the address 0x34e1E4F805fCdC936068A760b2C17BC62135b5AE for the needs of CherryGarden service.",
+     *     "sig": "0xb2f88840c6895a12c1ea114cf73fbfcf4b276470cf1165ee10f2397ae7006c882a3cfbd95080f0ff03d808e81d472305e2a95d3eb5f4316e55b4edfcb10b38581b",
+     *     "version": "2"
+     * }
+     * </pre>
+     * <p>
+     * Returns an {@link Optional> that is valid if the message is parsed successfully, and invalid if the message
+     * could not be even parsed.
+     * The {@link Optional> contains the {@link AddressOwnershipMessageValidation} structure where you can reach
+     * the details of the message.
+     * <p>
+     * You may want:
+     * <ol>
+     * <li>Check the {@link AddressOwnershipMessageValidation#message} field to be sure the message contents
+     * contains what you need.</li>
+     * <li>Check the {@link AddressOwnershipMessageValidation#declaredAddress} and/or
+     * {@link AddressOwnershipMessageValidation#signingAddress}</li> that it matches the address you
+     * <li></li>
+     * <li></li>
+     * </ol>
+     */
+    @NonNull
+    Optional<AddressOwnershipMessageValidation> validateMessage(@NonNull String signatureMessage);
 }

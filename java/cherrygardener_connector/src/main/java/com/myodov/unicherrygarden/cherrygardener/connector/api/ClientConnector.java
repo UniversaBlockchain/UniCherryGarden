@@ -9,8 +9,8 @@ import java.util.List;
  * The general interface for creating “cherry gardeners”, i.e. connectors
  * to UniCherryGarden that access all the functionality and features of Ethereum blockchain.
  */
-public interface ClientConnector
-        // extends Keygen, AddressOwnershipConfirmator, Sender, Receiver
+public interface ClientConnector extends AddressOwnershipConfirmator
+        // extends Keygen, Sender, Receiver
 {
     @NonNull
     List<Currency> getCurrencies();

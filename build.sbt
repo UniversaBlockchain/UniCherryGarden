@@ -14,6 +14,7 @@ val scalaTestVersion = "3.1.0"
 val scalikeJdbcVersion = "3.5.0"
 val syslogAppenderVersion = "1.0.0"
 val web3jVersion = "4.8.4"
+val jacksonCoreVersion = "2.11.4" // same version as used by akka-serialization-jackson
 
 val javaSlf4jVersion = "1.7.30"
 val javaJunitVersion = "4.13.2"
@@ -105,6 +106,8 @@ lazy val cherryGardenerConnector = (project in file("java/cherrygardener_connect
     libraryDependencies ++= Seq(
       "org.web3j" % "core" % web3jVersion,
       //      "org.web3j" % "contracts" % web3jVersion,
+      // Jackson used to parse JSON structures
+      "com.fasterxml.jackson.core" % "jackson-core" % jacksonCoreVersion,
     ),
   )
   .enablePlugins(JavaAppPackaging)

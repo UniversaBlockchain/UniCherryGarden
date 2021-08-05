@@ -75,6 +75,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActor.Message> {
             public BootCompleted() {
             }
 
+            @Override
             public String toString() {
                 return "WaitForBootCommand.BootCompleted()";
             }
