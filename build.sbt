@@ -36,6 +36,8 @@ lazy val commonJavaSettings = Seq(
     "org.slf4j" % "slf4j-api" % javaSlf4jVersion,
     // For Unit tests
     "junit" % "junit" % javaJunitVersion % Test,
+    // So the test scripts will have its data logged to STDOUT
+    "ch.qos.logback" % "logback-classic" % logbackVersion % Test,
     // Type annotations
     "org.checkerframework" % "checker-qual" % javaCheckerVersion,
   ),
@@ -44,6 +46,8 @@ lazy val commonJavaSettings = Seq(
 lazy val commonScalaSettings = Seq(
   libraryDependencies ++= Seq(
     "org.scalatest" %% "scalatest" % scalaTestVersion % Test,
+    // So the test scripts will have its data logged to STDOUT
+    "ch.qos.logback" % "logback-classic" % logbackVersion % Test,
     "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingVersion,
     "org.scala-lang.modules" %% "scala-parallel-collections" % scalaParallelCollectionsVersion
   ),
@@ -64,6 +68,13 @@ lazy val commonAkkaMicroserviceSettings = Seq(
 // Java components
 //
 
+// (Java-based) a virtual “project” that contains all settings/data common for all Java projects.
+lazy val commonJava = (project in file("java/common_java"))
+  .settings(
+    commonSettings,
+    commonJavaSettings,
+    name := "unicherrygarden__common_java",
+  )
 
 // (Java-based) Low-level Akka interoperability layer (messages) to communicate
 // between CherryGarden Akka remote actors and Client Connector.
@@ -76,6 +87,7 @@ lazy val ethUtils = (project in file("java/ethutils"))
       "org.web3j" % "core" % web3jVersion,
     ),
   )
+  .dependsOn(commonJava)
 
 // (Java-based) Low-level Akka interoperability layer (messages) to communicate
 // between CherryGarden Akka remote actors and Client Connector.
@@ -90,7 +102,7 @@ lazy val cherryGardenerInterop = (project in file("java/cherrygardener_interop")
       //      "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test, // or should not use "% Test"?
     ),
   )
-  .dependsOn(ethUtils)
+  .dependsOn(commonJava, ethUtils)
 
 // (Java-based) Client connector (API library) to CherryGardener;
 // allows external clients to use high-level CherryGardener interface
@@ -111,7 +123,7 @@ lazy val cherryGardenerConnector = (project in file("java/cherrygardener_connect
     ),
   )
   .enablePlugins(JavaAppPackaging)
-  .dependsOn(cherryGardenerInterop)
+  .dependsOn(commonJava, cherryGardenerInterop)
 
 lazy val cherryGardenerConnectorCLI = (project in file("java/cherrygardener_connector_cli"))
   .settings(
@@ -125,13 +137,20 @@ lazy val cherryGardenerConnectorCLI = (project in file("java/cherrygardener_conn
     ),
   )
   .enablePlugins(JavaAppPackaging)
-  .dependsOn(cherryGardenerConnector)
+  .dependsOn(commonJava, cherryGardenerConnector)
 
 
 //
 // Scala components
 //
 
+// a virtual “project” that contains all settings/data common for all Scala projects.
+lazy val commonScala = (project in file("scala/common_scala"))
+  .settings(
+    commonSettings,
+    commonScalaSettings,
+    name := "unicherrygarden__common_scala",
+  )
 
 // Common modules (for all Scala components).
 lazy val api = (project in file("scala/api"))
@@ -140,7 +159,7 @@ lazy val api = (project in file("scala/api"))
     commonScalaSettings,
     name := "unicherrygarden__api",
   )
-  .dependsOn(ethUtils)
+  .dependsOn(commonScala, ethUtils)
 
 // Separate module to handle reading the HOCON conf files.
 // Used from CLI launcher, and from "test" targets of other modules.
@@ -154,6 +173,7 @@ lazy val confreader = (project in file("scala/confreader"))
       "com.typesafe" % "config" % configLibVersion,
     ),
   )
+  .dependsOn(commonScala)
 
 // Separate module to handle logging configuration.
 // Used from CLI launcher, and from "test" targets of other modules.
@@ -169,6 +189,7 @@ lazy val logging = (project in file("scala/logging"))
       //      "com.github.serioussam" % "syslogappender" % syslogAppenderVersion,
     ),
   )
+  .dependsOn(commonScala)
 
 // RDBMS Storage
 lazy val db_postgresql_storage = (project in file("scala/storages/db_postgresql_storage"))
@@ -184,7 +205,7 @@ lazy val db_postgresql_storage = (project in file("scala/storages/db_postgresql_
       "org.scalikejdbc" %% "scalikejdbc-test" % scalikeJdbcVersion % "test",
     ),
   )
-  .dependsOn(api)
+  .dependsOn(commonScala, api)
 
 // Interface to Web3 Ethereum nodes via RPC.
 lazy val ethereum_rpc_connector = (project in file("scala/connectors/ethereum_rpc_connector"))
@@ -197,7 +218,7 @@ lazy val ethereum_rpc_connector = (project in file("scala/connectors/ethereum_rp
       "org.web3j" % "contracts" % web3jVersion,
     ),
   )
-  .dependsOn(api, confreader % "test->compile", logging % "test->compile")
+  .dependsOn(commonScala, api, confreader % "test->compile", logging % "test->compile")
 
 // CherryPicker: investigates the Ethereum blockchain and cherry-picks
 // the information about the Ether/ERC20 transfers.
@@ -208,7 +229,7 @@ lazy val cherrypicker = (project in file("scala/cherrypicker"))
     commonAkkaMicroserviceSettings,
     name := "unicherrygarden__cherrypicker",
   )
-  .dependsOn(api, db_postgresql_storage, ethereum_rpc_connector)
+  .dependsOn(commonScala, api, db_postgresql_storage, ethereum_rpc_connector)
 
 // CherryPlanter: sends the transactions to the Ethereum blockchain.
 lazy val cherryplanter = (project in file("scala/cherryplanter"))
@@ -218,7 +239,7 @@ lazy val cherryplanter = (project in file("scala/cherryplanter"))
     commonAkkaMicroserviceSettings,
     name := "unicherrygarden__cherryplanter",
   )
-  .dependsOn(api, db_postgresql_storage, ethereum_rpc_connector)
+  .dependsOn(commonScala, api, db_postgresql_storage, ethereum_rpc_connector)
 
 // CherryGardener: provides high-level convenient front-end to the .
 lazy val cherrygardener = (project in file("scala/cherrygardener"))
@@ -229,7 +250,8 @@ lazy val cherrygardener = (project in file("scala/cherrygardener"))
     name := "unicherrygarden__cherrygardener",
   )
   .dependsOn(
-    api, db_postgresql_storage, ethereum_rpc_connector,
+    commonScala, api,
+    db_postgresql_storage, ethereum_rpc_connector,
     cherryGardenerInterop, cherrypicker, cherryplanter
   )
 
@@ -250,6 +272,6 @@ lazy val launcher = (project in file("scala/launcher"))
   )
   .enablePlugins(JavaAppPackaging)
   .dependsOn(
-    api, confreader, db_postgresql_storage, logging,
+    commonScala, api, confreader, db_postgresql_storage, logging,
     cherrypicker, cherryplanter, cherrygardener
   )
