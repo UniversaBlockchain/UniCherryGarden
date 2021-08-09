@@ -1,5 +1,6 @@
 package com.myodov.unicherrygarden.cherrygardener;
 
+import com.myodov.unicherrygarden.cherrygardener.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.cherrygardener.connector.api.types.Currency;
 import com.myodov.unicherrygarden.cherrygardener.connector.impl.ClientConnectorImpl;
 import org.apache.commons.cli.*;
@@ -65,7 +66,7 @@ public class CherryGardenerCLI {
                 final Optional<List<String>> connectUrls = parseConnectUrls(line);
                 if (connectUrls.isPresent()) {
                     try {
-                        final ClientConnectorImpl connector = new ClientConnectorImpl(connectUrls.get());
+                        final ClientConnector connector = new ClientConnectorImpl(connectUrls.get());
                         final List<Currency> currencies = connector.getCurrencies();
                         System.err.printf("Received list of currencies: %s\n", currencies);
                         connector.shutdown();
