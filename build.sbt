@@ -28,31 +28,41 @@ sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
 sonatypeCredentialHost := "s01.oss.sonatype.org"
 publishTo := sonatypePublishToBundle.value
 
-val projectVersion = "0.1.0-SNAPSHOT-20210807-1712"
+val projectVersion = "0.1.0"
 name := "unicherrygarden"
 version := projectVersion
 
-ThisBuild / organization := "com.myodov.unicherrygarden"
-ThisBuild / scalaVersion := "2.13.0"
-ThisBuild / organizationName := "UniCherryGarden"
-ThisBuild / organizationHomepage := Some(url("https://github.com/UniversaBlockchain/UniCherryGarden"))
-ThisBuild / homepage := Some(url("https://github.com/UniversaBlockchain/UniCherryGarden"))
-ThisBuild / startYear := Some(2021)
-ThisBuild / description := "UniCherryGarden: universal “data gardening” solution for Ethereum blockchain data"
-ThisBuild / scmInfo := Some(
-  ScmInfo(
+// Configure settings for all (!) subprojects
+inThisBuild(List(
+  organization := "com.myodov.unicherrygarden",
+  version := projectVersion,
+  scalaVersion := "2.13.0",
+  organizationName := "UniCherryGarden",
+  organizationHomepage := Some(url("https://github.com/UniversaBlockchain/UniCherryGarden")),
+  homepage := Some(url("https://github.com/UniversaBlockchain/UniCherryGarden")),
+  startYear := Some(2021),
+  description := "UniCherryGarden: universal “data gardening” solution for Ethereum blockchain data",
+  scmInfo := Some(ScmInfo(
     url("https://github.com/UniversaBlockchain/UniCherryGarden"),
     "scm:git@github.com:UniversaBlockchain/UniCherryGarden.git"
+  )),
+  licenses := Seq("MIT License" -> url("https://github.com/UniversaBlockchain/UniCherryGarden/blob/master/LICENSE")),
+  developers := List(
+    Developer(
+      id = "amyodov",
+      name = "Alex Myodov",
+      email = "amyodov@gmail.com",
+      url = url("https://myodov.com/")
+    )
   )
-)
-//ThisBuild / maintainer := "Alex Myodov <amyodov@gmail.com>"
-
-ThisBuild / version := projectVersion
+))
 
 usePgpKeyHex("BE53ACD082329B6231C5D4F41B6C3A2684CA4538")
 
 
 lazy val commonSettings = Seq(
+  // We don't want Javadoc generated, as it issues too many problems with “wrong” Javadoc tags;
+  // and also causes many warnings for bad Javadoc.
   sources in(Compile, doc) := Seq.empty,
   publishTo := sonatypePublishToBundle.value,
 )
@@ -68,6 +78,7 @@ lazy val commonJavaSettings = Seq(
     // Type annotations
     "org.checkerframework" % "checker-qual" % javaCheckerVersion,
   ),
+//  crossPaths := false,
 )
 
 lazy val commonScalaSettings = Seq(
