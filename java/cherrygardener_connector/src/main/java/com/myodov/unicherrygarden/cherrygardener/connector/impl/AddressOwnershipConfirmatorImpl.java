@@ -78,8 +78,6 @@ public class AddressOwnershipConfirmatorImpl implements AddressOwnershipConfirma
      * contains what you need.</li>
      * <li>Check the {@link AddressOwnershipMessageValidation#declaredAddress} and/or
      * {@link AddressOwnershipMessageValidation#signingAddress}</li> that it matches the address you
-     * <li></li>
-     * <li></li>
      * </ol>
      *
      * @param signatureMessage the message received from the user; typically something resembling a JSON.

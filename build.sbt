@@ -1,3 +1,4 @@
+import sbt.Compile
 // Versions
 
 val akkaVersion = "2.6.15"
@@ -23,11 +24,37 @@ val javaCommonsCLIVersion = "1.4"
 
 // Common settings
 
+sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
+sonatypeCredentialHost := "s01.oss.sonatype.org"
+publishTo := sonatypePublishToBundle.value
+
+val projectVersion = "0.1.0-SNAPSHOT-20210807-1712"
+name := "unicherrygarden"
+version := projectVersion
+
+ThisBuild / organization := "com.myodov.unicherrygarden"
+ThisBuild / scalaVersion := "2.13.0"
+ThisBuild / organizationName := "UniCherryGarden"
+ThisBuild / organizationHomepage := Some(url("https://github.com/UniversaBlockchain/UniCherryGarden"))
+ThisBuild / homepage := Some(url("https://github.com/UniversaBlockchain/UniCherryGarden"))
+ThisBuild / startYear := Some(2021)
+ThisBuild / description := "UniCherryGarden: universal “data gardening” solution for Ethereum blockchain data"
+ThisBuild / scmInfo := Some(
+  ScmInfo(
+    url("https://github.com/UniversaBlockchain/UniCherryGarden"),
+    "scm:git@github.com:UniversaBlockchain/UniCherryGarden.git"
+  )
+)
+//ThisBuild / maintainer := "Alex Myodov <amyodov@gmail.com>"
+
+ThisBuild / version := projectVersion
+
+usePgpKeyHex("BE53ACD082329B6231C5D4F41B6C3A2684CA4538")
+
+
 lazy val commonSettings = Seq(
-  organization := "com.myodov",
-  maintainer := "Alex Myodov <amyodov@gmail.com>",
-  version := "0.1.2",
-  scalaVersion := "2.13.0",
+  sources in(Compile, doc) := Seq.empty,
+  publishTo := sonatypePublishToBundle.value,
 )
 
 lazy val commonJavaSettings = Seq(
@@ -73,7 +100,7 @@ lazy val commonJava = (project in file("java/common_java"))
   .settings(
     commonSettings,
     commonJavaSettings,
-    name := "unicherrygarden__common_java",
+    name := "common_java",
   )
 
 // (Java-based) Low-level Akka interoperability layer (messages) to communicate
@@ -82,7 +109,7 @@ lazy val ethUtils = (project in file("java/ethutils"))
   .settings(
     commonSettings,
     commonJavaSettings,
-    name := "unicherrygarden__ethutils",
+    name := "ethutils",
     libraryDependencies ++= Seq(
       "org.web3j" % "core" % web3jVersion,
     ),
@@ -95,7 +122,7 @@ lazy val cherryGardenerInterop = (project in file("java/cherrygardener_interop")
   .settings(
     commonSettings,
     commonJavaSettings,
-    name := "unicherrygarden__cherrygardener_interop",
+    name := "cherrygardener_interop",
     libraryDependencies ++= Seq(
       // Akka
       "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
@@ -112,7 +139,7 @@ lazy val cherryGardenerConnector = (project in file("java/cherrygardener_connect
     commonSettings,
     commonJavaSettings,
     commonAkkaMicroserviceSettings,
-    name := "unicherrygarden__cherrygardener_connector",
+    name := "cherrygardener_connector",
     // Java-based layer is capable to do some Ethereum-specific things (like, build transactions)
     // directly on the connector side.
     libraryDependencies ++= Seq(
@@ -130,7 +157,7 @@ lazy val cherryGardenerConnectorCLI = (project in file("java/cherrygardener_conn
     commonSettings,
     commonJavaSettings,
     commonAkkaMicroserviceSettings,
-    name := "unicherrygarden__cherrygardener_connector_cli",
+    name := "cherrygardener_connector_cli",
     libraryDependencies ++= Seq(
       "commons-cli" % "commons-cli" % javaCommonsCLIVersion,
       "ch.qos.logback" % "logback-classic" % logbackVersion,
@@ -149,7 +176,7 @@ lazy val commonScala = (project in file("scala/common_scala"))
   .settings(
     commonSettings,
     commonScalaSettings,
-    name := "unicherrygarden__common_scala",
+    name := "common_scala",
   )
 
 // Common modules (for all Scala components).
@@ -157,7 +184,7 @@ lazy val api = (project in file("scala/api"))
   .settings(
     commonSettings,
     commonScalaSettings,
-    name := "unicherrygarden__api",
+    name := "api",
   )
   .dependsOn(commonScala, ethUtils)
 
@@ -167,7 +194,7 @@ lazy val confreader = (project in file("scala/confreader"))
   .settings(
     commonSettings,
     commonScalaSettings,
-    name := "unicherrygarden__confreader",
+    name := "confreader",
     libraryDependencies ++= Seq(
       // Parse HOCON config files
       "com.typesafe" % "config" % configLibVersion,
@@ -181,7 +208,7 @@ lazy val logging = (project in file("scala/logging"))
   .settings(
     commonSettings,
     commonScalaSettings,
-    name := "unicherrygarden__logging",
+    name := "logging",
     libraryDependencies ++= Seq(
       // Default logging output
       "ch.qos.logback" % "logback-classic" % logbackVersion,
@@ -196,7 +223,7 @@ lazy val db_postgresql_storage = (project in file("scala/storages/db_postgresql_
   .settings(
     commonSettings,
     commonScalaSettings,
-    name := "unicherrygarden__db_postgresql_storage",
+    name := "db_postgresql_storage",
     libraryDependencies ++= Seq(
       "org.postgresql" % "postgresql" % postgresqlVersion,
       "org.flywaydb" % "flyway-core" % flywayDbVersion,
@@ -212,7 +239,7 @@ lazy val ethereum_rpc_connector = (project in file("scala/connectors/ethereum_rp
   .settings(
     commonSettings,
     commonScalaSettings,
-    name := "unicherrygarden__ethereum_rpc_connector",
+    name := "ethereum_rpc_connector",
     libraryDependencies ++= Seq(
       "org.web3j" % "core" % web3jVersion,
       "org.web3j" % "contracts" % web3jVersion,
@@ -227,7 +254,7 @@ lazy val cherrypicker = (project in file("scala/cherrypicker"))
     commonSettings,
     commonScalaSettings,
     commonAkkaMicroserviceSettings,
-    name := "unicherrygarden__cherrypicker",
+    name := "cherrypicker",
   )
   .dependsOn(commonScala, api, db_postgresql_storage, ethereum_rpc_connector)
 
@@ -237,7 +264,7 @@ lazy val cherryplanter = (project in file("scala/cherryplanter"))
     commonSettings,
     commonScalaSettings,
     commonAkkaMicroserviceSettings,
-    name := "unicherrygarden__cherryplanter",
+    name := "cherryplanter",
   )
   .dependsOn(commonScala, api, db_postgresql_storage, ethereum_rpc_connector)
 
@@ -247,7 +274,7 @@ lazy val cherrygardener = (project in file("scala/cherrygardener"))
     commonSettings,
     commonScalaSettings,
     commonAkkaMicroserviceSettings,
-    name := "unicherrygarden__cherrygardener",
+    name := "cherrygardener",
   )
   .dependsOn(
     commonScala, api,
@@ -260,7 +287,7 @@ lazy val launcher = (project in file("scala/launcher"))
   .settings(
     commonSettings,
     commonScalaSettings,
-    name := "unicherrygarden__launcher",
+    name := "launcher",
     resolvers += Resolver.bintrayRepo("serioussam", "oss"),
     libraryDependencies ++= Seq(
       // Parse command line arguments
@@ -275,3 +302,5 @@ lazy val launcher = (project in file("scala/launcher"))
     commonScala, api, confreader, db_postgresql_storage, logging,
     cherrypicker, cherryplanter, cherrygardener
   )
+
+publishArtifact := false

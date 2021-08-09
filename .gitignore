@@ -6,6 +6,9 @@
 logs/
 .bsp
 
+/ansible/
+/ansible.cfg
+
 ### SBT ignores
 
 dist/*
