@@ -28,7 +28,7 @@ sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
 sonatypeCredentialHost := "s01.oss.sonatype.org"
 publishTo := sonatypePublishToBundle.value
 
-val projectVersion = "0.1.0"
+val projectVersion = "0.1.1"
 name := "unicherrygarden"
 version := projectVersion
 
@@ -78,7 +78,8 @@ lazy val commonJavaSettings = Seq(
     // Type annotations
     "org.checkerframework" % "checker-qual" % javaCheckerVersion,
   ),
-//  crossPaths := false,
+  // Java-only artifacts shouldn't have the Scala-version postfix in their names.
+  crossPaths := false,
 )
 
 lazy val commonScalaSettings = Seq(
