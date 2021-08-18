@@ -115,27 +115,16 @@ public class AddressOwnershipConfirmatorImpl implements AddressOwnershipConfirma
                 logger.error("Address field in {} doesn't contain a valid address", signatureMessage);
                 return Optional.empty();
             } else {
-                final String msgText = msg.asText();
+                final String
+                        msgText = msg.asText(),
+                        sigText = sig.asText();
 
-                final String signingAddress;
-                try {
-                    final Sign.SignatureData signatureData = getSignatureData(sig.asText());
-                    signingAddress = "0x" + Keys.getAddress(Sign.signedPrefixedMessageToKey(msgText.getBytes(), signatureData));
-                } catch (DecoderException e) {
-                    logger.error("Bad hex data in signature message", msg, sig);
-                    logger.error("Error:", e);
-                    return Optional.empty();
-                } catch (SignatureException e) {
-                    logger.error("Cannot find signing address for {}", signatureMessage);
-                    logger.error("Error is:", e);
-                    return Optional.empty();
-                }
-
-                return Optional.of(new AddressOwnershipMessageValidation(
-                        msgText,
-                        addressAsText,
-                        signingAddress
-                ));
+                return getMessageSigner(msgText, sigText)
+                        .map(signingAddress -> new AddressOwnershipMessageValidation(
+                                msgText,
+                                addressAsText,
+                                signingAddress
+                        ));
             }
         }
     }
