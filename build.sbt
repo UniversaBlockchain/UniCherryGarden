@@ -54,7 +54,7 @@ inThisBuild(List(
       email = "amyodov@gmail.com",
       url = url("https://myodov.com/")
     )
-  )
+  ),
 ))
 
 usePgpKeyHex("BE53ACD082329B6231C5D4F41B6C3A2684CA4538")
@@ -163,7 +163,6 @@ lazy val cherryGardenerConnector = (project in file("java/cherrygardener_connect
       "com.fasterxml.jackson.core" % "jackson-core" % jacksonCoreVersion,
     ),
   )
-  .enablePlugins(JavaAppPackaging)
   .dependsOn(commonJava, cherryGardenerInterop)
 
 lazy val cherryGardenerConnectorCLI = (project in file("java/cherrygardener_connector_cli"))
@@ -178,8 +177,8 @@ lazy val cherryGardenerConnectorCLI = (project in file("java/cherrygardener_conn
       "ch.qos.logback" % "logback-classic" % logbackVersion,
     ),
   )
-  .enablePlugins(JavaAppPackaging)
   .dependsOn(commonJava, cherryGardenerConnector)
+  .enablePlugins(JavaAppPackaging)
 
 
 //
@@ -326,10 +325,10 @@ lazy val launcher = (project in file("scala/launcher"))
     //    mainClass in Compile := Some("com.myodov.unicherrygarden.launcher.Launcher"),
     //    discoveredMainClasses in Compile := Seq(),
   )
-  .enablePlugins(JavaAppPackaging)
   .dependsOn(
     commonScala, api, confreader, db_postgresql_storage, logging,
     cherrypicker, cherryplanter, cherrygardener
   )
+  .enablePlugins(JavaAppPackaging)
 
 publishArtifact := false

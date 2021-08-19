@@ -1,6 +1,7 @@
 package com.myodov.unicherrygarden.cherrygardener.connector.impl;
 
 import com.myodov.unicherrygarden.cherrygardener.connector.api.AddressOwnershipConfirmator;
+import com.myodov.unicherrygarden.cherrygardener.connector.api.types.PrivateKey;
 import org.bouncycastle.util.encoders.Hex;
 import org.junit.Test;
 
@@ -242,5 +243,34 @@ public class AddressOwnershipConfirmatorImplTest {
                     addressOwnershipMessageValidation.get().addressIsMatching()
             );
         }
+    }
+
+    @Test
+    public void testPrivateKeySignOwnershipConfirmatorIntegration() {
+        final PrivateKey pkCopy;
+        try (final PrivateKey pk = new PrivateKeyImpl(Hex.decode(PK1_STR))) {
+            assertEquals(
+                    MSG1_SIG,
+                    pk.signMessageToSig(MSG1)
+            );
+
+            final Optional<String> signer = confirmator.getMessageSigner(MSG1, pk.signMessageToSig(MSG1));
+            assertTrue(signer.isPresent());
+
+            assertEquals(
+                    PK1_ADDR,
+                    signer.get()
+            );
+
+            // And by the way, leaking the private key outside “try-with-resources” zone
+            // should wipe the key, let’s test it too
+            pkCopy = pk;
+        }
+
+        assertNotEquals(
+                "the private key is wiped after try-with-resources zone and cannot be used for signing anymore",
+                MSG1_SIG,
+                pkCopy.signMessageToSig(MSG1)
+        );
     }
 }
