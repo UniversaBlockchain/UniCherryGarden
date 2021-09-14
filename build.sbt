@@ -37,7 +37,7 @@ inThisBuild(List(
   organization := "com.myodov.unicherrygarden",
   version := projectVersion,
   scalaVersion := "2.13.0",
-  javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
+  javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-parameters"),
   organizationName := "UniCherryGarden",
   organizationHomepage := Some(url("https://github.com/UniversaBlockchain/UniCherryGarden")),
   homepage := Some(url("https://github.com/UniversaBlockchain/UniCherryGarden")),
@@ -162,6 +162,9 @@ lazy val cherryGardenerConnector = (project in file("java/cherrygardener_connect
       //      "org.web3j" % "contracts" % web3jVersion,
       // Jackson used to parse JSON structures
       "com.fasterxml.jackson.core" % "jackson-core" % jacksonCoreVersion,
+      "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonCoreVersion,
+      "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % jacksonCoreVersion,
+      "com.fasterxml.jackson.datatype" % "jackson-datatype-jdk8" % jacksonCoreVersion,
     ),
   )
   .dependsOn(commonJava, cherryGardenerInterop)
@@ -177,6 +180,7 @@ lazy val cherryGardenerConnectorCLI = (project in file("java/cherrygardener_conn
       "commons-cli" % "commons-cli" % javaCommonsCLIVersion,
       "ch.qos.logback" % "logback-classic" % logbackVersion,
     ),
+    mainClass in Compile := Some("com.myodov.unicherrygarden.cherrygardener.CherryGardenerCLI"),
   )
   .dependsOn(commonJava, cherryGardenerConnector)
   .enablePlugins(JavaAppPackaging)

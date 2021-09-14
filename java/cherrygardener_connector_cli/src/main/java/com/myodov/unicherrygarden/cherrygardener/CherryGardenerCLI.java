@@ -33,7 +33,6 @@ public class CherryGardenerCLI {
                 null, "list-supported-currencies", false,
                 "print the list of currencies supported by CherryGardener");
 //        options.addOption("l", "launch", false, "launch the CherryGardener service and stay running");
-//        options.addOption("p", "print", false, "print the information about the Bitcoin wallet, sufficient to restore it (on BIP32/BIP39 compatible wallets)");
     }
 
     private Optional<List<String>> parseConnectUrls(@NonNull CommandLine line) {

@@ -90,7 +90,7 @@ Uses Akka library for modularity/components and establishing cluster of services
 
 PostgreSQL database is used to store and efficiently index the collected blockchain data and the internal state.
 
-The code is written in Java 8 language and Scala 2.13. More recent JDK is used to build it (typically JDK11 or newer), so the code may use the features available in the newer JDK libraries. E.g.: the source code may use methods like `List.of()` (available since JDK9) or even `List.copyOf()` (available since JDK10).
+The code is written in Java 8 language and Scala 2.13.
 
 * The Java artifacts are built without using the Scala versioning in their titles, and in JDK8 compatible mode.
 * The Scala artifacts are built with the Scala version in their title (cross-building).
