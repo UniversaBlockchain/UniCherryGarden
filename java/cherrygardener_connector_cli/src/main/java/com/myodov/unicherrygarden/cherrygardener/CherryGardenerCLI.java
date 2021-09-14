@@ -38,7 +38,9 @@ public class CherryGardenerCLI {
 
     private Optional<List<String>> parseConnectUrls(@NonNull CommandLine line) {
         if (line.hasOption("connect")) {
-            final List<String> connectUrls = Arrays.asList(line.getOptionValue("connect").strip().split(","));
+            final String optUnstripped = line.getOptionValue("connect");
+            final String optStripped = optUnstripped.replaceAll("^\\s+|\\s+$", ""); // TODO Since Java 11: optUnstripped.strip()
+            final List<String> connectUrls = Arrays.asList(optStripped.split(","));
             if (connectUrls.isEmpty()) {
                 System.err.println("--connect option must be non-empty! " +
                         "Recommended 2 or more URLs, like \"127.0.0.1:2551,127.0.0.1:2552\".");

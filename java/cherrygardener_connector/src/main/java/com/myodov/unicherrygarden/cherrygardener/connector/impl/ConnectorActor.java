@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -211,10 +212,10 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActor.Message> {
             synchronized (this) {
                 // Copying the ones to callback
                 if (!waitForBootCallers.isEmpty()) {
-                    waitForBootCallersToCallback = List.copyOf(waitForBootCallers);
+                    waitForBootCallersToCallback = Collections.unmodifiableList(new ArrayList(waitForBootCallers)); // TODO since Java 11: List.copyOf(waitForBootCallers)
                     waitForBootCallers.clear();
                 } else {
-                    waitForBootCallersToCallback = List.of();
+                    waitForBootCallersToCallback = new ArrayList(); // TODO since Java 9: List.of()
                 }
             }
 

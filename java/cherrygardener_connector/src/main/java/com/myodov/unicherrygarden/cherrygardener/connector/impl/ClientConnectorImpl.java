@@ -24,6 +24,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
@@ -101,7 +102,6 @@ public class ClientConnectorImpl implements ClientConnector {
      * Main loop execution.
      */
     public static void main(String[] args) {
-        System.out.println("Oh");
         final ECKeyPair pair;
 
         try {
@@ -133,7 +133,7 @@ public class ClientConnectorImpl implements ClientConnector {
 
         final ConnectorActor.ListSupportedCurrenciesCommand.Result result = stage.toCompletableFuture().join();
         System.err.printf("Received getCurrencies response: %s\n", result.response.value);
-        return List.of();
+        return new ArrayList(); // TODO since Java 9: List.of()
 //        return result.response;
     }
 

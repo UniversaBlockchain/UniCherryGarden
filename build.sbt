@@ -37,6 +37,7 @@ inThisBuild(List(
   organization := "com.myodov.unicherrygarden",
   version := projectVersion,
   scalaVersion := "2.13.0",
+  javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
   organizationName := "UniCherryGarden",
   organizationHomepage := Some(url("https://github.com/UniversaBlockchain/UniCherryGarden")),
   homepage := Some(url("https://github.com/UniversaBlockchain/UniCherryGarden")),
@@ -331,4 +332,5 @@ lazy val launcher = (project in file("scala/launcher"))
   )
   .enablePlugins(JavaAppPackaging)
 
+// So the “main project” won’t build its own super-artifact; only the subprojects will do
 publishArtifact := false

@@ -24,32 +24,24 @@ object LoggingConfigurator {
       e
     }
 
-    lazy val pleSyslog = {
-      val e = new PatternLayoutEncoder
-      //      e.setPattern("%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n")
-      //      e.setPattern("%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %replace(%msg){'\n', '#012'}%n")
-      e.setPattern("%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %replace(%msg){'\\r', ''}%n")
-      e.setContext(ctx)
-      e.start
-      e
-    }
+//    lazy val pleSyslog = {
+//      val e = new PatternLayoutEncoder
+//      //      e.setPattern("%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n")
+//      //      e.setPattern("%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %replace(%msg){'\n', '#012'}%n")
+//      e.setPattern("%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %replace(%msg){'\\r', ''}%n")
+//      e.setContext(ctx)
+//      e.start
+//      e
+//    }
 
     val logFilePath = Paths.get(System.getProperty("user.dir"), "logs/unicherrygarden-dump.log").toAbsolutePath.toString
-    val logFilePath2 = Paths.get(System.getProperty("user.dir"), "logs/unicherrygarden-dump2.log").toAbsolutePath.toString
+
+//    println(s"LOG FILE PATH! ${logFilePath}")
 
     //    val appender: SyslogAppender[ILoggingEvent] = new SyslogAppender()[ILoggingEvent]
     lazy val fileAppender = {
       val a = new FileAppender
       a.setFile(logFilePath)
-      a.setEncoder(ple.asInstanceOf[Encoder[Nothing]])
-      a.setContext(ctx)
-      a.start
-      a
-    }
-
-    lazy val fileAppender2 = {
-      val a = new FileAppender
-      a.setFile(logFilePath2)
       a.setEncoder(ple.asInstanceOf[Encoder[Nothing]])
       a.setContext(ctx)
       a.start
@@ -75,9 +67,9 @@ object LoggingConfigurator {
 //      a
 //    }
 
-    rootLogger.addAppender(fileAppender.asInstanceOf[Appender[ILoggingEvent]])
+//    rootLogger.addAppender(fileAppender.asInstanceOf[Appender[ILoggingEvent]])
 //    rootLogger.addAppender(syslogAppender.asInstanceOf[Appender[ILoggingEvent]])
-    rootLogger.setLevel(Level.DEBUG)
+//    rootLogger.setLevel(Level.DEBUG)
 
     //    rootLogger.setAdditive(false)
   }
