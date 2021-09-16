@@ -79,9 +79,13 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
 
 /** Akka actor to run CherryPicker operations. */
 object CherryPicker extends LazyLogging {
+  lazy val props = UnicherrygardenVersion.loadPropsFromNamedResource("unicherrygarden_cherrypicker.properties")
+  lazy val propVersionStr = props.getProperty("version", "N/A");
+  lazy val propBuildTimestampStr = props.getProperty("build_timestamp", "");
+
   trait CherryPickerMessage
 
-  /** A message informing you need to run a next iteration */
+  /** A message informing CherryPicker it needs to run a next iteration. */
   final case class Iterate() extends CherryPickerMessage
 
   //  private val ITERATION_PERIOD = 15 seconds
@@ -92,29 +96,32 @@ object CherryPicker extends LazyLogging {
 
     val picker = new CherryPicker(pgStorage, ethereumConnector)
 
-    Behaviors.withTimers(timers => {
+    Behaviors.setup { context =>
+      logger.info(s"Launching CherryPicker: v. $propVersionStr, built at $propBuildTimestampStr")
+
       logger.debug("Setting up CherryPicker actor with timers")
+      Behaviors.withTimers(timers => {
+        def scheduleNextIteration() = timers.startSingleTimer(Iterate(), ITERATION_PERIOD)
 
-      def scheduleNextIteration() = timers.startSingleTimer(Iterate(), ITERATION_PERIOD)
-
-      def handleIteration(): Behaviors.Receive[CherryPickerMessage] = Behaviors.receiveMessage {
-        (message: CherryPickerMessage) => {
-          logger.debug("Receiving CherryPicker message")
-          message match {
-            case Iterate() => {
-              picker.nextIteration()
+        def handleIteration(): Behaviors.Receive[CherryPickerMessage] = Behaviors.receiveMessage {
+          (message: CherryPickerMessage) => {
+            logger.debug("Receiving CherryPicker message")
+            message match {
+              case Iterate() => {
+                picker.nextIteration()
+              }
+              case unknownMessage => {
+                logger.error(s"Unexpected message $unknownMessage")
+              }
             }
-            case unknownMessage => {
-              logger.error(s"Unexpected message $unknownMessage")
-            }
+            scheduleNextIteration
+            Behaviors.same
           }
-          scheduleNextIteration
-          Behaviors.same
         }
-      }
 
-//      scheduleNextIteration
-      handleIteration()
-    })
+        //      scheduleNextIteration
+        handleIteration()
+      })
+    }
   }
 }

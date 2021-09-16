@@ -5,12 +5,14 @@ import com.myodov.unicherrygarden.cherrygardener.connector.api.types.Currency;
 import com.myodov.unicherrygarden.cherrygardener.connector.impl.ClientConnectorImpl;
 import org.apache.commons.cli.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintStream;
+import java.util.*;
 import java.util.concurrent.CompletionException;
 
 
@@ -33,6 +35,30 @@ public class CherryGardenerCLI {
                 null, "list-supported-currencies", false,
                 "print the list of currencies supported by CherryGardener");
 //        options.addOption("l", "launch", false, "launch the CherryGardener service and stay running");
+    }
+
+    protected static final Properties propsCLI = loadPropsFromNamedResource("cherrygardener_connector_cli.properties");
+    protected static final Properties propsConnector = loadPropsFromNamedResource("cherrygardener_connector.properties");
+
+    /**
+     * Load {@link Properties} from a .properties-formatted file in the artifact resources.
+     */
+    @NonNull
+    private static final Properties loadPropsFromNamedResource(@NonNull String resourceName) {
+        final String resourcePath = "unicherrygarden/" + resourceName;
+        final Properties props = new Properties();
+        final @Nullable InputStream resourceAsStream = CherryGardenerCLI.class.getClassLoader().getResourceAsStream(resourcePath);
+        if (resourceAsStream == null) {
+            System.err.printf("Cannot load resource from %s\n", resourcePath);
+        } else {
+            try {
+                props.load(resourceAsStream);
+            } catch (IOException e) {
+                System.err.printf("Cannot load properties from %s\n", resourcePath);
+                throw new RuntimeException(String.format("Cannot load properties file from %s", resourcePath));
+            }
+        }
+        return props;
     }
 
     private Optional<List<String>> parseConnectUrls(@NonNull CommandLine line) {
@@ -63,7 +89,10 @@ public class CherryGardenerCLI {
             if (line.hasOption("help")) {
                 printHelp();
             } else if (line.hasOption("list-supported-currencies")) {
+                printTitle(System.err);
+
                 System.err.println("Listing currencies...");
+
                 final Optional<List<String>> connectUrls = parseConnectUrls(line);
                 if (connectUrls.isPresent()) {
                     try {
@@ -82,6 +111,24 @@ public class CherryGardenerCLI {
             System.err.printf("Parsing failed. Reason: %s\n", exp.getMessage());
             printHelp();
         }
+    }
+
+    private static final void printTitle(@NonNull PrintStream printStream) {
+        final String header = String.format("CherryGardener CLI v. %s", propsCLI.getProperty("version"));
+        final String underline = String.join(
+                "",
+                Collections.nCopies(header.length(), "-")
+        );
+        printStream.printf("" +
+                        "%s\n" + // CherryGardener CLI v. 1.23...
+                        "%s\n" + // -----
+                        "CLI: version %s, built at %s\n" +
+                        "CherryGardener connector: version %s, built at %s\n",
+                header,
+                underline,
+                propsCLI.getProperty("version"), propsCLI.getProperty("build_timestamp"),
+                propsConnector.getProperty("version"), propsConnector.getProperty("build_timestamp")
+        );
     }
 
     private static final void printHelp() {

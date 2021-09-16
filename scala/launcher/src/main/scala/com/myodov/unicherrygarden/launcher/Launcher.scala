@@ -7,7 +7,7 @@ import akka.cluster.typed.{Cluster, Subscribe}
 import com.myodov.unicherrygarden.cherrygardener.messages.{CherryGardenerRequest, CherryGardenerResponse}
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
-import com.myodov.unicherrygarden.{CherryGardener, CherryPicker, CherryPlanter, LoggingConfigurator}
+import com.myodov.unicherrygarden.{CherryGardener, CherryPicker, CherryPlanter, LoggingConfigurator, UnicherrygardenVersion}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import scopt.OParser
@@ -125,6 +125,9 @@ You can choose a different HOCON configuration file instead of the regular appli
 
 /** The Akka guardian actor that launches all necessary components of CherryGarden. */
 object LauncherActor extends LazyLogging {
+  lazy val props = UnicherrygardenVersion.loadPropsFromNamedResource("unicherrygarden_launcher.properties")
+  lazy val propVersionStr = props.getProperty("version", "N/A");
+  lazy val propBuildTimestampStr = props.getProperty("build_timestamp", "");
 
   trait Message {}
 
@@ -156,15 +159,15 @@ object LauncherActor extends LazyLogging {
         //          val cherryPlanter: ActorRef[CherryPlanter.Iterate] = context.spawn(CherryPlanter(pgStorage, ethereumConnector), "CherryPlanter")
         //        }
         case LauncherActor.LaunchGardenWatcher() => {
-          logger.info(s"Launching sub-actor GardenWatcher")
+          logger.info(s"Launching GardenWatcher (pure launcher, no actor): launcher v. $propVersionStr, built at $propBuildTimestampStr")
         }
 
         case LauncherActor.LaunchCherryGardener(pgStorage, ethereumConnector) => {
-          logger.info(s"Launching sub-actor CherryPicker ($pgStorage, $ethereumConnector)")
+          logger.debug(s"Launching sub-actor CherryPicker ($pgStorage, $ethereumConnector)")
           val cherryPicker: ActorRef[CherryPicker.CherryPickerMessage] =
             context.spawn(CherryPicker(pgStorage, ethereumConnector), "CherryPicker")
 
-          logger.info(s"Launching sub-actor CherryPlanter")
+          logger.debug(s"Launching sub-actor CherryPlanter")
           val cherryPlanter: ActorRef[CherryPlanter.CherryPlanterMessage] =
             context.spawn(CherryPlanter(pgStorage, ethereumConnector), "CherryPlanter")
 

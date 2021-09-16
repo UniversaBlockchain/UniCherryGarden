@@ -17,6 +17,9 @@ class CherryPlanter(private val pgStorage: PostgreSQLStorage,
 
 /** Akka actor to run CherryPlanter operations. */
 object CherryPlanter extends LazyLogging {
+  lazy val props = UnicherrygardenVersion.loadPropsFromNamedResource("unicherrygarden_cherryplanter.properties")
+  lazy val propVersionStr = props.getProperty("version", "N/A");
+  lazy val propBuildTimestampStr = props.getProperty("build_timestamp", "");
 
   trait CherryPlanterMessage
 
@@ -28,10 +31,14 @@ object CherryPlanter extends LazyLogging {
 
     val planter = new CherryPlanter(pgStorage, ethereumConnector)
 
-    Behaviors.receiveMessage {
-      (message: CherryPlanterMessage) => {
-        logger.debug(s"Receiving CherryPlanter message: $message")
-        Behaviors.same
+    Behaviors.setup { context =>
+      logger.info(s"Launching CherryPlanter: v. $propVersionStr, built at $propBuildTimestampStr")
+
+      Behaviors.receiveMessage {
+        (message: CherryPlanterMessage) => {
+          logger.debug(s"Receiving CherryPlanter message: $message")
+          Behaviors.same
+        }
       }
     }
   }

@@ -1,3 +1,5 @@
+import java.time.Instant
+
 import sbt.Compile
 // Versions
 
@@ -22,6 +24,20 @@ val javaJunitVersion = "4.13.2"
 val javaCheckerVersion = "3.14.0"
 val javaCommonsCLIVersion = "1.4"
 
+
+// Helper functions
+
+def versionFileTask(filename: String) = Def.task {
+  val file = (Compile / resourceManaged).value / "unicherrygarden" / filename
+  val contents =
+    s"""version=${version.value}
+       |build_timestamp=${unicherryGardenBuildTimestamp}"""
+      .stripMargin
+  IO.write(file, contents)
+  Seq(file)
+}
+
+
 // Common settings
 
 sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
@@ -32,7 +48,11 @@ val projectVersion = "0.1.2-SNAPSHOT"
 name := "unicherrygarden"
 version := projectVersion
 
+val unicherryGardenBuildTimestamp = Instant.now
+
+
 // Configure settings for all (!) subprojects
+
 inThisBuild(List(
   organization := "com.myodov.unicherrygarden",
   version := projectVersion,
@@ -166,8 +186,10 @@ lazy val cherryGardenerConnector = (project in file("java/cherrygardener_connect
       "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % jacksonCoreVersion,
       "com.fasterxml.jackson.datatype" % "jackson-datatype-jdk8" % jacksonCoreVersion,
     ),
+    Compile / resourceGenerators += versionFileTask("cherrygardener_connector.properties").taskValue,
   )
   .dependsOn(commonJava, cherryGardenerInterop)
+
 
 lazy val cherryGardenerConnectorCLI = (project in file("java/cherrygardener_connector_cli"))
   .settings(
@@ -180,6 +202,7 @@ lazy val cherryGardenerConnectorCLI = (project in file("java/cherrygardener_conn
       "commons-cli" % "commons-cli" % javaCommonsCLIVersion,
       "ch.qos.logback" % "logback-classic" % logbackVersion,
     ),
+    Compile / resourceGenerators += versionFileTask("cherrygardener_connector_cli.properties").taskValue,
     mainClass in Compile := Some("com.myodov.unicherrygarden.cherrygardener.CherryGardenerCLI"),
   )
   .dependsOn(commonJava, cherryGardenerConnector)
@@ -269,6 +292,7 @@ lazy val ethereum_rpc_connector = (project in file("scala/connectors/ethereum_rp
       "org.web3j" % "core" % web3jVersion,
       "org.web3j" % "contracts" % web3jVersion,
     ),
+    Compile / resourceGenerators += versionFileTask("unicherrygarden_ethereum_rpc_connector.properties").taskValue,
   )
   .dependsOn(commonScala, api, confreader % "test->compile", logging % "test->compile")
 
@@ -283,6 +307,7 @@ lazy val cherrypicker = (project in file("scala/cherrypicker"))
     description := "UniCherryGarden: CherryPicker – the subsystem that keeps track " +
       "of Ethereum blockchain data, stores it in the DB storage and “cherry-picks” the data on the fly " +
       "(selective currencies, selective addresses to watch)",
+    Compile / resourceGenerators += versionFileTask("unicherrygarden_cherrypicker.properties").taskValue,
   )
   .dependsOn(commonScala, api, db_postgresql_storage, ethereum_rpc_connector)
 
@@ -296,6 +321,7 @@ lazy val cherryplanter = (project in file("scala/cherryplanter"))
     description := "UniCherryGarden: CherryPlanter – the subsystem that registers the transactions " +
       "in the Ethereum blockchain in the safest possible manner (retries; increasing the gas price" +
       "if needed, maintaining the nonce values)",
+    Compile / resourceGenerators += versionFileTask("unicherrygarden_cherryplanter.properties").taskValue,
   )
   .dependsOn(commonScala, api, db_postgresql_storage, ethereum_rpc_connector)
 
@@ -307,6 +333,7 @@ lazy val cherrygardener = (project in file("scala/cherrygardener"))
     commonAkkaMicroserviceSettings,
     name := "cherrygardener",
     description := "UniCherryGarden: CherryGardener – the primary frontend to all other UniCherryGarden components",
+    Compile / resourceGenerators += versionFileTask("unicherrygarden_cherrygardener.properties").taskValue,
   )
   .dependsOn(
     commonScala, api,
@@ -329,6 +356,7 @@ lazy val launcher = (project in file("scala/launcher"))
     // Define the launch option for sbt-native-packager
     //    mainClass in Compile := Some("com.myodov.unicherrygarden.launcher.Launcher"),
     //    discoveredMainClasses in Compile := Seq(),
+    Compile / resourceGenerators += versionFileTask("unicherrygarden_launcher.properties").taskValue,
   )
   .dependsOn(
     commonScala, api, confreader, db_postgresql_storage, logging,

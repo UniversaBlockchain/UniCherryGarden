@@ -18,17 +18,23 @@ class CherryGardener(private val pgStorage: PostgreSQLStorage,
 
 /** Akka actor to run CherryGardener operations. */
 object CherryGardener extends LazyLogging {
+  lazy val props = UnicherrygardenVersion.loadPropsFromNamedResource("unicherrygarden_cherrygardener.properties")
+  lazy val propVersionStr = props.getProperty("version", "N/A");
+  lazy val propBuildTimestampStr = props.getProperty("build_timestamp", "");
 
   def apply(pgStorage: PostgreSQLStorage,
             ethereumConnector: EthereumRpcSingleConnector,
             cherryPickerOpt: Option[ActorRef[CherryPicker.CherryPickerMessage]],
             cherryPlanterOpt: Option[ActorRef[CherryPlanter.CherryPlanterMessage]]
            ): Behavior[CherryGardenerRequest] = {
+
     logger.debug(s"Setting up CherryGardener: picker $cherryPickerOpt, planter $cherryPlanterOpt")
 
     //    val gardener = new CherryGardener(pgStorage, ethereumConnector)
 
     Behaviors.setup { context =>
+      logger.info(s"Launching CherryGardener: v. $propVersionStr, built at $propBuildTimestampStr")
+
       context.system.receptionist ! Receptionist.Register(GetCurrenciesList.SERVICE_KEY, context.self)
       context.system.receptionist ! Receptionist.Register(PingCherryGardener.SERVICE_KEY, context.self)
 
