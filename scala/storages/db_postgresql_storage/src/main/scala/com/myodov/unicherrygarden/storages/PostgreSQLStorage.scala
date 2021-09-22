@@ -17,7 +17,7 @@ class PostgreSQLStorage(jdbcUrl: String,
     Flyway.configure.dataSource(jdbcUrl, dbUser, dbPassword)
       .table("flyway_schema_history") // Default in modern Flyway
       .baselineOnMigrate(true)
-      .locations("classpath:com/myodov/unicherrygarden/db/migration")
+      .locations("classpath:/com/myodov/unicherrygarden/db/migrations")
       .load
   }
 

@@ -14,6 +14,7 @@ import com.myodov.unicherrygarden.cherrygardener.connector.api.types.Currency;
 import com.myodov.unicherrygarden.ethereum.Ethereum;
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.web3j.crypto.ECKeyPair;
@@ -26,7 +27,6 @@ import java.security.NoSuchProviderException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
@@ -138,14 +138,13 @@ public class ClientConnectorImpl implements ClientConnector {
     }
 
     @Override
-    @NonNull
-    public Optional<String> getMessageSigner(@NonNull String msg, @NonNull String sig) {
+    public String getMessageSigner(@NonNull String msg, @NonNull String sig) {
         return confirmator.getMessageSigner(msg, sig);
     }
 
     @Override
-    @NonNull
-    public Optional<AddressOwnershipMessageValidation> validateMessage(@NonNull String signatureMessage) {
+    @Nullable
+    public AddressOwnershipMessageValidation validateMessage(@NonNull String signatureMessage) {
         return confirmator.validateMessage(signatureMessage);
     }
 }

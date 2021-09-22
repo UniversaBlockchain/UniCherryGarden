@@ -2,8 +2,7 @@ package com.myodov.unicherrygarden.cherrygardener.connector.api;
 
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
-
-import java.util.Optional;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * The client connector part that is capable to confirm that somebody indeed owns (controls) some Ethereum address.
@@ -67,10 +66,13 @@ import java.util.Optional;
  */
 public interface AddressOwnershipConfirmator {
     /**
-     * Check if the <code>msg</code> is signed by the owner of <code>isSignedByAddress</code>.
+     * Get the address that signed the <code>msg</code> message, from the according <code>sig</code> signature.
+     *
+     * @return The <code>null</code> if the signer cannot be retrieved: wrong or spoofed signature,
+     * signature mismatches the message, or for some other error (most likely, on the customer side).
      */
-    @NonNull
-    Optional<String> getMessageSigner(@NonNull String msg, @NonNull String sig);
+    @Nullable
+    String getMessageSigner(@NonNull String msg, @NonNull String sig);
 
     class AddressOwnershipMessageValidation {
         /**
@@ -97,10 +99,10 @@ public interface AddressOwnershipConfirmator {
             assert message != null;
 
             assert declaredAddress != null;
-            assert EthUtils.Addresses.isValidAddress(declaredAddress): declaredAddress;
+            assert EthUtils.Addresses.isValidAddress(declaredAddress) : declaredAddress;
 
             assert signingAddress != null;
-            assert EthUtils.Addresses.isValidAddress(signingAddress): signingAddress;
+            assert EthUtils.Addresses.isValidAddress(signingAddress) : signingAddress;
 
             this.message = message;
             this.declaredAddress = declaredAddress;
@@ -135,10 +137,13 @@ public interface AddressOwnershipConfirmator {
      * }
      * </pre>
      * <p>
-     * Returns an {@link Optional> that is valid if the message is parsed successfully, and invalid if the message
-     * could not be even parsed.
-     * The {@link Optional> contains the {@link AddressOwnershipMessageValidation} structure where you can reach
-     * the details of the message.
+     * Returns:
+     *
+     * <ul>
+     *     <li>An {@link AddressOwnershipMessageValidation} structure where you can reach the details of the message.</li>
+     *     <li><code>null</code> if the message cannot be properly parsed (and is probably malformed).</li>
+     * </ul>
+     *
      * <p>
      * You may want:
      * <ol>
@@ -148,6 +153,6 @@ public interface AddressOwnershipConfirmator {
      * {@link AddressOwnershipMessageValidation#signingAddress}</li> that it matches the address you
      * </ol>
      */
-    @NonNull
-    Optional<AddressOwnershipMessageValidation> validateMessage(@NonNull String signatureMessage);
+    @Nullable
+    AddressOwnershipMessageValidation validateMessage(@NonNull String signatureMessage);
 }

@@ -2,10 +2,10 @@ package com.myodov.unicherrygarden.cherrygardener.connector.api;
 
 import com.myodov.unicherrygarden.cherrygardener.connector.api.types.Currency;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Optional;
 
 /**
  * The client connector part that ensures sending of the Ethereum ETH/ERC20 payments.
@@ -43,20 +43,20 @@ public interface Sender {
         /**
          * Get the number of confirmation for the transaction.
          *
-         * @apiNote If <code>Optional</code> is <code>EMPTY</code>,
-         * it means that the transaction hasn’t been successfully registered in the blockchain yet.
+         * @return The number of confirmations,
+         * or <code>null</code> if the transaction hasn’t been successfully registered in the blockchain yet.
          */
-        @NonNull
-        Optional<BigInteger> getNumberOfConfirmations();
+        @Nullable
+        BigInteger getNumberOfConfirmations();
 
         /**
          * Get the blockchain block (number) in which the transaction has been registered.
          *
-         * @apiNote If <code>Optional</code> is <code>EMPTY</code>,
-         * it means that the transaction hasn’t been successfully registered in the blockchain yet.
+         * @return The blockchain block (number) in which the transaction has been registered,
+         * or <code>null</code> if the transaction hasn’t been successfully registered in the blockchain yet.
          */
-        @NonNull
-        Optional<BigInteger> getBlockNumber();
+        @Nullable
+        BigInteger getBlockNumber();
     }
 
     /**

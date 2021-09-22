@@ -1,9 +1,9 @@
 package com.myodov.unicherrygarden.cherrygardener.connector.api.types;
 
 public interface Currency {
-    public interface ETH {
+    interface ETH {
     }
 
-    public interface ERC20 {
+    interface ERC20 {
     }
 }
