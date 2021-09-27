@@ -10,16 +10,22 @@ import scalikejdbc._
 class PostgreSQLStorage(jdbcUrl: String,
                         dbUser: String,
                         dbPassword: String,
-                        wipeOnStart: Boolean
+                        wipeOnStart: Boolean,
+                        migrationPaths: List[String]
                        ) extends LazyLogging {
   //  private[this] implicit val session: AutoSession.type = AutoSession
 
   private[this] lazy val flw: Flyway = {
-    Flyway.configure.dataSource(jdbcUrl, dbUser, dbPassword)
+    val stockMigrations = List("classpath:com/myodov/unicherrygarden/db/migrations")
+    val totalMigrations = stockMigrations ::: migrationPaths
+    logger.debug(s"Flyway migration locations: ${totalMigrations}")
+
+    val flw = Flyway.configure.dataSource(jdbcUrl, dbUser, dbPassword)
       .table("flyway_schema_history") // Default in modern Flyway
       .baselineOnMigrate(true)
-      .locations("classpath:/com/myodov/unicherrygarden/db/migrations")
-      .load
+      .locations(totalMigrations: _*)
+
+    flw.load
   }
 
   private[this] def clean: CleanResult = flw.clean
@@ -242,8 +248,13 @@ class PostgreSQLStorage(jdbcUrl: String,
 }
 
 object PostgreSQLStorage {
-  @inline def apply(jdbcUrl: String, dbUser: String, dbPassword: String, wipeOnStart: Boolean): PostgreSQLStorage = {
+  @inline def apply(jdbcUrl: String,
+                    dbUser: String,
+                    dbPassword: String,
+                    wipeOnStart: Boolean,
+                    migrationPaths: List[String]
+                   ): PostgreSQLStorage = {
     ConnectionPool.singleton(jdbcUrl, dbUser, dbPassword)
-    new PostgreSQLStorage(jdbcUrl, dbUser, dbPassword, wipeOnStart)
+    new PostgreSQLStorage(jdbcUrl, dbUser, dbPassword, wipeOnStart, migrationPaths)
   }
 }

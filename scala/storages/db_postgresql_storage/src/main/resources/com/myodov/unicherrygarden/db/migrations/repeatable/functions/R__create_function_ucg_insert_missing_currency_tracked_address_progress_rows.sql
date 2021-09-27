@@ -33,7 +33,7 @@ CREATE OR REPLACE FUNCTION ucg_insert_missing_currency_tracked_address_progress_
 AS
 $$
 BEGIN
-    EXECUTE ucg_insert_missing_currency_tracked_address_progress_rows();
+    PERFORM ucg_insert_missing_currency_tracked_address_progress_rows();
 
     RETURN NEW;
 END;

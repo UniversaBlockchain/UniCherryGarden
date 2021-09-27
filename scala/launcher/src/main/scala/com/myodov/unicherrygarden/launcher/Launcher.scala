@@ -7,10 +7,12 @@ import akka.cluster.typed.{Cluster, Subscribe}
 import com.myodov.unicherrygarden.cherrygardener.messages.{CherryGardenerRequest, CherryGardenerResponse}
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
-import com.myodov.unicherrygarden.{CherryGardener, CherryPicker, CherryPlanter, LoggingConfigurator, UnicherrygardenVersion}
+import com.myodov.unicherrygarden._
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import scopt.OParser
+
+import scala.jdk.CollectionConverters._
 
 object CLIMode extends Enumeration {
   type CLIMode = Value
@@ -54,7 +56,8 @@ You can choose a different HOCON configuration file instead of the regular appli
     val jdbcUrl = config.getString("db.jdbc_url")
     val dbUser = config.getString("db.user")
     val dbPassword = config.getString("db.password")
-    PostgreSQLStorage(jdbcUrl, dbUser, dbPassword, wipe)
+    val dbMigrations = config.getStringList("db.migrations").asScala.toList
+    PostgreSQLStorage(jdbcUrl, dbUser, dbPassword, wipe, dbMigrations)
   }
 
   private[this] def getEthereumConnector(): EthereumRpcSingleConnector = {
@@ -187,9 +190,9 @@ object LauncherActor extends LazyLogging {
         // unapply-based pattern matching.
         case response: CherryGardenerResponse => {
           response match {
-//            case getBalanceResp: Balances.GetBalanceResp => {
-//              logger.debug(s"Received GetBalanceResponse: $getBalanceResp")
-//            }
+            //            case getBalanceResp: Balances.GetBalanceResp => {
+            //              logger.debug(s"Received GetBalanceResponse: $getBalanceResp")
+            //            }
             case unknownResponse =>
               logger.error(s"Unexpected CherryGardener response: $unknownResponse")
           }
