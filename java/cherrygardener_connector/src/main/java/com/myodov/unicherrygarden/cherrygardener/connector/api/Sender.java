@@ -1,6 +1,6 @@
 package com.myodov.unicherrygarden.cherrygardener.connector.api;
 
-import com.myodov.unicherrygarden.api.types.dlt.CurrencyImpl;
+import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -69,7 +69,7 @@ public interface Sender {
      */
     @NonNull
     UnsignedOutgoingTransaction buildTransaction(
-            @NonNull CurrencyImpl currency,
+            @NonNull Currency currency,
             @NonNull BigDecimal amount
     );
 

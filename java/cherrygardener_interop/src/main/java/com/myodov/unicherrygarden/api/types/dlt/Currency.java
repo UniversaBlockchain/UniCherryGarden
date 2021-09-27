@@ -10,7 +10,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  * @implNote Concrete class instead of some Java interface,
  * so it can be directly used in Akka serialized messages.
  */
-public class CurrencyImpl {
+public class Currency {
     public enum CurrencyType {
         ETH,
         ERC20
@@ -36,7 +36,7 @@ public class CurrencyImpl {
      *
      * @param dAppAddress should be lowercased or <code>null</code>.
      */
-    public CurrencyImpl(
+    public Currency(
             @NonNull CurrencyType type,
             @Nullable String dAppAddress,
             @Nullable String name,
@@ -74,8 +74,8 @@ public class CurrencyImpl {
     /**
      * Create a new "ETH" currency.
      */
-    public static final CurrencyImpl newEthCurrency() {
-        return new CurrencyImpl(
+    public static final Currency newEthCurrency() {
+        return new Currency(
                 CurrencyType.ETH,
                 null,
                 "Ether",
@@ -86,7 +86,7 @@ public class CurrencyImpl {
     /**
      * Create a new "ERC20" token.
      */
-    public static final CurrencyImpl newErc20Token(
+    public static final Currency newErc20Token(
             @NonNull String dAppAddress,
             @Nullable String name,
             @Nullable String symbol,
@@ -94,7 +94,7 @@ public class CurrencyImpl {
     ) {
         assert dAppAddress != null && EthUtils.Addresses.isValidAddress(dAppAddress) : dAppAddress;
 
-        return new CurrencyImpl(CurrencyType.ERC20, dAppAddress, name, symbol, comment);
+        return new Currency(CurrencyType.ERC20, dAppAddress, name, symbol, comment);
     }
 
     @Override

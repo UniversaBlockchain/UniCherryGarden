@@ -11,7 +11,7 @@ import akka.cluster.typed.JoinSeedNodes;
 import com.myodov.unicherrygarden.cherrygardener.connector.api.AddressOwnershipConfirmator;
 import com.myodov.unicherrygarden.cherrygardener.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.ethereum.Ethereum;
-import com.myodov.unicherrygarden.api.types.dlt.CurrencyImpl;
+import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -122,7 +122,7 @@ public class ClientConnectorImpl implements ClientConnector {
 
     @Override
     @NonNull
-    public List<CurrencyImpl> getCurrencies() {
+    public List<Currency> getCurrencies() {
         final CompletionStage<ConnectorActor.ListSupportedCurrenciesCommand.Result> stage =
                 AskPattern.ask(
                         actorSystem,

@@ -1,6 +1,6 @@
 package com.myodov.unicherrygarden.cherrygardener;
 
-import com.myodov.unicherrygarden.api.types.dlt.CurrencyImpl;
+import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.cherrygardener.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.cherrygardener.connector.impl.ClientConnectorImpl;
 import org.apache.commons.cli.*;
@@ -97,14 +97,14 @@ public class CherryGardenerCLI {
                 if (connectUrls.isPresent()) {
                     try {
                         final ClientConnector connector = new ClientConnectorImpl(connectUrls.get());
-                        final List<CurrencyImpl> currencies = connector.getCurrencies();
+                        final List<Currency> currencies = connector.getCurrencies();
                         System.err.println("Received list of currencies:");
-                        for (final CurrencyImpl c : currencies) {
+                        for (final Currency c : currencies) {
                             final @Nullable String optComment = c.getComment();
                             System.err.printf("  %s: \"%s\" - %s%s\n",
                                     c.getSymbol(),
                                     c.getName(),
-                                    (c.getCurrencyType() == CurrencyImpl.CurrencyType.ETH) ?
+                                    (c.getCurrencyType() == Currency.CurrencyType.ETH) ?
                                             "Ether cryptocurrency" :
                                             String.format("ERC20 token at %s", c.getDAppAddress()),
                                     (optComment == null) ? "" : String.format(" (%s)", optComment)

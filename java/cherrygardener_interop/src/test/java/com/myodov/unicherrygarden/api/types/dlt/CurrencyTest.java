@@ -5,9 +5,9 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-public class CurrencyImplTest {
-    static final CurrencyImpl CUR_ETH = CurrencyImpl.newEthCurrency();
-    static final CurrencyImpl CUR_UTNP = CurrencyImpl.newErc20Token(
+public class CurrencyTest {
+    static final Currency CUR_ETH = Currency.newEthCurrency();
+    static final Currency CUR_UTNP = Currency.newErc20Token(
             "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
             "Universa Token",
             "UTNP",
@@ -22,7 +22,7 @@ public class CurrencyImplTest {
         );
 
         assertEquals(
-                CurrencyImpl.CurrencyType.ETH,
+                Currency.CurrencyType.ETH,
                 CUR_ETH.getCurrencyType()
         );
         assertEquals(
@@ -53,7 +53,7 @@ public class CurrencyImplTest {
         );
 
         assertEquals(
-                CurrencyImpl.CurrencyType.ERC20,
+                Currency.CurrencyType.ERC20,
                 CUR_UTNP.getCurrencyType()
         );
 

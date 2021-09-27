@@ -3,7 +3,7 @@ package com.myodov.unicherrygarden
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.myodov.unicherrygarden.api.types.dlt.CurrencyImpl
+import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.cherrygardener.messages.{CherryGardenerRequest, GetCurrenciesList, PingCherryGardener}
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
@@ -20,8 +20,8 @@ class CherryGardener(private val pgStorage: PostgreSQLStorage,
    * Reply to [[GetCurrenciesList]] request.
    **/
   def getCurrenciesList(): GetCurrenciesList.Response = {
-    val result: List[CurrencyImpl] = pgStorage.currencies.getCurrencies().map(
-      c => new CurrencyImpl(
+    val result: List[Currency] = pgStorage.currencies.getCurrencies().map(
+      c => new Currency(
         pgStorage.currencies.CurrencyTypes.toInteropType(c.currencyType),
         c.dAppAddress.orNull,
         c.name.orNull,
