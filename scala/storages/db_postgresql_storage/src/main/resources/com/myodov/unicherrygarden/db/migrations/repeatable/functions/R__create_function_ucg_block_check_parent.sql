@@ -1,4 +1,3 @@
--- Initial implementation only; for latest up-to-date implementation, see the repeatable migration
 CREATE OR REPLACE FUNCTION ucg_block_check_parent_trigger_row()
     RETURNS TRIGGER
     LANGUAGE plpgsql
@@ -27,8 +26,5 @@ BEGIN
 END;
 $$;
 
-CREATE TRIGGER ucg_block_check_parent_row
-    BEFORE INSERT OR UPDATE
-    ON ucg_block
-    FOR EACH ROW
-EXECUTE PROCEDURE ucg_block_check_parent_trigger_row();
+COMMENT ON FUNCTION ucg_block_check_parent_trigger_row() IS
+    '(Trigger function on each row) Ensure that if a block has a parent block, the id incremented by 1.';

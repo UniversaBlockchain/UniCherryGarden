@@ -1,6 +1,6 @@
 package com.myodov.unicherrygarden.cherrygardener.connector.api;
 
-import com.myodov.unicherrygarden.cherrygardener.connector.api.types.Currency;
+import com.myodov.unicherrygarden.impl.types.dlt.CurrencyImpl;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.List;
@@ -13,7 +13,7 @@ public interface ClientConnector extends AddressOwnershipConfirmator
         // extends Keygen, Sender, Receiver
 {
     @NonNull
-    List<Currency> getCurrencies();
+    List<CurrencyImpl> getCurrencies();
 
     /** Stop whole connector to shut it down. */
     void shutdown();

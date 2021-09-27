@@ -5,14 +5,26 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.cherrygardener.messages.{CherryGardenerRequest, GetCurrenciesList, PingCherryGardener}
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
+import com.myodov.unicherrygarden.impl.types.dlt.CurrencyImpl
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.typesafe.scalalogging.LazyLogging
 
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 
 /** "Cherry Gardener": the high-level interface to Ethereum blockchain. */
 class CherryGardener(private val pgStorage: PostgreSQLStorage,
                      private val ethereumConnector: EthereumRpcSingleConnector) extends LazyLogging {
+
+  /**
+   * Reply to [[GetCurrenciesList]] request.
+   **/
+  def getCurrenciesList(): GetCurrenciesList.Response = {
+    val result: List[CurrencyImpl] = List(
+      CurrencyImpl.newEthCurrency()
+    )
+    new GetCurrenciesList.Response(result.asJava)
+  }
 }
 
 
@@ -30,7 +42,7 @@ object CherryGardener extends LazyLogging {
 
     logger.debug(s"Setting up CherryGardener: picker $cherryPickerOpt, planter $cherryPlanterOpt")
 
-    //    val gardener = new CherryGardener(pgStorage, ethereumConnector)
+    val gardener = new CherryGardener(pgStorage, ethereumConnector)
 
     Behaviors.setup { context =>
       logger.info(s"Launching CherryGardener: v. $propVersionStr, built at $propBuildTimestampStr")
@@ -41,7 +53,7 @@ object CherryGardener extends LazyLogging {
       Behaviors.receiveMessage {
         case message: GetCurrenciesList.Request => {
           logger.debug(s"Received GetCurrenciesList($message) command")
-          message.replyTo ! new GetCurrenciesList.Response("This is the result")
+          message.replyTo ! gardener.getCurrenciesList()
           Behaviors.same
         }
         case unknown => {

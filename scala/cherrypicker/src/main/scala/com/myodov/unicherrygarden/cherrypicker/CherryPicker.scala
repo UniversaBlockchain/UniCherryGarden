@@ -27,13 +27,13 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
         logger.error("Cannot get the progress, something failed!")
         pgStorage.state.setSyncState("Cannot get the progress state!")
       } else if (progress.overall.from.isEmpty) {
-        logger.warn("CherryPicker is not configured: missing `ucp_state.synced_from_block_number`!");
+        logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!");
       } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
-        logger.error("The minimum `ucp_currency.sync_from_block_number` value " +
+        logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
           s"is ${progress.currencies.minSyncFrom.get}; " +
           s"it should not be lower than $overallFrom!")
       } else if (progress.trackedAddresses.minFrom < overallFrom) {
-        logger.error("The minimum `ucp_tracked_address.synced_from_block_number` value " +
+        logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
           s"is ${progress.trackedAddresses.minFrom}; " +
           s"it should not be lower than $overallFrom!")
       } else {

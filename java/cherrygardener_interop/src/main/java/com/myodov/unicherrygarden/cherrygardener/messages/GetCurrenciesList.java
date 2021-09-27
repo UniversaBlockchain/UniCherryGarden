@@ -3,17 +3,22 @@ package com.myodov.unicherrygarden.cherrygardener.messages;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.myodov.unicherrygarden.impl.types.dlt.CurrencyImpl;
+import org.checkerframework.checker.nullness.qual.NonNull;
+
+import java.util.List;
 
 
 public class GetCurrenciesList {
-    public static final ServiceKey<Request> SERVICE_KEY =
+    public static final @NonNull ServiceKey<Request> SERVICE_KEY =
             ServiceKey.create(Request.class, "getCurrenciesListService");
 
     public static final class Request implements CherryGardenerRequest {
+        @NonNull
         public final ActorRef<Response> replyTo;
 
         @JsonCreator
-        public Request(ActorRef<Response> replyTo) {
+        public Request(@NonNull ActorRef<Response> replyTo) {
             this.replyTo = replyTo;
         }
 
@@ -23,15 +28,16 @@ public class GetCurrenciesList {
     }
 
     public static final class Response implements CherryGardenerResponse {
-        public final String value;
+        @NonNull
+        public final List<CurrencyImpl> currencies;
 
         @JsonCreator
-        public Response(String value) {
-            this.value = value;
+        public Response(@NonNull List<CurrencyImpl> currencies) {
+            this.currencies = currencies;
         }
 
         public String toString() {
-            return String.format("Currencies.GetCurrenciesListResp(%s)", value);
+            return String.format("Currencies.GetCurrenciesListResp(%s)", currencies);
         }
     }
 }

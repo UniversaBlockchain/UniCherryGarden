@@ -1,22 +1,22 @@
-CREATE OR REPLACE VIEW ucp_progress AS
+CREATE OR REPLACE VIEW ucg_progress AS
     WITH
         overall_state AS (
             SELECT
                 synced_from_block_number AS overall_from, -- nullable
                 synced_to_block_number AS overall_to      -- nullable
-            FROM ucp_state
+            FROM ucg_state
         ),
         currency_state AS (
             SELECT
                 MIN(sync_from_block_number) AS currency_sync_from_min, -- NOT NULL
                 MAX(sync_from_block_number) AS currency_sync_from_max  -- NOT NULL
-            FROM ucp_currency
+            FROM ucg_currency
         ),
         block_state AS (
             SELECT
                 MIN(number) AS block_from, -- NULL
                 MAX(number) AS block_to    -- NULL
-            FROM ucp_block
+            FROM ucg_block
         ),
         tracked_address_state AS (
             SELECT
@@ -24,11 +24,11 @@ CREATE OR REPLACE VIEW ucp_progress AS
                 MAX(synced_from_block_number) AS address_from_max, -- NOT NULL
                 MIN(synced_to_block_number) AS address_to_min,     -- nullable
                 MAX(synced_to_block_number) AS address_to_max      -- nullable
-            FROM ucp_tracked_address
+            FROM ucg_tracked_address
         ),
         tracked_address_synced_to_is_null_first AS (
             SELECT *
-            FROM ucp_tracked_address
+            FROM ucg_tracked_address
             WHERE synced_to_block_number IS NULL
             LIMIT 1
         ),
@@ -42,11 +42,11 @@ CREATE OR REPLACE VIEW ucp_progress AS
                 MAX(synced_from_block_number) AS currency_address_from_max,
                 MIN(synced_to_block_number) AS currency_address_to_min,
                 MAX(synced_to_block_number) AS currency_address_to_max
-            FROM ucp_currency_tracked_address_progress
+            FROM ucg_currency_tracked_address_progress
         ),
         currency_tracked_address_synced_to_is_null_first AS (
             SELECT *
-            FROM ucp_currency_tracked_address_progress
+            FROM ucg_currency_tracked_address_progress
             WHERE synced_to_block_number IS NULL
             LIMIT 1
         ),

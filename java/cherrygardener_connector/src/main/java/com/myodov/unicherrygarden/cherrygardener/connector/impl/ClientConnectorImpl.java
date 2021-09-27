@@ -10,8 +10,8 @@ import akka.cluster.typed.ClusterCommand;
 import akka.cluster.typed.JoinSeedNodes;
 import com.myodov.unicherrygarden.cherrygardener.connector.api.AddressOwnershipConfirmator;
 import com.myodov.unicherrygarden.cherrygardener.connector.api.ClientConnector;
-import com.myodov.unicherrygarden.cherrygardener.connector.api.types.Currency;
 import com.myodov.unicherrygarden.ethereum.Ethereum;
+import com.myodov.unicherrygarden.impl.types.dlt.CurrencyImpl;
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -25,7 +25,6 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -123,7 +122,7 @@ public class ClientConnectorImpl implements ClientConnector {
 
     @Override
     @NonNull
-    public List<Currency> getCurrencies() {
+    public List<CurrencyImpl> getCurrencies() {
         final CompletionStage<ConnectorActor.ListSupportedCurrenciesCommand.Result> stage =
                 AskPattern.ask(
                         actorSystem,
@@ -132,9 +131,7 @@ public class ClientConnectorImpl implements ClientConnector {
                         actorSystem.scheduler());
 
         final ConnectorActor.ListSupportedCurrenciesCommand.Result result = stage.toCompletableFuture().join();
-        System.err.printf("Received getCurrencies response: %s\n", result.response.value);
-        return new ArrayList(); // TODO since Java 9: List.of()
-//        return result.response;
+        return result.response.currencies;
     }
 
     @Override

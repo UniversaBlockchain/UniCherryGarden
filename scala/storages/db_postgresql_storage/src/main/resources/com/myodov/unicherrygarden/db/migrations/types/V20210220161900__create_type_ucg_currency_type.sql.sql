@@ -1,0 +1,4 @@
+CREATE TYPE UCG_CURRENCY_TYPE AS ENUM (
+    'ETH',
+    'ERC20'
+    );

@@ -1,7 +1,8 @@
 package com.myodov.unicherrygarden.cherrygardener.connector.impl;
 
 import com.myodov.unicherrygarden.cherrygardener.connector.api.Keygen;
-import com.myodov.unicherrygarden.cherrygardener.connector.api.types.PrivateKey;
+import com.myodov.unicherrygarden.api.types.PrivateKey;
+import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Keys;

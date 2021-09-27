@@ -1,6 +1,6 @@
 package com.myodov.unicherrygarden.cherrygardener.connector.impl;
 
-import com.myodov.unicherrygarden.cherrygardener.connector.api.types.PrivateKey;
+import com.myodov.unicherrygarden.api.types.PrivateKey;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import org.junit.Test;
 import org.slf4j.Logger;

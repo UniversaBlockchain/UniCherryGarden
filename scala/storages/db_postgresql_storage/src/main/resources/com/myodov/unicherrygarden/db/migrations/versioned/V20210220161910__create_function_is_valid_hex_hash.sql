@@ -1,5 +1,5 @@
 -- Initial implementation only; for latest up-to-date implementation, see the repeatable migration
-CREATE OR REPLACE FUNCTION ucp_is_valid_hex_hash(_hash VARCHAR, _length INT)
+CREATE OR REPLACE FUNCTION ucg_is_valid_hex_hash(_hash VARCHAR, _length INT)
     RETURNS BOOLEAN
     LANGUAGE SQL
     IMMUTABLE STRICT

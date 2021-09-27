@@ -112,8 +112,9 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActor.Message> {
             @NonNull
             final ActorRef<ListSupportedCurrenciesCommand.Result> lscReplyTo;
 
-            private ReceptionistResponse(Receptionist.@NonNull Listing listing,
-                                         @NonNull ActorRef<ListSupportedCurrenciesCommand.Result> lscReplyTo) {
+            private ReceptionistResponse(
+                    Receptionist.@NonNull Listing listing,
+                    @NonNull ActorRef<ListSupportedCurrenciesCommand.Result> lscReplyTo) {
                 assert listing != null;
                 assert lscReplyTo != null;
                 this.listing = listing;
@@ -175,6 +176,8 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActor.Message> {
                 ReceptionistSubscribeCherryGardenResponse::new);
 
         // On launch, we want to subscribe to Receptionist’s changes in CherryGardener (clustered) availability.
+        // Each time when CherryGardener availability (by PingCherryGardener.SERVICE_KEY) changes,
+        // the message ReceptionistSubscribeCherryGardenResponse is emitted.
         context.getSystem().receptionist().tell(
                 Receptionist.subscribe(PingCherryGardener.SERVICE_KEY, receptionistSubscribeCherryGardenResponseAdapter)
         );
@@ -200,13 +203,17 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActor.Message> {
 //        return getContext().getSystem().dispatchers().lookup(DispatcherSelector.blocking());
 //    }
 
-    private Behavior<Message> onReceptionistSubscribeCherryGardenResponse(@NonNull ReceptionistSubscribeCherryGardenResponse msg) {
+    private Behavior<Message> onReceptionistSubscribeCherryGardenResponse(
+            @NonNull ReceptionistSubscribeCherryGardenResponse msg) {
         assert msg != null;
 
-        final Set<ActorRef<PingCherryGardener.Request>> reachableInstances = msg.listing.getServiceInstances(PingCherryGardener.SERVICE_KEY);
+        final Set<ActorRef<PingCherryGardener.Request>> reachableInstances =
+                msg.listing.getServiceInstances(PingCherryGardener.SERVICE_KEY);
         logger.debug("Received onListSupportedCurrenciesReceptionistResponse with reachable instances {}",
                 reachableInstances);
 
+        // If we received at least one CherryGarden instance, we call all those who wait for CherryGarden to boot,
+        // and those are stored in `waitForBootCallersToCallback`.
         if (!reachableInstances.isEmpty()) {
             final List<ActorRef<WaitForBootCommand.BootCompleted>> waitForBootCallersToCallback;
             synchronized (this) {
@@ -250,10 +257,11 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActor.Message> {
                 // Construct the outgoing message
                 (ActorRef<Receptionist.Listing> replyTo) ->
                         Receptionist.find(GetCurrenciesList.SERVICE_KEY, replyTo),
-                // Adapt the incoming response
+                // Adapt the incoming response into `ListSupportedCurrenciesCommand.ReceptionistResponse`
                 (Receptionist.Listing response, Throwable throwable) -> {
                     logger.debug("Returned listing response: {}", response);
-                    final Set<ActorRef<GetCurrenciesList.Request>> serviceInstances = response.getServiceInstances(GetCurrenciesList.SERVICE_KEY);
+                    final Set<ActorRef<GetCurrenciesList.Request>> serviceInstances =
+                            response.getServiceInstances(GetCurrenciesList.SERVICE_KEY);
                     logger.debug("Service instances for {}: {}", response.getKey(), serviceInstances);
                     return new ListSupportedCurrenciesCommand.ReceptionistResponse(response, msg.replyTo);
                 }
@@ -262,12 +270,14 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActor.Message> {
         return this;
     }
 
-    private Behavior<Message> onListSupportedCurrenciesReceptionistResponse(ListSupportedCurrenciesCommand.@NonNull ReceptionistResponse msg) {
+    private Behavior<Message> onListSupportedCurrenciesReceptionistResponse(
+            ListSupportedCurrenciesCommand.@NonNull ReceptionistResponse msg) {
         assert msg != null;
 
         final ActorContext<Message> context = getContext();
 
-        final Set<ActorRef<GetCurrenciesList.Request>> reachableInstances = msg.listing.getServiceInstances(GetCurrenciesList.SERVICE_KEY);
+        final Set<ActorRef<GetCurrenciesList.Request>> reachableInstances =
+                msg.listing.getServiceInstances(GetCurrenciesList.SERVICE_KEY);
 
         logger.debug("Received onListSupportedCurrenciesReceptionistResponse with reachable instances {}",
                 reachableInstances);

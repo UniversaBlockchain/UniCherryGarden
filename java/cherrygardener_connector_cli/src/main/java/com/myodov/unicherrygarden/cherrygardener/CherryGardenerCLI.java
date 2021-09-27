@@ -1,8 +1,9 @@
 package com.myodov.unicherrygarden.cherrygardener;
 
+import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.cherrygardener.connector.api.ClientConnector;
-import com.myodov.unicherrygarden.cherrygardener.connector.api.types.Currency;
 import com.myodov.unicherrygarden.cherrygardener.connector.impl.ClientConnectorImpl;
+import com.myodov.unicherrygarden.impl.types.dlt.CurrencyImpl;
 import org.apache.commons.cli.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -91,14 +92,25 @@ public class CherryGardenerCLI {
             } else if (line.hasOption("list-supported-currencies")) {
                 printTitle(System.err);
 
-                System.err.println("Listing currencies...");
+                System.err.println("Listing supported currencies...");
 
                 final Optional<List<String>> connectUrls = parseConnectUrls(line);
                 if (connectUrls.isPresent()) {
                     try {
                         final ClientConnector connector = new ClientConnectorImpl(connectUrls.get());
-                        final List<Currency> currencies = connector.getCurrencies();
-                        System.err.printf("Received list of currencies: %s\n", currencies);
+                        final List<CurrencyImpl> currencies = connector.getCurrencies();
+                        System.err.println("Received list of currencies:");
+                        for (final CurrencyImpl c : currencies) {
+                            final @Nullable String optComment = c.getComment();
+                            System.err.printf("  %s: \"%s\" - %s%s\n",
+                                    c.getSymbol(),
+                                    c.getName(),
+                                    (c.getCurrencyType() == Currency.CurrencyType.ETH) ?
+                                            "Ether cryptocurrency" :
+                                            String.format("ERC20 token at %s", c.getDAppAddress()),
+                                    (optComment == null) ? "" : String.format(" (%s)", optComment)
+                            );
+                        }
                         connector.shutdown();
                     } catch (CompletionException exc) {
                         System.err.println("Could not connect to UniCherryGarden!");

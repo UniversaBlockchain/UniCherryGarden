@@ -1,6 +1,6 @@
 package com.myodov.unicherrygarden.cherrygardener.connector.api;
 
-import com.myodov.unicherrygarden.cherrygardener.connector.api.types.PrivateKey;
+import com.myodov.unicherrygarden.api.types.PrivateKey;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**

@@ -45,21 +45,21 @@ class PostgreSQLStorage(jdbcUrl: String,
      * */
     case class OverallSyncStatus(from: Option[Int], to: Option[Int])
 
-    /** Sync status of `ucp_currency` table.
+    /** Sync status of `ucg_currency` table.
      *
      * @param minSyncFrom : minimum `sync_from_block_number` value among all supported currencies (may be missing).
      * @param maxSyncFrom : maximum `sync_from_block_number` value among all supported currencies (may be missing).
      * */
     case class CurrenciesSyncStatus(minSyncFrom: Option[Int], maxSyncFrom: Option[Int])
 
-    /** Sync status of `ucp_block` table
+    /** Sync status of `ucg_block` table
      *
-     * @param from : minimum block number in `ucp_block` table (may be missing).
-     * @param to   : maximum block number in `ucp_block` table (may be missing).
+     * @param from : minimum block number in `ucg_block` table (may be missing).
+     * @param to   : maximum block number in `ucg_block` tble (may be missing).
      * */
     case class BlocksSyncStatus(from: Option[Int], to: Option[Int])
 
-    /** Sync status of `ucp_tracked_address` table.
+    /** Sync status of `ucg_tracked_address` table.
      *
      * @param minFrom    : minimum `synced_from_block_number` value among all tracked addresses.
      * @param maxFrom    : maximum `synced_from_block_number` value among all tracked addresses.
@@ -72,7 +72,7 @@ class PostgreSQLStorage(jdbcUrl: String,
                                           minTo: Option[Int], maxTo: Option[Int],
                                           toHasNulls: Boolean)
 
-    /** Sync status of `ucp_currency_tracked_address_progress` table.
+    /** Sync status of `ucg_currency_tracked_address_progress` table.
      *
      * @param minFrom    : minimum `synced_from_block_number` value among all currency/tracked-address pairs.
      * @param maxFrom    : maximum `synced_from_block_number` value among all currency/tracked-address pairs.
@@ -88,10 +88,10 @@ class PostgreSQLStorage(jdbcUrl: String,
     /** Whole-system syncing progress.
      *
      * @param overall                     : overall progress.
-     * @param currencies                  : progress of syncing as per `ucp_currency` table.
-     * @param blocks                      : progress of syncing as per `ucp_block` table.
-     * @param trackedAddresses            : progress of syncing as per `ucp_tracked_address` table.
-     * @param perCurrencyTrackedAddresses : progress of syncing as per `ucp_currency_tracked_address_progress` table.
+     * @param currencies                  : progress of syncing as per `ucg_currency` tble.
+     * @param blocks                      : progress of syncing as per `ucg_block` table.
+     * @param trackedAddresses            : progress of syncing as per `ucg_tracked_address` table.
+     * @param perCurrencyTrackedAddresses : progress of syncing as per `ucg_currency_tracked_address_progress` tble.
      **/
     case class Progress(overall: OverallSyncStatus,
                         currencies: CurrenciesSyncStatus,
@@ -102,7 +102,7 @@ class PostgreSQLStorage(jdbcUrl: String,
     /** Get the overall syncing progress. */
     def getProgress(implicit session: DBSession = ReadOnlyAutoSession): Option[Progress] = {
       sql"""
-      SELECT * FROM ucp_progress;
+      SELECT * FROM ucg_progress;
       """.map(rs => {
         Progress(
           OverallSyncStatus(
@@ -140,9 +140,9 @@ class PostgreSQLStorage(jdbcUrl: String,
      * */
     def getFirstBlockResolvingSomeUnsyncedPCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
       sql"""
-      SELECT MIN(ucp_currency_tracked_address_progress.synced_from_block_number) AS min_synced_from_block_number
-      FROM ucp_currency_tracked_address_progress
-      WHERE ucp_currency_tracked_address_progress.synced_to_block_number IS NULL;
+      SELECT MIN(ucg_currency_tracked_address_progress.synced_from_block_number) AS min_synced_from_block_number
+      FROM ucg_currency_tracked_address_progress
+      WHERE ucg_currency_tracked_address_progress.synced_to_block_number IS NULL;
       """.map(rs => rs.int("min_synced_from_block_number"))
         .single()
         .apply()
@@ -151,23 +151,23 @@ class PostgreSQLStorage(jdbcUrl: String,
 
   lazy val progress: Progress = new Progress
 
-  /** Access `ucp_state` table. */
+  /** Access `ucg_state` table. */
   class State {
     def setRestartedAt(implicit session: DBSession = AutoSession) = {
       sql"""
-      UPDATE ucp_state SET restarted_at=now()
+      UPDATE ucg_state SET restarted_at=now()
       """.execute.apply()
     }
 
     def setLastHeartbeatAt(implicit session: DBSession = AutoSession) = {
       sql"""
-      UPDATE ucp_state SET last_heartbeat_at=now()
+      UPDATE ucg_state SET last_heartbeat_at=now()
       """.execute.apply()
     }
 
     def setSyncState(state: String)(implicit session: DBSession = AutoSession) = {
       sql"""
-      UPDATE ucp_state
+      UPDATE ucg_state
       SET sync_state = $state
       WHERE sync_state != $state
       """.execute.apply()
@@ -176,7 +176,7 @@ class PostgreSQLStorage(jdbcUrl: String,
 
     def setSyncedFromBlockNumber(blockNumber: Long)(implicit session: DBSession) = {
       sql"""
-      UPDATE ucp_state
+      UPDATE ucg_state
       SET synced_from_block_number = $blockNumber
       WHERE synced_from_block_number != $blockNumber
       """.execute.apply()
@@ -184,7 +184,7 @@ class PostgreSQLStorage(jdbcUrl: String,
 
     def setSyncedToBlockNumber(blockNumber: Long)(implicit session: DBSession) = {
       sql"""
-      UPDATE ucp_state
+      UPDATE ucg_state
       SET synced_to_block_number = $blockNumber
       WHERE synced_to_block_number != $blockNumber
       """.execute.apply()
