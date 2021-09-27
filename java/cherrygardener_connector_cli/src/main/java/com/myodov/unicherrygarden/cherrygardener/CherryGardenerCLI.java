@@ -1,9 +1,8 @@
 package com.myodov.unicherrygarden.cherrygardener;
 
-import com.myodov.unicherrygarden.api.types.dlt.Currency;
+import com.myodov.unicherrygarden.api.types.dlt.CurrencyImpl;
 import com.myodov.unicherrygarden.cherrygardener.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.cherrygardener.connector.impl.ClientConnectorImpl;
-import com.myodov.unicherrygarden.impl.types.dlt.CurrencyImpl;
 import org.apache.commons.cli.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -105,7 +104,7 @@ public class CherryGardenerCLI {
                             System.err.printf("  %s: \"%s\" - %s%s\n",
                                     c.getSymbol(),
                                     c.getName(),
-                                    (c.getCurrencyType() == Currency.CurrencyType.ETH) ?
+                                    (c.getCurrencyType() == CurrencyImpl.CurrencyType.ETH) ?
                                             "Ether cryptocurrency" :
                                             String.format("ERC20 token at %s", c.getDAppAddress()),
                                     (optComment == null) ? "" : String.format(" (%s)", optComment)

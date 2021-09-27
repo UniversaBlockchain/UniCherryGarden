@@ -1,6 +1,6 @@
 package com.myodov.unicherrygarden.cherrygardener.connector.api;
 
-import com.myodov.unicherrygarden.api.types.dlt.Currency;
+import com.myodov.unicherrygarden.api.types.dlt.CurrencyImpl;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -60,7 +60,7 @@ public interface Sender {
     }
 
     /**
-     * Prepare outgoing transaction without signing it. Used should somehow sign it and call performTransaction()
+     * Prepare outgoing transaction without signing it. User should somehow sign it and call performTransaction()
      * The signing could be performed either with connector's provided signature function locally or by
      * remote part using some other signing software we'll develop later
      *
@@ -69,7 +69,7 @@ public interface Sender {
      */
     @NonNull
     UnsignedOutgoingTransaction buildTransaction(
-            @NonNull Currency currency,
+            @NonNull CurrencyImpl currency,
             @NonNull BigDecimal amount
     );
 

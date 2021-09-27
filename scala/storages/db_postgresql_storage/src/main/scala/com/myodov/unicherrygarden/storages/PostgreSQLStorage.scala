@@ -215,10 +215,10 @@ class PostgreSQLStorage(jdbcUrl: String,
         }
       }
 
-      def toInteropType(v: Value): dlt.Currency.CurrencyType = {
+      def toInteropType(v: Value): dlt.CurrencyImpl.CurrencyType = {
         v match {
-          case CurrencyTypes.Eth => dlt.Currency.CurrencyType.ETH
-          case CurrencyTypes.Erc20 => dlt.Currency.CurrencyType.ERC20
+          case CurrencyTypes.Eth => dlt.CurrencyImpl.CurrencyType.ETH
+          case CurrencyTypes.Erc20 => dlt.CurrencyImpl.CurrencyType.ERC20
           case other => throw new RuntimeException(s"Unsupported currency type $other")
         }
       }

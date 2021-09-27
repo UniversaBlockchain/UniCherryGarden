@@ -3,7 +3,7 @@ package com.myodov.unicherrygarden.cherrygardener.messages;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.myodov.unicherrygarden.impl.types.dlt.CurrencyImpl;
+import com.myodov.unicherrygarden.api.types.dlt.CurrencyImpl;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.List;

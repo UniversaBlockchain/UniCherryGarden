@@ -3,9 +3,9 @@ package com.myodov.unicherrygarden
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
+import com.myodov.unicherrygarden.api.types.dlt.CurrencyImpl
 import com.myodov.unicherrygarden.cherrygardener.messages.{CherryGardenerRequest, GetCurrenciesList, PingCherryGardener}
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
-import com.myodov.unicherrygarden.impl.types.dlt.CurrencyImpl
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.typesafe.scalalogging.LazyLogging
 

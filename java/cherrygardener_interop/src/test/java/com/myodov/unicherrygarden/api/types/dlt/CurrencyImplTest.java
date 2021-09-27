@@ -1,14 +1,13 @@
-package com.myodov.unicherrygarden.impl.types.dlt;
+package com.myodov.unicherrygarden.api.types.dlt;
 
-import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 public class CurrencyImplTest {
-    static final Currency CUR_ETH = CurrencyImpl.newEthCurrency();
-    static final Currency CUR_UTNP = CurrencyImpl.newErc20Token(
+    static final CurrencyImpl CUR_ETH = CurrencyImpl.newEthCurrency();
+    static final CurrencyImpl CUR_UTNP = CurrencyImpl.newErc20Token(
             "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
             "Universa Token",
             "UTNP",
@@ -23,7 +22,7 @@ public class CurrencyImplTest {
         );
 
         assertEquals(
-                Currency.CurrencyType.ETH,
+                CurrencyImpl.CurrencyType.ETH,
                 CUR_ETH.getCurrencyType()
         );
         assertEquals(
@@ -54,7 +53,7 @@ public class CurrencyImplTest {
         );
 
         assertEquals(
-                Currency.CurrencyType.ERC20,
+                CurrencyImpl.CurrencyType.ERC20,
                 CUR_UTNP.getCurrencyType()
         );
 

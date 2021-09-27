@@ -1,6 +1,6 @@
 package com.myodov.unicherrygarden.cherrygardener.connector.api;
 
-import com.myodov.unicherrygarden.impl.types.dlt.CurrencyImpl;
+import com.myodov.unicherrygarden.api.types.dlt.CurrencyImpl;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.List;
