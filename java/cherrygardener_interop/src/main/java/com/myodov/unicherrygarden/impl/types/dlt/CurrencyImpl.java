@@ -30,7 +30,7 @@ public class CurrencyImpl implements Currency {
      *
      * @param dAppAddress should be lowercased or <code>null</code>.
      */
-    private CurrencyImpl(
+    public CurrencyImpl(
             @NonNull CurrencyType type,
             @Nullable String dAppAddress,
             @Nullable String name,

@@ -1,5 +1,6 @@
 package com.myodov.unicherrygarden.storages
 
+import com.myodov.unicherrygarden.api.types.dlt
 import com.typesafe.scalalogging.LazyLogging
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.{CleanResult, MigrateResult}
@@ -42,21 +43,21 @@ class PostgreSQLStorage(jdbcUrl: String,
      *
      * @param from : UniCherrypicker in general has been synced from this block (may be missing).
      * @param to   : UniCherrypicker in general has been synced to this block (may be missing).
-     * */
+     **/
     case class OverallSyncStatus(from: Option[Int], to: Option[Int])
 
     /** Sync status of `ucg_currency` table.
      *
      * @param minSyncFrom : minimum `sync_from_block_number` value among all supported currencies (may be missing).
      * @param maxSyncFrom : maximum `sync_from_block_number` value among all supported currencies (may be missing).
-     * */
+     **/
     case class CurrenciesSyncStatus(minSyncFrom: Option[Int], maxSyncFrom: Option[Int])
 
     /** Sync status of `ucg_block` table
      *
      * @param from : minimum block number in `ucg_block` table (may be missing).
      * @param to   : maximum block number in `ucg_block` tble (may be missing).
-     * */
+     **/
     case class BlocksSyncStatus(from: Option[Int], to: Option[Int])
 
     /** Sync status of `ucg_tracked_address` table.
@@ -67,7 +68,7 @@ class PostgreSQLStorage(jdbcUrl: String,
      * @param maxTo      : maximum `synced_to_block_number` value among all tracked addresses (may be missing).
      * @param toHasNulls : whether `synced_to_block_number` has nulls;
      *                   i.e., for some tracked addresses, the synced_to value is missing.
-     * */
+     **/
     case class TrackedAddressesSyncStatus(minFrom: Int, maxFrom: Int,
                                           minTo: Option[Int], maxTo: Option[Int],
                                           toHasNulls: Boolean)
@@ -80,7 +81,7 @@ class PostgreSQLStorage(jdbcUrl: String,
      * @param maxTo      : maximum `synced_to_block_number` value among all currency/tracked-address pairs (may be missing).
      * @param toHasNulls : whether `synced_to_block_number` has nulls;
      *                   i.e., for some currency/tracked-address pairs, the synced_to value is missing.
-     * */
+     **/
     case class PerCurrencyTrackedAddressesSyncStatus(minFrom: Int, maxFrom: Int,
                                                      minTo: Option[Int], maxTo: Option[Int],
                                                      toHasNulls: Boolean)
@@ -92,7 +93,7 @@ class PostgreSQLStorage(jdbcUrl: String,
      * @param blocks                      : progress of syncing as per `ucg_block` table.
      * @param trackedAddresses            : progress of syncing as per `ucg_tracked_address` table.
      * @param perCurrencyTrackedAddresses : progress of syncing as per `ucg_currency_tracked_address_progress` tble.
-     **/
+     * */
     case class Progress(overall: OverallSyncStatus,
                         currencies: CurrenciesSyncStatus,
                         blocks: BlocksSyncStatus,
@@ -192,6 +193,52 @@ class PostgreSQLStorage(jdbcUrl: String,
   }
 
   lazy val state: State = new State
+
+  /** Access `ucg_currency` table. */
+  class Currencies {
+
+    object CurrencyTypes extends Enumeration {
+      type CurrencyType = Value
+      val Eth, Erc20 = Value
+
+      def fromString(str: String): Value = {
+        str match {
+          case "ETH" => CurrencyTypes.Eth
+          case "ERC20" => CurrencyTypes.Erc20
+          case other => throw new RuntimeException(s"Unsupported currency type $other")
+        }
+      }
+
+      def toInteropType(v: Value): dlt.Currency.CurrencyType = {
+        v match {
+          case CurrencyTypes.Eth => dlt.Currency.CurrencyType.ETH
+          case CurrencyTypes.Erc20 => dlt.Currency.CurrencyType.ERC20
+          case other => throw new RuntimeException(s"Unsupported currency type $other")
+        }
+      }
+    }
+
+    case class Currency(currencyType: CurrencyTypes.CurrencyType,
+                        dAppAddress: Option[String],
+                        name: Option[String],
+                        symbol: Option[String],
+                        ucgComment: Option[String]
+                       )
+
+    def getCurrencies(implicit session: DBSession = ReadOnlyAutoSession): List[Currency] = {
+      sql"""
+      SELECT * FROM ucg_currency;
+      """.map(rs => Currency(
+        CurrencyTypes.fromString(rs.string("type")),
+        rs.stringOpt("dapp_address"),
+        rs.stringOpt("name"),
+        rs.stringOpt("symbol"),
+        rs.stringOpt("ucg_comment"),
+      )).list.apply()
+    }
+  }
+
+  lazy val currencies: Currencies = new Currencies
 }
 
 object PostgreSQLStorage {

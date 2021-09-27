@@ -20,8 +20,14 @@ class CherryGardener(private val pgStorage: PostgreSQLStorage,
    * Reply to [[GetCurrenciesList]] request.
    **/
   def getCurrenciesList(): GetCurrenciesList.Response = {
-    val result: List[CurrencyImpl] = List(
-      CurrencyImpl.newEthCurrency()
+    val result: List[CurrencyImpl] = pgStorage.currencies.getCurrencies().map(
+      c => new CurrencyImpl(
+        pgStorage.currencies.CurrencyTypes.toInteropType(c.currencyType),
+        c.dAppAddress.orNull,
+        c.name.orNull,
+        c.symbol.orNull,
+        c.ucgComment.orNull
+      )
     )
     new GetCurrenciesList.Response(result.asJava)
   }

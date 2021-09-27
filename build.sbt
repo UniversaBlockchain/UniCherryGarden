@@ -230,7 +230,7 @@ lazy val api = (project in file("scala/api"))
     name := "api",
     description := "UniCherryGarden: internal Scala API commons",
   )
-  .dependsOn(commonScala, ethUtils)
+  .dependsOn(commonScala, cherryGardenerInterop, ethUtils)
 
 // Separate module to handle reading the HOCON conf files.
 // Used from CLI launcher, and from "test" targets of other modules.
@@ -338,7 +338,7 @@ lazy val cherrygardener = (project in file("scala/cherrygardener"))
   .dependsOn(
     commonScala, api,
     db_postgresql_storage, ethereum_rpc_connector,
-    cherryGardenerInterop, cherrypicker, cherryplanter
+    cherrypicker, cherryplanter
   )
 
 // Launcher; launches the CherryPicker/CherryPlanter/CherryGardener daemons.
