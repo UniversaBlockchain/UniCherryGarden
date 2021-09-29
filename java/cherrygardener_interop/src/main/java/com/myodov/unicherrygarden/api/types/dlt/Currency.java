@@ -4,6 +4,8 @@ import com.myodov.unicherrygarden.ethereum.EthUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.util.Objects;
+
 /**
  * Any asset tracked by UniCherryGarden (cryptocurrency, token, etc).
  *
@@ -103,6 +105,22 @@ public class Currency {
                 type, symbol, name, dAppAddress);
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        } else if (!(o instanceof Currency)) {
+            return false;
+        } else {
+            final Currency other = (Currency) o;
+            return (this.type == other.type) && (this.dAppAddress == other.dAppAddress);
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.type, this.dAppAddress);
+    }
 
     /**
      * The only primary key to uniquely identify this currency.
