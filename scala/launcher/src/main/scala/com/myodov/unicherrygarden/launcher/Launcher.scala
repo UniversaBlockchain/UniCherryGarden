@@ -4,10 +4,11 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.ClusterEvent.MemberEvent
 import akka.cluster.typed.{Cluster, Subscribe}
-import com.myodov.unicherrygarden.cherrygardener.messages.{CherryGardenerRequest, CherryGardenerResponse, CherryPickerRequest, CherryPlanterRequest}
+import com.myodov.unicherrygarden.cherrygardener.CherryGardener
+import com.myodov.unicherrygarden.{CherryPicker, CherryPlanter, LoggingConfigurator, UnicherrygardenVersion}
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
-import com.myodov.unicherrygarden._
+import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryGardenerResponse, CherryPickerRequest, CherryPlanterRequest}
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import scopt.OParser

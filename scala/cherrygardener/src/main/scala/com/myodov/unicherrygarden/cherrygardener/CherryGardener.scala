@@ -1,11 +1,13 @@
-package com.myodov.unicherrygarden
+package com.myodov.unicherrygarden.cherrygardener
 
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
+import com.myodov.unicherrygarden.UnicherrygardenVersion
 import com.myodov.unicherrygarden.api.types.dlt.Currency
-import com.myodov.unicherrygarden.cherrygardener.messages._
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
+import com.myodov.unicherrygarden.messages.cherrygardener.{GetCurrencies, PingCherryGardener}
+import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryPickerRequest, CherryPlanterRequest}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.typesafe.scalalogging.LazyLogging
 
@@ -17,9 +19,9 @@ class CherryGardener(private val pgStorage: PostgreSQLStorage,
                      private val ethereumConnector: EthereumRpcSingleConnector) extends LazyLogging {
 
   /**
-   * Reply to [[GetCurrenciesList]] request.
+   * Reply to [[GetCurrencies]] request.
    **/
-  def getCurrenciesList(): GetCurrenciesList.Response = {
+  def getCurrencies(): GetCurrencies.Response = {
     val result: List[Currency] = pgStorage.currencies.getCurrencies().map(
       c => new Currency(
         pgStorage.currencies.CurrencyTypes.toInteropType(c.currencyType),
@@ -29,7 +31,7 @@ class CherryGardener(private val pgStorage: PostgreSQLStorage,
         c.ucgComment.orNull
       )
     )
-    new GetCurrenciesList.Response(result.asJava)
+    new GetCurrencies.Response(result.asJava)
   }
 }
 
@@ -53,13 +55,13 @@ object CherryGardener extends LazyLogging {
     Behaviors.setup { context =>
       logger.info(s"Launching CherryGardener: v. $propVersionStr, built at $propBuildTimestampStr")
 
-      context.system.receptionist ! Receptionist.Register(GetCurrenciesList.SERVICE_KEY, context.self)
+      context.system.receptionist ! Receptionist.Register(GetCurrencies.SERVICE_KEY, context.self)
       context.system.receptionist ! Receptionist.Register(PingCherryGardener.SERVICE_KEY, context.self)
 
       Behaviors.receiveMessage {
-        case message: GetCurrenciesList.Request => {
-          logger.debug(s"Received GetCurrenciesList($message) command")
-          message.replyTo ! gardener.getCurrenciesList()
+        case message: GetCurrencies.Request => {
+          logger.debug(s"Received GetCurrencies($message) command")
+          message.replyTo ! gardener.getCurrencies()
           Behaviors.same
         }
         case unknown => {

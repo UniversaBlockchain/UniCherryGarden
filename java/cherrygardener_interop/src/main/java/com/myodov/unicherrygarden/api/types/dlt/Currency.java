@@ -53,8 +53,7 @@ public class Currency {
                 break;
             // For ERC20 tokens, dAppAddress should be lowercased valid Ethereum address
             case ERC20:
-                assert dAppAddress.toLowerCase().equals(dAppAddress) : dAppAddress;
-                assert EthUtils.Addresses.isValidAddress(dAppAddress) : dAppAddress;
+                assert EthUtils.Addresses.isValidLowercasedAddress(dAppAddress) : dAppAddress;
                 break;
             default:
                 assert false : type;
@@ -94,7 +93,7 @@ public class Currency {
             @Nullable String symbol,
             @Nullable String comment
     ) {
-        assert dAppAddress != null && EthUtils.Addresses.isValidAddress(dAppAddress) : dAppAddress;
+        assert dAppAddress != null && EthUtils.Addresses.isValidLowercasedAddress(dAppAddress) : dAppAddress;
 
         return new Currency(CurrencyType.ERC20, dAppAddress, name, symbol, comment);
     }

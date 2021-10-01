@@ -27,7 +27,7 @@ trait Token extends Currency {
    * */
   def uid: String
 
-  require(uid != null && EthUtils.Addresses.isValidAddress(uid))
+  require(uid != null && EthUtils.Addresses.isValidLowercasedAddress(uid))
 }
 
 //class DummyCurrency(val name: String, val network: Network, val isToken: Boolean)

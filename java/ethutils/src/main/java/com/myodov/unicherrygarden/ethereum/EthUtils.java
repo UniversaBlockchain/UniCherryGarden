@@ -28,10 +28,18 @@ public class EthUtils {
         /**
          * Whether the argument is a valid Ethereum address
          * (starts from 0x, then goes the hexadecimal number of proper length in any case).
-         * Assumes the address is force-lowercased.
          */
         public static final boolean isValidAddress(@NonNull String address) {
             return isValidHash(address.toLowerCase(), ADDRESS_HASH_LENGTH);
+        }
+
+        /**
+         * Whether the argument is a valid Ethereum address
+         * (starts from 0x, then goes the hexadecimal number of proper length in any case),
+         * and is force-lowercased.
+         */
+        public static final boolean isValidLowercasedAddress(@NonNull String address) {
+            return isValidHash(address, ADDRESS_HASH_LENGTH);
         }
 
         /**

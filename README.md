@@ -59,8 +59,8 @@ After you’ve made a dependency on `cherrygardener_connector`, you have the Jav
 Create an instance of the connector in this way:
 
 ~~~java
-import com.myodov.unicherrygarden.cherrygardener.connector.api.ClientConnector
-import com.myodov.unicherrygarden.cherrygardener.connector.impl.ClientConnectorImpl
+import com.myodov.unicherrygarden.messages.connector.api.ClientConnector
+import com.myodov.unicherrygarden.messages.connector.impl.ClientConnectorImpl
 
 // ...
 

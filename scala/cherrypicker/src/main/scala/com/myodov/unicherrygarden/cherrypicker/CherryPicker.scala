@@ -3,8 +3,9 @@ package com.myodov.unicherrygarden
 import akka.actor.typed.Behavior
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
-import com.myodov.unicherrygarden.cherrygardener.messages.{CherryPickerRequest, GetTrackedAddressesList}
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
+import com.myodov.unicherrygarden.messages.CherryPickerRequest
+import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.typesafe.scalalogging.LazyLogging
 
@@ -99,7 +100,7 @@ object CherryPicker extends LazyLogging {
     Behaviors.setup { context =>
       logger.info(s"Launching CherryPicker: v. $propVersionStr, built at $propBuildTimestampStr")
 
-      context.system.receptionist ! Receptionist.Register(GetTrackedAddressesList.SERVICE_KEY, context.self)
+      context.system.receptionist ! Receptionist.Register(GetTrackedAddresses.SERVICE_KEY, context.self)
 
       logger.debug("Setting up CherryPicker actor with timers")
       Behaviors.withTimers(timers => {
