@@ -3,17 +3,16 @@ package com.myodov.unicherrygarden.cherrygardener.messages;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.List;
 
 
-public class GetCurrenciesList {
+public class GetTrackedAddressesList {
     public static final @NonNull ServiceKey<Request> SERVICE_KEY =
-            ServiceKey.create(Request.class, "getCurrenciesListService");
+            ServiceKey.create(Request.class, "getTrackedAddressesListService");
 
-    public static final class Request implements CherryGardenerRequest {
+    public static final class Request implements CherryPickerRequest {
         @NonNull
         public final ActorRef<Response> replyTo;
 
@@ -23,21 +22,21 @@ public class GetCurrenciesList {
         }
 
         public String toString() {
-            return String.format("GetCurrenciesList.Request(%s)", replyTo);
+            return String.format("GetTrackedAddressesList.Request(%s)", replyTo);
         }
     }
 
-    public static final class Response implements CherryGardenerResponse {
+    public static final class Response implements CherryPickerResponse {
         @NonNull
-        public final List<Currency> currencies;
+        public final List<String> addresses;
 
         @JsonCreator
-        public Response(@NonNull List<Currency> currencies) {
-            this.currencies = currencies;
+        public Response(@NonNull List<String> addresses) {
+            this.addresses = addresses;
         }
 
         public String toString() {
-            return String.format("GetCurrenciesList.Response(%s)", currencies);
+            return String.format("GetTrackedAddressesList.Response(%s)", addresses);
         }
     }
 }

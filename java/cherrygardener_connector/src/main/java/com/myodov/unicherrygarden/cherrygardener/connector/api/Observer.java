@@ -5,13 +5,14 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * The client connector part that ensures receiving of the Ethereum ETH/ERC20 payments.
+ * The client connector part that observes the Ethereum ETH/ERC20 payments.
  */
-public interface Receiver {
+public interface Observer {
 
     /**
      * From what block should we start tracking an address.
@@ -89,6 +90,17 @@ public interface Receiver {
         assert mode != StartTrackingAddressMode.FROM_BLOCK : mode;
         return startTrackingAddress(address, mode, null, comment);
     }
+
+
+    /**
+     * Get the list of addresses that are tracked by UniCherryGarden.
+     * Each address is regular Ethereum address string, lowercased.
+     *
+     * @return <code>null</code> if any error occurred during getting the addresses.
+     * or the list of Ethereum addresses tracked by UniCherryGarden.
+     */
+    @Nullable
+    List<@NonNull String> getTrackedAddresses();
 
 
     class BalanceRequestResult {

@@ -16,6 +16,9 @@ import org.web3j.crypto.Sign;
 
 import java.security.SignatureException;
 
+/**
+ * The default implementation for {@link AddressOwnershipConfirmator} interface.
+ */
 public class AddressOwnershipConfirmatorImpl implements AddressOwnershipConfirmator {
     final Logger logger = LoggerFactory.getLogger(AddressOwnershipConfirmatorImpl.class);
 

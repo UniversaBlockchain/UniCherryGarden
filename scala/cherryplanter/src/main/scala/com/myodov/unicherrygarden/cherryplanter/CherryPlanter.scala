@@ -2,6 +2,7 @@ package com.myodov.unicherrygarden
 
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
+import com.myodov.unicherrygarden.cherrygardener.messages.CherryPlanterRequest
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.typesafe.scalalogging.LazyLogging
@@ -21,13 +22,11 @@ object CherryPlanter extends LazyLogging {
   lazy val propVersionStr = props.getProperty("version", "N/A");
   lazy val propBuildTimestampStr = props.getProperty("build_timestamp", "");
 
-  trait CherryPlanterMessage
-
   /** A message informing you need to run a next iteration */
-  final case class Iterate() extends CherryPlanterMessage
+  final case class Iterate() extends CherryPlanterRequest
 
   def apply(pgStorage: PostgreSQLStorage,
-            ethereumConnector: EthereumRpcSingleConnector): Behavior[CherryPlanterMessage] = {
+            ethereumConnector: EthereumRpcSingleConnector): Behavior[CherryPlanterRequest] = {
 
     val planter = new CherryPlanter(pgStorage, ethereumConnector)
 
@@ -35,7 +34,7 @@ object CherryPlanter extends LazyLogging {
       logger.info(s"Launching CherryPlanter: v. $propVersionStr, built at $propBuildTimestampStr")
 
       Behaviors.receiveMessage {
-        (message: CherryPlanterMessage) => {
+        (message: CherryPlanterRequest) => {
           logger.debug(s"Receiving CherryPlanter message: $message")
           Behaviors.same
         }

@@ -4,7 +4,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.ClusterEvent.MemberEvent
 import akka.cluster.typed.{Cluster, Subscribe}
-import com.myodov.unicherrygarden.cherrygardener.messages.{CherryGardenerRequest, CherryGardenerResponse}
+import com.myodov.unicherrygarden.cherrygardener.messages.{CherryGardenerRequest, CherryGardenerResponse, CherryPickerRequest, CherryPlanterRequest}
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.myodov.unicherrygarden._
@@ -167,11 +167,11 @@ object LauncherActor extends LazyLogging {
 
         case LauncherActor.LaunchCherryGardener(pgStorage, ethereumConnector) => {
           logger.debug(s"Launching sub-actor CherryPicker ($pgStorage, $ethereumConnector)")
-          val cherryPicker: ActorRef[CherryPicker.CherryPickerMessage] =
+          val cherryPicker: ActorRef[CherryPickerRequest] =
             context.spawn(CherryPicker(pgStorage, ethereumConnector), "CherryPicker")
 
           logger.debug(s"Launching sub-actor CherryPlanter")
-          val cherryPlanter: ActorRef[CherryPlanter.CherryPlanterMessage] =
+          val cherryPlanter: ActorRef[CherryPlanterRequest] =
             context.spawn(CherryPlanter(pgStorage, ethereumConnector), "CherryPlanter")
 
           logger.info(s"Launched CherryGardener (which now knows about CherryPicker and CherryPlanter)")

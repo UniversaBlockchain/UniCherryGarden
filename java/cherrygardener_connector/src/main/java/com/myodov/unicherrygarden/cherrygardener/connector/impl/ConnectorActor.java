@@ -9,6 +9,7 @@ import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import akka.actor.typed.receptionist.Receptionist;
 import com.myodov.unicherrygarden.cherrygardener.messages.GetCurrenciesList;
+import com.myodov.unicherrygarden.cherrygardener.messages.GetTrackedAddressesList;
 import com.myodov.unicherrygarden.cherrygardener.messages.PingCherryGardener;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
@@ -149,6 +150,9 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActor.Message> {
         @NonNull
         public final ActorRef<ListSupportedCurrenciesCommand.Result> replyTo;
 
+        /**
+         * Constructor.
+         */
         public ListSupportedCurrenciesCommand(@NonNull ActorRef<ListSupportedCurrenciesCommand.Result> replyTo) {
             assert replyTo != null;
             this.replyTo = replyTo;
@@ -156,6 +160,70 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActor.Message> {
 
         public String toString() {
             return String.format("ListSupportedCurrenciesCommand()");
+        }
+    }
+
+    /**
+     * Akka API command to “list tracked addresses”.
+     */
+    public static class ListTrackedAddressesCommand implements Command {
+        /**
+         * During ListTrackedAddressesCommand command execution, we ask the Receptionist
+         * about available service providing this command; this class is the response adapted
+         * to handle the ListSupportedCurrencies command.
+         */
+        private static class ReceptionistResponse implements Notification {
+            final Receptionist.@NonNull Listing listing;
+
+            @NonNull
+            final ActorRef<ListTrackedAddressesCommand.Result> ltaReplyTo;
+
+            private ReceptionistResponse(
+                    Receptionist.@NonNull Listing listing,
+                    @NonNull ActorRef<ListTrackedAddressesCommand.Result> ltaReplyTo) {
+                assert listing != null;
+                assert ltaReplyTo != null;
+                this.listing = listing;
+                this.ltaReplyTo = ltaReplyTo;
+            }
+        }
+
+        private static class InternalResult implements Notification {
+            final GetTrackedAddressesList.@NonNull Response response;
+            @NonNull
+            final ActorRef<ListTrackedAddressesCommand.Result> ltaReplyTo;
+
+            private InternalResult(GetTrackedAddressesList.@NonNull Response response,
+                                   @NonNull ActorRef<ListTrackedAddressesCommand.Result> ltaReplyTo) {
+                assert response != null;
+                assert ltaReplyTo != null;
+                this.response = response;
+                this.ltaReplyTo = ltaReplyTo;
+            }
+        }
+
+        public static class Result {
+            final GetTrackedAddressesList.@NonNull Response response;
+
+            private Result(GetTrackedAddressesList.@NonNull Response response) {
+                assert response != null;
+                this.response = response;
+            }
+        }
+
+        @NonNull
+        public final ActorRef<ListTrackedAddressesCommand.Result> replyTo;
+
+        /**
+         * Constructor.
+         */
+        public ListTrackedAddressesCommand(@NonNull ActorRef<ListTrackedAddressesCommand.Result> replyTo) {
+            assert replyTo != null;
+            this.replyTo = replyTo;
+        }
+
+        public String toString() {
+            return String.format("ListTrackedAddressesCommand()");
         }
     }
 

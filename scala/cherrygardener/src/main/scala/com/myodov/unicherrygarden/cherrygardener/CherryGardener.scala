@@ -4,7 +4,7 @@ import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.api.types.dlt.Currency
-import com.myodov.unicherrygarden.cherrygardener.messages.{CherryGardenerRequest, GetCurrenciesList, PingCherryGardener}
+import com.myodov.unicherrygarden.cherrygardener.messages._
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.typesafe.scalalogging.LazyLogging
@@ -42,8 +42,8 @@ object CherryGardener extends LazyLogging {
 
   def apply(pgStorage: PostgreSQLStorage,
             ethereumConnector: EthereumRpcSingleConnector,
-            cherryPickerOpt: Option[ActorRef[CherryPicker.CherryPickerMessage]],
-            cherryPlanterOpt: Option[ActorRef[CherryPlanter.CherryPlanterMessage]]
+            cherryPickerOpt: Option[ActorRef[CherryPickerRequest]],
+            cherryPlanterOpt: Option[ActorRef[CherryPlanterRequest]]
            ): Behavior[CherryGardenerRequest] = {
 
     logger.debug(s"Setting up CherryGardener: picker $cherryPickerOpt, planter $cherryPlanterOpt")

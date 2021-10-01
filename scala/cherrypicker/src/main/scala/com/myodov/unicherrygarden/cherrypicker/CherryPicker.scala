@@ -1,7 +1,9 @@
 package com.myodov.unicherrygarden
 
 import akka.actor.typed.Behavior
+import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
+import com.myodov.unicherrygarden.cherrygardener.messages.{CherryPickerRequest, GetTrackedAddressesList}
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.typesafe.scalalogging.LazyLogging
@@ -83,28 +85,28 @@ object CherryPicker extends LazyLogging {
   lazy val propVersionStr = props.getProperty("version", "N/A");
   lazy val propBuildTimestampStr = props.getProperty("build_timestamp", "");
 
-  trait CherryPickerMessage
-
   /** A message informing CherryPicker it needs to run a next iteration. */
-  final case class Iterate() extends CherryPickerMessage
+  final case class Iterate() extends CherryPickerRequest
 
   //  private val ITERATION_PERIOD = 15 seconds
   protected val ITERATION_PERIOD = 1 second
 
   def apply(pgStorage: PostgreSQLStorage,
-            ethereumConnector: EthereumRpcSingleConnector): Behavior[CherryPickerMessage] = {
+            ethereumConnector: EthereumRpcSingleConnector): Behavior[CherryPickerRequest] = {
 
     val picker = new CherryPicker(pgStorage, ethereumConnector)
 
     Behaviors.setup { context =>
       logger.info(s"Launching CherryPicker: v. $propVersionStr, built at $propBuildTimestampStr")
 
+      context.system.receptionist ! Receptionist.Register(GetTrackedAddressesList.SERVICE_KEY, context.self)
+
       logger.debug("Setting up CherryPicker actor with timers")
       Behaviors.withTimers(timers => {
         def scheduleNextIteration() = timers.startSingleTimer(Iterate(), ITERATION_PERIOD)
 
-        def handleIteration(): Behaviors.Receive[CherryPickerMessage] = Behaviors.receiveMessage {
-          (message: CherryPickerMessage) => {
+        def handleIteration(): Behaviors.Receive[CherryPickerRequest] = Behaviors.receiveMessage {
+          (message: CherryPickerRequest) => {
             logger.debug("Receiving CherryPicker message")
             message match {
               case Iterate() => {

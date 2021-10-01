@@ -2,6 +2,7 @@ package com.myodov.unicherrygarden.cherrygardener;
 
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.cherrygardener.connector.api.ClientConnector;
+import com.myodov.unicherrygarden.cherrygardener.connector.api.Observer;
 import com.myodov.unicherrygarden.cherrygardener.connector.impl.ClientConnectorImpl;
 import org.apache.commons.cli.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -34,6 +35,9 @@ public class CherryGardenerCLI {
         options.addOption(
                 null, "list-supported-currencies", false,
                 "print the list of currencies supported by CherryGardener");
+        options.addOption(
+                null, "list-tracked-addresses", false,
+                "print the list of addresses tracked by CherryPicker");
 //        options.addOption("l", "launch", false, "launch the CherryGardener service and stay running");
     }
 
@@ -97,22 +101,51 @@ public class CherryGardenerCLI {
                 if (connectUrls.isPresent()) {
                     try {
                         final ClientConnector connector = new ClientConnectorImpl(connectUrls.get());
-                        final List<Currency> currencies = connector.getCurrencies();
-                        System.err.println("Received list of currencies:");
-                        for (final Currency c : currencies) {
-                            final @Nullable String optComment = c.getComment();
-                            System.err.printf("  %s: \"%s\" - %s%s\n",
-                                    c.getSymbol(),
-                                    c.getName(),
-                                    (c.getCurrencyType() == Currency.CurrencyType.ETH) ?
-                                            "Ether cryptocurrency" :
-                                            String.format("ERC20 token at %s", c.getDAppAddress()),
-                                    (optComment == null) ? "" : String.format(" (%s)", optComment)
-                            );
+                        @Nullable final List<Currency> currencies = connector.getCurrencies();
+                        if (currencies == null) {
+                            System.err.println("Could not get the supported currencies");
+                        } else {
+                            System.err.println("Received list of currencies:");
+                            for (final Currency c : currencies) {
+                                final @Nullable String optComment = c.getComment();
+                                System.err.printf("  %s: \"%s\" - %s%s\n",
+                                        c.getSymbol(),
+                                        c.getName(),
+                                        (c.getCurrencyType() == Currency.CurrencyType.ETH) ?
+                                                "Ether cryptocurrency" :
+                                                String.format("ERC20 token at %s", c.getDAppAddress()),
+                                        (optComment == null) ? "" : String.format(" (%s)", optComment)
+                                );
+                            }
+                            connector.shutdown();
+                        }
+                    } catch (CompletionException exc) {
+                        System.err.println("Could not connect to UniCherryGarden!");
+                    }
+                }
+            } else if (line.hasOption("list-tracked-addresses")) {
+                printTitle(System.err);
+
+                System.err.println("Listing tracked addresses...");
+
+                final Optional<List<String>> connectUrls = parseConnectUrls(line);
+                if (connectUrls.isPresent()) {
+                    try {
+                        final ClientConnector connector = new ClientConnectorImpl(connectUrls.get());
+                        final Observer observer = connector.getObserver();
+
+                        @Nullable final List<@NonNull String> trackedAddresses = observer.getTrackedAddresses();
+                        if (trackedAddresses == null) {
+                            System.err.println("Could not get the tracked addresses");
+                        } else {
+                            for (final String addr : trackedAddresses) {
+                                System.err.printf("  %s\n", addr);
+                            }
                         }
                         connector.shutdown();
                     } catch (CompletionException exc) {
                         System.err.println("Could not connect to UniCherryGarden!");
+                        System.err.printf("%s\n", exc);
                     }
                 }
             } else {
