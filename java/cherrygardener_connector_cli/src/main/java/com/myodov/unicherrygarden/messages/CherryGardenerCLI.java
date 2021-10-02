@@ -184,7 +184,7 @@ public class CherryGardenerCLI {
             } else if (line.hasOption("add-tracked-address")) {
                 printTitle(System.err);
 
-                final String address = line.getOptionValue("add-tracked-address");
+                @NonNull final String address = line.getOptionValue("add-tracked-address").toLowerCase();
                 @Nullable final String trackFromBlockStr = line.getOptionValue("track-from-block");
                 @Nullable final String commentOpt = line.getOptionValue("comment");
 
@@ -195,8 +195,7 @@ public class CherryGardenerCLI {
                 {
                     if (!EthUtils.Addresses.isValidLowercasedAddress(address)) {
                         System.err.println("" +
-                                "WARNING: --add-tracked-address option should contain " +
-                                "a valid lowercased Ethereum address!");
+                                "WARNING: --add-tracked-address option should contain a valid Ethereum address!");
                         trackFromBlockMode = null;
                         trackFromBlock = 0; // dummy
                         argValidationSuccess = false;
