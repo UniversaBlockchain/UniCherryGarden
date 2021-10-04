@@ -88,8 +88,9 @@ public class ObserverImpl implements Observer {
 
     @Override
     @NonNull
-    public BalanceRequestResult getAddressBalance(@NonNull String address,
-                                                  @Nullable Set<String> filterCurrencyKeys) {
+    public BalanceRequestResult getAddressBalances(@NonNull String address,
+                                                   @Nullable Set<String> filterCurrencyKeys,
+                                                   int confirmations) {
         throw new RuntimeException("TODO: not implemented");
     }
 }

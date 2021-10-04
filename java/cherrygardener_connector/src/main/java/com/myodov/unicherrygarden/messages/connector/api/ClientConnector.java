@@ -39,6 +39,7 @@ public interface ClientConnector
     /**
      * Returns the engine/subsystem that allows you to observe the Ethereum addresses for all related transactions;
      * i.e. check the outbound transfers, inbound transfers and balances.
+     * Basically it is the access to “CherryPicker” subsystem.
      *
      * @return <code>null</code> if the client connector is created in “offline mode”.
      */

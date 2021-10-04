@@ -42,17 +42,28 @@ public class CherryGardenerCLI {
         commandOptionGroup.addOption(new Option(
                 "ata", "add-tracked-address", true,
                 "Add an Ethereum address to track.\n" +
-                        "Should be lowercased and valid Ethereum address;\n" +
+                        "Should be a valid Ethereum address;\n" +
                         "e.g. \"0x884191033518be08616821d7676ca01695698451\".\n" +
                         "See also:\n" +
                         "--track-from-block (mandatory),\n" +
                         "--comment (optional)."));
+        commandOptionGroup.addOption(new Option(
+                "gb", "get-balances", true,
+                "Get balances (of currencies tokens) for an (already tracked) Ethereum address.\n" +
+                        "Should be a valid Ethereum address;\n" +
+                        "e.g. \"0x884191033518be08616821d7676ca01695698451\".\n" +
+                        "See also:\n" +
+                        "--confirmations (optional; default: 0)."));
         commandOptionGroup.setRequired(true);
 
         options.addOption(
                 "c", "connect", true,
                 "Comma-separated list of addresses to connect;\n" +
                         "e.g. \"127.0.0.1:2551,127.0.0.1:2552\".");
+        options.addOption(
+                null, "confirmations", true,
+                "The number of confirmations (Ethereum blocks already mined after an event);\n" +
+                        "Should be a non-negative integer number, likely 6 or 12.");
         options.addOptionGroup(commandOptionGroup);
 
         options.addOption(
@@ -94,7 +105,14 @@ public class CherryGardenerCLI {
         return props;
     }
 
-    private Optional<List<String>> parseConnectUrls(@NonNull CommandLine line) {
+    /**
+     * Parses the "--connect" option assuming it is mandatory,
+     * printing all necessary warnings in the process.
+     *
+     * @return non-empty {@link Optional<>} with the list of strings (connect URLs) if the URLs are properly parsed;
+     * “empty” optional if parsing failed (and all necessary warnings were printed).
+     */
+    private static Optional<List<String>> parseConnectUrls(@NonNull CommandLine line) {
         if (line.hasOption("connect")) {
             final String optUnstripped = line.getOptionValue("connect");
             final String optStripped = optUnstripped.replaceAll("^\\s+|\\s+$", ""); // TODO Since Java 11: optUnstripped.strip()
@@ -113,6 +131,127 @@ public class CherryGardenerCLI {
     }
 
     /**
+     * Parse an option (with the name of the option passed as the "optionName" argument)
+     * that should contain an Ethereum address,
+     * printing all necessary warnings in the process.
+     *
+     * @param optionName The name of the option to parse.
+     * @return non-empty {@link Optional<>} with the parsed (lowercased) Ethereum address
+     * if it has been properly parsed;
+     * “empty” optional if parsing failed (and all required warnings were printed).
+     */
+    private static final Optional<String> parseEthereumAddressOption(@NonNull CommandLine line,
+                                                                     @NonNull String optionName) {
+        @NonNull final String address = line.getOptionValue(optionName).toLowerCase();
+        if (!EthUtils.Addresses.isValidLowercasedAddress(address)) {
+            System.err.printf(
+                    "WARNING: --%s option should contain a valid Ethereum address!",
+                    optionName);
+            return Optional.empty();
+        } else {
+            return Optional.of(address);
+        }
+    }
+
+
+    static class TrackFromBlockOption {
+        final AddTrackedAddresses.@NonNull StartTrackingAddressMode mode;
+        final int block; // 0 if any mode is different from FROM_BLOCK.
+
+        TrackFromBlockOption(AddTrackedAddresses.@NonNull StartTrackingAddressMode mode,
+                             int block) {
+            assert block >= 0 : block;
+            this.mode = mode;
+            this.block = block;
+        }
+    }
+
+    /**
+     * Parse "--track-from-block" option to the result data (as an {@link TrackFromBlockOption} object),
+     * printing all necessary warnings in the process.
+     *
+     * @return non-empty {@link Optional<>} with the parsed "track-from-block" information
+     * if it has been properly parsed;
+     * “empty” optional if parsing failed (and all required warnings were printed).
+     */
+    private static Optional<TrackFromBlockOption> parseTrackFromBlock(@NonNull CommandLine line) {
+        assert line != null;
+
+        final @Nullable String trackFromBlockStr = line.getOptionValue("track-from-block");
+        if (trackFromBlockStr == null) {
+            System.err.println("WARNING: --track-from-block option is mandatory!");
+            return Optional.empty();
+        } else {
+            switch (trackFromBlockStr.toUpperCase()) {
+                case "LATEST_KNOWN":
+                    return Optional.of(new TrackFromBlockOption(
+                            AddTrackedAddresses.StartTrackingAddressMode.LATEST_KNOWN_BLOCK,
+                            0 // dummy
+                    ));
+//                case "LATEST_NODE_SYNCED":
+//                    break;
+//                case "LATEST_CHERRYGARDEN_SYNCED":
+//                    break;
+                default:
+                    try {
+                        final int blockNumberCandidate = Integer.parseUnsignedInt(trackFromBlockStr);
+                        assert blockNumberCandidate >= 0 : blockNumberCandidate;
+                        return Optional.of(new TrackFromBlockOption(
+                                AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK,
+                                blockNumberCandidate
+                        ));
+                    } catch (NumberFormatException e) {
+                        System.err.println("" +
+                                "WARNING: --track-from-block option should contain one of the supported constants, " +
+                                "or non-negative block number!");
+                        return Optional.empty();
+                    }
+            }
+        }
+    }
+
+    /**
+     * Parse "--confirmations" option,
+     * printing all necessary warnings in the process.
+     *
+     * @return non-empty {@link Optional<>} with the parsed number of confirmations,
+     * if it has been properly parsed;
+     * “empty” optional if parsing failed (and all required warnings were printed).
+     * If the optional parameter is missing in the command line,
+     * the result is dependent on the "_default" argument:
+     * if _default is <code>null</code>,
+     * the optional will be assumed "empty" (i.e. parsing failed);
+     * if _default contains some value,
+     * the optional will be assumed "non-empty" and the default value returned.
+     */
+    private static Optional<Integer> parseConfirmations(@NonNull CommandLine line,
+                                                        @Nullable Integer _default) {
+        assert line != null;
+        assert (_default == null) || (_default.intValue() >= 0) : _default;
+
+        final @Nullable String confirmationsStr = line.getOptionValue("confirmations");
+        if (confirmationsStr == null) {
+            // There is no "--confirmations" option; should we use a default or fail?
+            if (_default == null) {
+                System.err.println("WARNING: --confirmations option is mandatory!");
+                return Optional.empty();
+            } else {
+                return Optional.of(_default);
+            }
+        } else { // confirmationsStr != null
+            try {
+                final int confirmationsCandidate = Integer.parseUnsignedInt(confirmationsStr);
+                assert confirmationsCandidate >= 0 : confirmationsCandidate;
+                return Optional.of(confirmationsCandidate);
+            } catch (NumberFormatException e) {
+                System.err.println("" +
+                        "WARNING: --confirmations option should contain non-negative number of confirmations!");
+                return Optional.empty();
+            }
+        }
+    }
+
+    /**
      * Constructor: analyze the CLI arguments and act accordingly.
      */
     public CherryGardenerCLI(@NonNull String[] args) {
@@ -122,158 +261,191 @@ public class CherryGardenerCLI {
             if (line.hasOption("help")) {
                 printHelp();
             } else if (line.hasOption("list-supported-currencies")) {
-                printTitle(System.err);
-
-                System.err.println("Listing supported currencies...");
-
-                final Optional<List<String>> connectUrls = parseConnectUrls(line);
-                if (!connectUrls.isPresent()) {
-                    System.err.println("WARNING: --connect option is mandatory!");
-                } else {
-                    try {
-                        final ClientConnector connector = new ClientConnectorImpl(connectUrls.get());
-                        @Nullable final List<Currency> currencies = connector.getCurrencies();
-                        if (currencies == null) {
-                            System.err.println("ERROR: Could not get the supported currencies!");
-                        } else {
-                            System.err.println("Received list of currencies:");
-                            for (final Currency c : currencies) {
-                                final @Nullable String optComment = c.getComment();
-                                System.err.printf("  %s: \"%s\" - %s%s\n",
-                                        c.getSymbol(),
-                                        c.getName(),
-                                        (c.getCurrencyType() == Currency.CurrencyType.ETH) ?
-                                                "Ether cryptocurrency" :
-                                                String.format("ERC20 token at %s", c.getDAppAddress()),
-                                        (optComment == null) ? "" : String.format(" (%s)", optComment)
-                                );
-                            }
-                            connector.shutdown();
-                        }
-                    } catch (CompletionException exc) {
-                        System.err.println("ERROR: Could not connect to UniCherryGarden!");
-                    }
-                }
+                handleListSupportedCurrencies(line);
             } else if (line.hasOption("list-tracked-addresses")) {
-                printTitle(System.err);
-
-                System.err.println("Listing tracked addresses...");
-
-                final Optional<List<String>> connectUrls = parseConnectUrls(line);
-                if (!connectUrls.isPresent()) {
-                    System.err.println("WARNING: --connect option is mandatory!");
-                } else {
-                    try {
-                        final ClientConnector connector = new ClientConnectorImpl(connectUrls.get());
-                        final Observer observer = connector.getObserver();
-
-                        @Nullable final List<@NonNull String> trackedAddresses = observer.getTrackedAddresses();
-                        if (trackedAddresses == null) {
-                            System.err.println("ERROR: Could not get the tracked addresses!");
-                        } else {
-                            for (final String addr : trackedAddresses) {
-                                System.err.printf("  %s\n", addr);
-                            }
-                        }
-                        connector.shutdown();
-                    } catch (CompletionException exc) {
-                        System.err.println("ERROR: Could not connect to UniCherryGarden!");
-                        System.err.printf("%s\n", exc);
-                    }
-                }
+                handleListTrackedAddresses(line);
             } else if (line.hasOption("add-tracked-address")) {
-                printTitle(System.err);
-
-                @NonNull final String address = line.getOptionValue("add-tracked-address").toLowerCase();
-                @Nullable final String trackFromBlockStr = line.getOptionValue("track-from-block");
-                @Nullable final String commentOpt = line.getOptionValue("comment");
-
-                // If null, it means that validation failed
-                final AddTrackedAddresses.@Nullable StartTrackingAddressMode trackFromBlockMode;
-                final int trackFromBlock; // 0 if any mode is different from FROM_BLOCK.
-                final boolean argValidationSuccess;
-                {
-                    if (!EthUtils.Addresses.isValidLowercasedAddress(address)) {
-                        System.err.println("" +
-                                "WARNING: --add-tracked-address option should contain a valid Ethereum address!");
-                        trackFromBlockMode = null;
-                        trackFromBlock = 0; // dummy
-                        argValidationSuccess = false;
-                    } else if (trackFromBlockStr == null) {
-                        System.err.println("WARNING: --track-from-block option is mandatory!");
-                        trackFromBlockMode = null;
-                        trackFromBlock = 0;
-                        argValidationSuccess = false;
-                    } else {
-                        switch (trackFromBlockStr.toUpperCase()) {
-                            case "LATEST_KNOWN":
-                                trackFromBlockMode = AddTrackedAddresses.StartTrackingAddressMode.LATEST_KNOWN_BLOCK;
-                                trackFromBlock = 0; // dummy
-                                argValidationSuccess = true;
-                                break;
-                            default:
-                                int blockNumberCandidate;
-                                boolean success;
-                                try {
-                                    blockNumberCandidate = Integer.parseUnsignedInt(trackFromBlockStr);
-                                    success = true;
-                                } catch (NumberFormatException e) {
-                                    System.err.println("" +
-                                            "WARNING: --track-from-block option should contain one of the supported constants, " +
-                                            "or non-negative block number!");
-                                    blockNumberCandidate = 0;
-                                    success = false;
-                                }
-                                assert blockNumberCandidate >= 0 : blockNumberCandidate;
-                                trackFromBlockMode = AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK;
-                                trackFromBlock = blockNumberCandidate;
-                                argValidationSuccess = success;
-                                break;
-                        }
-                    }
-                }
-
-                if (argValidationSuccess) {
-
-                    System.err.printf("Adding an address %s with %s; tracking from %s, %s...\n",
-                            address,
-                            (commentOpt == null) ? "no comment" : String.format("comment \"%s\"", commentOpt),
-                            trackFromBlockMode,
-                            trackFromBlock
-                    );
-
-                    final Optional<List<String>> connectUrls = parseConnectUrls(line);
-                    if (!connectUrls.isPresent()) {
-                        System.err.println("WARNING: --connect option is mandatory!");
-                    } else {
-                        try {
-                            final ClientConnector connector = new ClientConnectorImpl(connectUrls.get());
-                            final Observer observer = connector.getObserver();
-
-                            final boolean success = observer.startTrackingAddress(
-                                    address,
-                                    trackFromBlockMode,
-                                    trackFromBlock,
-                                    commentOpt);
-                            if (success) {
-                                System.err.printf("Address %s successfully added!\n");
-                            } else {
-                                System.err.printf("ERROR: Address %s failed to add!\n");
-                            }
-
-                            connector.shutdown();
-                        } catch (CompletionException exc) {
-                            System.err.println("ERROR: Could not connect to UniCherryGarden!");
-                            System.err.printf("%s\n", exc);
-                        }
-                    }
-                }
+                handleAddTrackedAddress(line);
+            } else if (line.hasOption("get-balances")) {
+                handleGetBalances(line);
             } else {
                 printHelp();
             }
         } catch (ParseException exp) {
             System.err.printf("ERROR: Parsing failed. Reason: %s\n", exp.getMessage());
             printHelp();
+        }
+    }
+
+    private static final void handleListSupportedCurrencies(@NonNull CommandLine line) {
+        assert line != null;
+
+        printTitle(System.err);
+        System.err.println("Listing supported currencies...");
+
+        final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
+
+        if (connectUrlsOpt.isPresent()) {
+            try {
+                final ClientConnector connector = new ClientConnectorImpl(connectUrlsOpt.get());
+                final @Nullable List<Currency> currencies = connector.getCurrencies();
+                if (currencies == null) {
+                    System.err.println("ERROR: Could not get the supported currencies!");
+                } else {
+                    System.err.println("Received list of currencies:");
+                    for (final Currency c : currencies) {
+                        final @Nullable String optComment = c.getComment();
+                        System.err.printf("  %s: \"%s\" - %s%s\n",
+                                c.getSymbol(),
+                                c.getName(),
+                                (c.getCurrencyType() == Currency.CurrencyType.ETH) ?
+                                        "Ether cryptocurrency" :
+                                        String.format("ERC20 token at %s", c.getDAppAddress()),
+                                (optComment == null) ? "" : String.format(" (%s)", optComment)
+                        );
+                    }
+                    connector.shutdown();
+                }
+            } catch (CompletionException exc) {
+                System.err.println("ERROR: Could not connect to UniCherryGarden!");
+            }
+        }
+    }
+
+    private static final void handleListTrackedAddresses(@NonNull CommandLine line) {
+        assert line != null;
+
+        printTitle(System.err);
+        System.err.println("Listing tracked addresses...");
+
+        final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
+
+        if (connectUrlsOpt.isPresent()) {
+            try {
+                final ClientConnector connector = new ClientConnectorImpl(connectUrlsOpt.get());
+                final Observer observer = connector.getObserver();
+
+                final @Nullable List<@NonNull String> trackedAddresses = observer.getTrackedAddresses();
+                if (trackedAddresses == null) {
+                    System.err.println("ERROR: Could not get the tracked addresses!");
+                } else {
+                    for (final String addr : trackedAddresses) {
+                        System.err.printf("  %s\n", addr);
+                    }
+                }
+                connector.shutdown();
+            } catch (CompletionException exc) {
+                System.err.println("ERROR: Could not connect to UniCherryGarden!");
+                System.err.printf("%s\n", exc);
+            }
+        }
+    }
+
+    private static final void handleAddTrackedAddress(@NonNull CommandLine line) {
+        assert line != null;
+
+        printTitle(System.err);
+
+        final @NonNull Optional<String> addressOpt = parseEthereumAddressOption(line, "add-tracked-address");
+        final @NonNull Optional<TrackFromBlockOption> trackFromBlockOpt = parseTrackFromBlock(line);
+        final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
+        final @NonNull Optional<String> commentOpt = Optional.ofNullable(line.getOptionValue("comment"));
+
+        if (true &&
+                addressOpt.isPresent() &&
+                trackFromBlockOpt.isPresent() &&
+                connectUrlsOpt.isPresent()
+        ) {
+            final @NonNull String address = addressOpt.get();
+            final @NonNull TrackFromBlockOption trackFromBlock = trackFromBlockOpt.get();
+
+            System.err.printf("Adding tracked address %s with %s; tracking from %s, %s...\n",
+                    address,
+                    commentOpt.isPresent() ? String.format("comment \"%s\"", commentOpt) : "no comment",
+                    trackFromBlock.mode,
+                    trackFromBlock.block
+            );
+
+            try {
+                final ClientConnector connector = new ClientConnectorImpl(connectUrlsOpt.get());
+                final Observer observer = connector.getObserver();
+
+                final boolean success = observer.startTrackingAddress(
+                        address,
+                        trackFromBlock.mode,
+                        trackFromBlock.block,
+                        commentOpt.orElse(null));
+                if (success) {
+                    System.err.printf("Address %s successfully added!\n");
+                } else {
+                    System.err.printf("ERROR: Address %s failed to add!\n");
+                }
+
+                connector.shutdown();
+            } catch (CompletionException exc) {
+                System.err.println("ERROR: Could not connect to UniCherryGarden!");
+                System.err.printf("%s\n", exc);
+            }
+        }
+    }
+
+    private static final void handleGetBalances(@NonNull CommandLine line) {
+        assert line != null;
+
+        printTitle(System.err);
+        System.err.println("Getting balances...");
+
+        final @NonNull Optional<String> addressOpt = parseEthereumAddressOption(line, "get-balances");
+        final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
+        final @NonNull Optional<Integer> confirmationsOpt = parseConfirmations(line, 0);
+
+        if (true &&
+                addressOpt.isPresent() &&
+                confirmationsOpt.isPresent() &&
+                connectUrlsOpt.isPresent()
+        ) {
+            final String address = addressOpt.get();
+            final int confirmations = confirmationsOpt.get().intValue();
+            try {
+                final ClientConnector connector = new ClientConnectorImpl(connectUrlsOpt.get());
+                final Observer.@NonNull BalanceRequestResult balanceResult = connector.getObserver().getAddressBalances(
+                        address,
+                        null,
+                        confirmations
+                );
+                if (!balanceResult.overallBalancesSuccess) {
+                    System.err.printf("ERROR: Could not get the balances for %s!\n", address);
+                } else {
+                    System.err.printf("Received the balances for %s (with %s confirmation(s)):\n",
+                            address, confirmations);
+
+                    for (final Map.Entry<Currency, Observer.BalanceRequestResult.@NonNull CurrencyBalanceFact> entry :
+                            balanceResult.balances.entrySet()) {
+                        final @NonNull Currency currencyKey = entry.getKey();
+                        final Observer.BalanceRequestResult.@NonNull CurrencyBalanceFact balanceFact = entry.getValue();
+
+                        System.err.printf("  %s: %s (synced to %s, %s)\n",
+                                currencyKey,
+                                balanceFact.amount,
+                                balanceFact.syncedToBlock,
+                                balanceFact.syncState
+                        );
+                    }
+                    System.err.printf("" +
+                                    "Overall status:\n" +
+                                    "  block %10s: latest known,\n",
+                            "  block %10s: latest synced by node,\n",
+                            "  block %10s: latest processed by UniCherryGarden.\n",
+                            balanceResult,
+                            balanceResult.latestBlockchainKnownBlock,
+                            balanceResult.latestBlockchainSyncedBlock,
+                            balanceResult.latestUniCherryGardenSyncedBlock
+                    );
+                    connector.shutdown();
+                }
+            } catch (CompletionException exc) {
+                System.err.println("ERROR: Could not connect to UniCherryGarden!");
+            }
         }
     }
 
