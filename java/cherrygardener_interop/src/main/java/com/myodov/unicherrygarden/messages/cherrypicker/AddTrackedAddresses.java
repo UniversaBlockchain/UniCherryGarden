@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
 import com.myodov.unicherrygarden.messages.CherryPickerResponse;
+import com.myodov.unicherrygarden.messages.RequestPayload;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -72,30 +73,47 @@ public class AddTrackedAddresses {
         }
     }
 
-    public static final class Request implements CherryPickerRequest {
-        @NonNull
-        public final ActorRef<Response> replyTo;
+    public static final class ATARequestPayload implements RequestPayload {
         @NonNull
         public final StartTrackingAddressMode trackingMode;
         @NonNull
         public final List<AddressDataToTrack> addressesToTrack;
 
-
         @JsonCreator
-        public Request(@NonNull ActorRef<Response> replyTo,
-                       @NonNull StartTrackingAddressMode trackingMode,
-                       @NonNull List<AddressDataToTrack> addressesToTrack) {
-            assert replyTo != null;
+        public ATARequestPayload(@NonNull StartTrackingAddressMode trackingMode,
+                                 @NonNull List<AddressDataToTrack> addressesToTrack) {
             assert trackingMode != null;
             assert addressesToTrack != null;
-            this.replyTo = replyTo;
             this.trackingMode = trackingMode;
             this.addressesToTrack = addressesToTrack;
         }
 
         @Override
         public String toString() {
-            return String.format("AddTrackedAddresses.Request(%s, %s)", replyTo, trackingMode);
+            return String.format("AddTrackedAddresses.ATARequestPayload(%s, %s)", trackingMode, addressesToTrack);
+        }
+    }
+
+    public static final class Request implements CherryPickerRequest {
+        @NonNull
+        public final ActorRef<Response> replyTo;
+
+        @NonNull
+        public final ATARequestPayload payload;
+
+
+        @JsonCreator
+        public Request(@NonNull ActorRef<Response> replyTo,
+                       @NonNull ATARequestPayload payload) {
+            assert replyTo != null;
+            assert payload != null;
+            this.replyTo = replyTo;
+            this.payload = payload;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("AddTrackedAddresses.Request(%s, %s)", replyTo, payload);
         }
     }
 

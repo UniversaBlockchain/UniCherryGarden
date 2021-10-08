@@ -9,11 +9,16 @@ import akka.cluster.typed.Cluster;
 import akka.cluster.typed.ClusterCommand;
 import akka.cluster.typed.JoinSeedNodes;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
+import com.myodov.unicherrygarden.ethereum.Ethereum;
+import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import com.myodov.unicherrygarden.messages.connector.api.AddressOwnershipConfirmator;
 import com.myodov.unicherrygarden.messages.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.messages.connector.api.Keygen;
 import com.myodov.unicherrygarden.messages.connector.api.Observer;
-import com.myodov.unicherrygarden.ethereum.Ethereum;
+import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActor;
+import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorMessage;
+import com.myodov.unicherrygarden.messages.connector.impl.actors.messages.GetCurrenciesCommand;
+import com.myodov.unicherrygarden.messages.connector.impl.actors.messages.WaitForBootCommand;
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -53,7 +58,7 @@ public class ClientConnectorImpl implements ClientConnector {
 
 
     @NonNull
-    private final ActorSystem<ConnectorActor.Message> actorSystem;
+    private final ActorSystem<ConnectorActorMessage> actorSystem;
 
     private final boolean offlineMode;
 
@@ -89,9 +94,9 @@ public class ClientConnectorImpl implements ClientConnector {
 
             logger.debug("Waiting to boot...");
             try {
-                final CompletionStage<ConnectorActor.WaitForBootCommand.BootCompleted> stage = AskPattern.ask(
+                final CompletionStage<WaitForBootCommand.BootCompleted> stage = AskPattern.ask(
                         actorSystem,
-                        ConnectorActor.WaitForBootCommand::new,
+                        WaitForBootCommand::new,
                         LAUNCH_TIMEOUT,
                         actorSystem.scheduler());
                 stage.toCompletableFuture().join();
@@ -167,18 +172,18 @@ public class ClientConnectorImpl implements ClientConnector {
         if (offlineMode) {
             return null;
         } else {
-            final CompletionStage<ConnectorActor.ListSupportedCurrenciesCommand.Result> stage =
+            final CompletionStage<GetCurrenciesCommand.Result> stage =
                     AskPattern.ask(
                             actorSystem,
-                            ConnectorActor.ListSupportedCurrenciesCommand::new,
+                            GetCurrenciesCommand::new,
                             ConnectorActor.DEFAULT_CALL_TIMEOUT,
                             actorSystem.scheduler());
 
             try {
-                final ConnectorActor.ListSupportedCurrenciesCommand.Result result = stage.toCompletableFuture().join();
+                final GetCurrenciesCommand.Result result = stage.toCompletableFuture().join();
                 return result.response.currencies;
             } catch (CancellationException | CompletionException exc) {
-                logger.error("Could not complete ListSupportedCurrenciesCommand command", exc);
+                logger.error("Could not complete GetCurrenciesCommand command", exc);
                 return null;
             }
         }

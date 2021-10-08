@@ -34,10 +34,10 @@ public class CherryGardenerCLI {
                 "h", "help", false,
                 "Display help."));
         commandOptionGroup.addOption(new Option(
-                null, "list-supported-currencies", false,
+                "gc", "get-currencies", false,
                 "Print the list of currencies supported by CherryGardener and all other components."));
         commandOptionGroup.addOption(new Option(
-                "lta", "list-tracked-addresses", false,
+                "gta", "get-tracked-addresses", false,
                 "Print the list of addresses tracked by CherryPicker."));
         commandOptionGroup.addOption(new Option(
                 "ata", "add-tracked-address", true,
@@ -260,10 +260,10 @@ public class CherryGardenerCLI {
             final CommandLine line = parser.parse(options, args);
             if (line.hasOption("help")) {
                 printHelp();
-            } else if (line.hasOption("list-supported-currencies")) {
-                handleListSupportedCurrencies(line);
-            } else if (line.hasOption("list-tracked-addresses")) {
-                handleListTrackedAddresses(line);
+            } else if (line.hasOption("get-currencies")) {
+                handleGetCurrencies(line);
+            } else if (line.hasOption("get-tracked-addresses")) {
+                handleGetTrackedAddresses(line);
             } else if (line.hasOption("add-tracked-address")) {
                 handleAddTrackedAddress(line);
             } else if (line.hasOption("get-balances")) {
@@ -277,11 +277,11 @@ public class CherryGardenerCLI {
         }
     }
 
-    private static final void handleListSupportedCurrencies(@NonNull CommandLine line) {
+    private static final void handleGetCurrencies(@NonNull CommandLine line) {
         assert line != null;
 
         printTitle(System.err);
-        System.err.println("Listing supported currencies...");
+        System.err.println("Getting supported currencies...");
 
         final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
 
@@ -312,11 +312,11 @@ public class CherryGardenerCLI {
         }
     }
 
-    private static final void handleListTrackedAddresses(@NonNull CommandLine line) {
+    private static final void handleGetTrackedAddresses(@NonNull CommandLine line) {
         assert line != null;
 
         printTitle(System.err);
-        System.err.println("Listing tracked addresses...");
+        System.err.println("Getting tracked addresses...");
 
         final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
 

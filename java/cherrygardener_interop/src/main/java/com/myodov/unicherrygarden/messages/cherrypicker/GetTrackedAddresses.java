@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
 import com.myodov.unicherrygarden.messages.CherryPickerResponse;
+import com.myodov.unicherrygarden.messages.RequestPayload;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -16,19 +17,14 @@ public class GetTrackedAddresses {
     public static final @NonNull ServiceKey<Request> SERVICE_KEY =
             ServiceKey.create(Request.class, "getTrackedAddressesService");
 
-    public static final class Request implements CherryPickerRequest {
-        @NonNull
-        public final ActorRef<Response> replyTo;
+    public static final class GTARequestPayload implements RequestPayload {
         public final boolean includeComment;
         public final boolean includeSyncedFrom;
         public final boolean includeSyncedTo;
 
-        @JsonCreator
-        public Request(@NonNull ActorRef<Response> replyTo,
-                       boolean includeComment,
-                       boolean includeSyncedFrom,
-                       boolean includeSyncedTo) {
-            this.replyTo = replyTo;
+        public GTARequestPayload(boolean includeComment,
+                                 boolean includeSyncedFrom,
+                                 boolean includeSyncedTo) {
             this.includeComment = includeComment;
             this.includeSyncedFrom = includeSyncedFrom;
             this.includeSyncedTo = includeSyncedTo;
@@ -36,7 +32,31 @@ public class GetTrackedAddresses {
 
         @Override
         public String toString() {
-            return String.format("GetTrackedAddresses.Request(%s)", replyTo);
+            return String.format("GetTrackedAddresses.GTARequestPayload(%s, %s, %s)",
+                    includeComment, includeSyncedFrom, includeSyncedTo);
+        }
+    }
+
+
+    public static final class Request implements CherryPickerRequest {
+        @NonNull
+        public final ActorRef<Response> replyTo;
+
+        @NonNull
+        public final GTARequestPayload payload;
+
+        @JsonCreator
+        public Request(@NonNull ActorRef<Response> replyTo,
+                       @NonNull GTARequestPayload payload) {
+            assert replyTo != null;
+            assert payload != null;
+            this.replyTo = replyTo;
+            this.payload = payload;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("GetTrackedAddresses.Request(%s, %s)", replyTo, payload);
         }
     }
 
@@ -104,6 +124,7 @@ public class GetTrackedAddresses {
                         boolean includeComment,
                         boolean includeSyncedFrom,
                         boolean includeSyncedTo) {
+            assert addresses != null;
             this.addresses = addresses;
             this.includeComment = includeComment;
             this.includeSyncedFrom = includeSyncedFrom;

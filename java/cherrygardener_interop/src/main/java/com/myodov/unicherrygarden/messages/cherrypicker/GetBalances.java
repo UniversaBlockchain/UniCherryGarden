@@ -1,30 +1,34 @@
-package com.myodov.unicherrygarden.messages.cherrygardener;
+package com.myodov.unicherrygarden.messages.cherrypicker;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.messages.CherryGardenerRequest;
 import com.myodov.unicherrygarden.messages.CherryGardenerResponse;
 import com.myodov.unicherrygarden.messages.RequestPayload;
+import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.List;
 
 
-public class GetCurrencies {
+public class GetBalances {
     public static final @NonNull ServiceKey<Request> SERVICE_KEY =
-            ServiceKey.create(Request.class, "getCurrenciesService");
+            ServiceKey.create(Request.class, "getBalancesService");
 
-    // We want to be able to serialize this, no matter the class is empty.
-    // Otherwise Jackson fails with a error like
-    // "No serializer found for class ... and no properties discovered to create BeanSerializer
-    // (to avoid exception, disable SerializationFeature.FAIL_ON_EMPTY_BEANS)".
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    public static final class GCRequestPayload implements RequestPayload {
-        @JsonCreator
-        public GCRequestPayload() {
+    public static final class GBRequestPayload implements RequestPayload {
+        @NonNull
+        public final int confirmations;
+
+        public GBRequestPayload(int confirmations) {
+            assert confirmations >= 0 : confirmations;
+            this.confirmations = confirmations;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("GetBalances.GBRequestPayload(%s)", confirmations);
         }
     }
 
@@ -32,11 +36,12 @@ public class GetCurrencies {
         @NonNull
         public final ActorRef<Response> replyTo;
 
-        public final GetCurrencies.@NonNull GCRequestPayload payload;
+        @NonNull
+        public final GBRequestPayload payload;
 
         @JsonCreator
         public Request(@NonNull ActorRef<Response> replyTo,
-                       GetCurrencies.@NonNull GCRequestPayload payload) {
+                       @NonNull GBRequestPayload payload) {
             assert replyTo != null;
             assert payload != null;
             this.replyTo = replyTo;
@@ -45,7 +50,7 @@ public class GetCurrencies {
 
         @Override
         public String toString() {
-            return String.format("GetCurrencies.Request(%s, %s)", replyTo, payload);
+            return String.format("GetBalances.Request(%s, %s)", replyTo, payload);
         }
     }
 
@@ -60,7 +65,7 @@ public class GetCurrencies {
 
         @Override
         public String toString() {
-            return String.format("GetCurrencies.Response(%s)", currencies);
+            return String.format("GetBalances.Response(%s)", currencies);
         }
     }
 }
