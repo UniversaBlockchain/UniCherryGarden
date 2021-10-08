@@ -4,9 +4,7 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
-import com.myodov.unicherrygarden.messages.CherryPickerRequest;
-import com.myodov.unicherrygarden.messages.CherryPickerResponse;
-import com.myodov.unicherrygarden.messages.RequestPayload;
+import com.myodov.unicherrygarden.messages.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -17,11 +15,13 @@ public class GetTrackedAddresses {
     public static final @NonNull ServiceKey<Request> SERVICE_KEY =
             ServiceKey.create(Request.class, "getTrackedAddressesService");
 
-    public static final class GTARequestPayload implements RequestPayload {
+    public static final class GTARequestPayload
+            implements RequestPayload {
         public final boolean includeComment;
         public final boolean includeSyncedFrom;
         public final boolean includeSyncedTo;
 
+        @JsonCreator
         public GTARequestPayload(boolean includeComment,
                                  boolean includeSyncedFrom,
                                  boolean includeSyncedTo) {
@@ -38,31 +38,22 @@ public class GetTrackedAddresses {
     }
 
 
-    public static final class Request implements CherryPickerRequest {
-        @NonNull
-        public final ActorRef<Response> replyTo;
-
-        @NonNull
-        public final GTARequestPayload payload;
-
+    public static final class Request
+            extends RequestWithReplyTo<GTARequestPayload, Response>
+            implements CherryPickerRequest {
         @JsonCreator
         public Request(@NonNull ActorRef<Response> replyTo,
                        @NonNull GTARequestPayload payload) {
-            assert replyTo != null;
-            assert payload != null;
-            this.replyTo = replyTo;
-            this.payload = payload;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("GetTrackedAddresses.Request(%s, %s)", replyTo, payload);
+            super(replyTo, payload);
         }
     }
 
-    public static final class Response implements CherryPickerResponse {
 
-        public static final class TrackedAddressInformation {
+    public static final class Response
+            implements CherryPickerResponse {
+
+        public static final class TrackedAddressInformation
+                implements Serializable {
             @NonNull
             public final String address;
 

@@ -8,6 +8,7 @@ import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.messages.CherryGardenerRequest;
 import com.myodov.unicherrygarden.messages.CherryGardenerResponse;
 import com.myodov.unicherrygarden.messages.RequestPayload;
+import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.List;
@@ -22,34 +23,27 @@ public class GetCurrencies {
     // "No serializer found for class ... and no properties discovered to create BeanSerializer
     // (to avoid exception, disable SerializationFeature.FAIL_ON_EMPTY_BEANS)".
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    public static final class GCRequestPayload implements RequestPayload {
+    public static final class GCRequestPayload
+            implements RequestPayload {
         @JsonCreator
         public GCRequestPayload() {
         }
     }
 
-    public static final class Request implements CherryGardenerRequest {
-        @NonNull
-        public final ActorRef<Response> replyTo;
 
-        public final GetCurrencies.@NonNull GCRequestPayload payload;
-
+    public static final class Request
+            extends RequestWithReplyTo<GCRequestPayload, Response>
+            implements CherryGardenerRequest {
         @JsonCreator
         public Request(@NonNull ActorRef<Response> replyTo,
-                       GetCurrencies.@NonNull GCRequestPayload payload) {
-            assert replyTo != null;
-            assert payload != null;
-            this.replyTo = replyTo;
-            this.payload = payload;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("GetCurrencies.Request(%s, %s)", replyTo, payload);
+                       @NonNull GCRequestPayload payload) {
+            super(replyTo, payload);
         }
     }
 
-    public static final class Response implements CherryGardenerResponse {
+
+    public static final class Response
+            implements CherryGardenerResponse {
         @NonNull
         public final List<Currency> currencies;
 

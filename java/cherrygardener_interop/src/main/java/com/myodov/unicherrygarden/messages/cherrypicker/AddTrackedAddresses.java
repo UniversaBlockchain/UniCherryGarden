@@ -7,6 +7,7 @@ import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
 import com.myodov.unicherrygarden.messages.CherryPickerResponse;
 import com.myodov.unicherrygarden.messages.RequestPayload;
+import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -73,7 +74,8 @@ public class AddTrackedAddresses {
         }
     }
 
-    public static final class ATARequestPayload implements RequestPayload {
+    public static final class ATARequestPayload
+            implements RequestPayload {
         @NonNull
         public final StartTrackingAddressMode trackingMode;
         @NonNull
@@ -94,28 +96,17 @@ public class AddTrackedAddresses {
         }
     }
 
-    public static final class Request implements CherryPickerRequest {
-        @NonNull
-        public final ActorRef<Response> replyTo;
 
-        @NonNull
-        public final ATARequestPayload payload;
-
-
+    public static final class Request
+            extends RequestWithReplyTo<ATARequestPayload, Response>
+            implements CherryPickerRequest {
         @JsonCreator
         public Request(@NonNull ActorRef<Response> replyTo,
                        @NonNull ATARequestPayload payload) {
-            assert replyTo != null;
-            assert payload != null;
-            this.replyTo = replyTo;
-            this.payload = payload;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("AddTrackedAddresses.Request(%s, %s)", replyTo, payload);
+            super(replyTo, payload);
         }
     }
+
 
     public static final class Response implements CherryPickerResponse {
         /**

@@ -10,7 +10,6 @@ import akka.cluster.typed.ClusterCommand;
 import akka.cluster.typed.JoinSeedNodes;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.ethereum.Ethereum;
-import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import com.myodov.unicherrygarden.messages.connector.api.AddressOwnershipConfirmator;
 import com.myodov.unicherrygarden.messages.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.messages.connector.api.Keygen;
@@ -118,6 +117,7 @@ public class ClientConnectorImpl implements ClientConnector {
      * Main loop execution.
      */
     public static void main(String[] args) {
+        // TODO: remove, not necessary
         final ECKeyPair pair;
 
         try {
@@ -128,11 +128,7 @@ public class ClientConnectorImpl implements ClientConnector {
 
             final byte[] bytes = Numeric.toBytesPadded(pair.getPrivateKey(), Ethereum.PRIVATE_KEY_SIZE_BYTES);
             System.out.printf("Private key: %s\n", Hex.toHexString(bytes));
-        } catch (InvalidAlgorithmParameterException e) {
-            e.printStackTrace();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (NoSuchProviderException e) {
+        } catch (InvalidAlgorithmParameterException | NoSuchAlgorithmException | NoSuchProviderException e) {
             e.printStackTrace();
         }
     }
