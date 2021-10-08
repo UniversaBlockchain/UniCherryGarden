@@ -2,79 +2,70 @@ package com.myodov.unicherrygarden.messages.connector.impl.actors.messages;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
-import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorCommand;
-import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorNotification;
+import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorCommandImpl;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**
  * Akka API command to “get currencies” (which are supported by the system).
+ * <p>
+ * ReqPayload=`GetCurrencies.@NonNull GCRequestPayload`
+ * Res=`Result`
  */
-public class GetCurrenciesCommand implements ConnectorActorCommand {
+public class GetCurrenciesCommand
+        extends ConnectorActorCommandImpl<GetCurrencies.@NonNull GCRequestPayload, GetCurrenciesCommand.Result> {
+
     /**
-     * During GetCurrencies command execution, we ask the Receptionist
+     * During the command execution, we ask the Receptionist
      * about available service providing this command; this class is the response adapted
      * to handle the command.
+     * <p>
+     * NOTE:
+     * ReqPayload=`GetCurrencies.@NonNull GCRequestPayload`
+     * Res=`Result`
      */
-    public static class ReceptionistResponse implements ConnectorActorNotification {
-        public final Receptionist.@NonNull Listing listing;
-
-        public final GetCurrencies.@NonNull GCRequestPayload payload;
-
-        @NonNull
-        public final ActorRef<Result> gcReplyTo;
-
-        public ReceptionistResponse(
-                Receptionist.@NonNull Listing listing,
-                GetCurrencies.@NonNull GCRequestPayload payload,
-                @NonNull ActorRef<Result> gcReplyTo) {
-            assert listing != null;
-            assert payload != null;
-            assert gcReplyTo != null;
-            this.listing = listing;
-            this.payload = payload;
-            this.gcReplyTo = gcReplyTo;
-        }
-    }
-
-    public static class InternalResult implements ConnectorActorNotification {
-        public final GetCurrencies.Response response;
-        @NonNull
-        public final ActorRef<Result> gcReplyTo;
-
-        public InternalResult(GetCurrencies.Response response,
-                              @NonNull ActorRef<Result> gcReplyTo) {
-            assert response != null;
-            assert gcReplyTo != null;
-            this.response = response;
-            this.gcReplyTo = gcReplyTo;
-        }
-    }
-
-    public static class Result {
-        public final GetCurrencies.Response response;
-
-        public Result(GetCurrencies.Response response) {
-            assert response != null;
-            this.response = response;
+    public static class ReceptionistResponse
+            extends ConnectorActorCommandImpl.ReceptionistResponseImpl<GetCurrencies.@NonNull GCRequestPayload, Result> {
+        @JsonCreator
+        public ReceptionistResponse(Receptionist.@NonNull Listing listing,
+                                    GetCurrencies.@NonNull GCRequestPayload payload,
+                                    @NonNull ActorRef<Result> replyTo) {
+            super(listing, payload, replyTo);
         }
     }
 
 
-    @NonNull
-    public final ActorRef<Result> replyTo;
+    /**
+     * Resp=`GetCurrencies.@NonNull Response`
+     * Res=`Result`
+     */
+    public static class InternalResult
+            extends ConnectorActorCommandImpl.InternalResultImpl<GetCurrencies.@NonNull Response, Result> {
+        public InternalResult(GetCurrencies.@NonNull Response response,
+                              @NonNull ActorRef<Result> replyTo) {
+            super(response, replyTo);
+        }
+    }
 
-    public final GetCurrencies.@NonNull GCRequestPayload payload;
+
+    /**
+     * Resp=`GetCurrencies.@NonNull Response`
+     */
+    public static class Result
+            extends ConnectorActorCommandImpl.ResultImpl<GetCurrencies.@NonNull Response> {
+        public Result(GetCurrencies.@NonNull Response response) {
+            super(response);
+        }
+    }
+
 
     /**
      * Constructor.
      */
     public GetCurrenciesCommand(@NonNull ActorRef<Result> replyTo,
                                 GetCurrencies.@NonNull GCRequestPayload payload) {
-        assert replyTo != null;
-        assert payload != null;
-        this.replyTo = replyTo;
-        this.payload = payload;
+        super(replyTo, payload);
     }
 
     /**
@@ -82,10 +73,5 @@ public class GetCurrenciesCommand implements ConnectorActorCommand {
      */
     public GetCurrenciesCommand(@NonNull ActorRef<Result> replyTo) {
         this(replyTo, new GetCurrencies.GCRequestPayload());
-    }
-
-    @Override
-    public String toString() {
-        return String.format("GetCurrenciesCommand(%s, %s)", replyTo, payload);
     }
 }

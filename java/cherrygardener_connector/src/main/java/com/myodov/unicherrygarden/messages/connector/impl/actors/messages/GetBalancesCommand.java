@@ -3,81 +3,52 @@ package com.myodov.unicherrygarden.messages.connector.impl.actors.messages;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
-import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorCommand;
-import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorNotification;
+import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorCommandImpl;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**
  * Akka API command to “get balances”.
  */
-public class GetBalancesCommand implements ConnectorActorCommand {
+public class GetBalancesCommand
+        extends ConnectorActorCommandImpl<GetBalances.@NonNull GBRequestPayload, GetBalancesCommand.Result> {
+
     /**
-     * During GetBalancesCommand command execution, we ask the Receptionist
+     * During the command execution, we ask the Receptionist
      * about available service providing this command; this class is the response adapted
      * to handle the command.
      */
-    public static class ReceptionistResponse implements ConnectorActorNotification {
-        public final Receptionist.@NonNull Listing listing;
-
-        public final GetBalances.@NonNull GBRequestPayload payload;
-
-        @NonNull
-        public final ActorRef<Result> gbReplyTo;
-
-        public ReceptionistResponse(
-                Receptionist.@NonNull Listing listing,
-                GetBalances.@NonNull GBRequestPayload payload,
-                @NonNull ActorRef<Result> gbReplyTo) {
-            assert listing != null;
-            assert payload != null;
-            assert gbReplyTo != null;
-            this.listing = listing;
-            this.payload = payload;
-            this.gbReplyTo = gbReplyTo;
+    public static class ReceptionistResponse
+            extends ConnectorActorCommandImpl.ReceptionistResponseImpl<GetBalances.@NonNull GBRequestPayload, Result> {
+        public ReceptionistResponse(Receptionist.@NonNull Listing listing,
+                                    GetBalances.@NonNull GBRequestPayload payload,
+                                    @NonNull ActorRef<Result> replyTo) {
+            super(listing, payload, replyTo);
         }
     }
 
-    public static class InternalResult implements ConnectorActorNotification {
-        public final GetBalances.@NonNull Response response;
-        @NonNull
-        public final ActorRef<Result> gbReplyTo;
 
+    public static class InternalResult
+            extends ConnectorActorCommandImpl.InternalResultImpl<GetBalances.@NonNull Response, Result> {
         public InternalResult(GetBalances.@NonNull Response response,
-                              @NonNull ActorRef<Result> gbReplyTo) {
-            assert response != null;
-            assert gbReplyTo != null;
-            this.response = response;
-            this.gbReplyTo = gbReplyTo;
+                              @NonNull ActorRef<Result> replyTo) {
+            super(response, replyTo);
         }
     }
 
-    public static class Result {
-        final GetBalances.@NonNull Response response;
 
+    public static class Result
+            extends ConnectorActorCommandImpl.ResultImpl<GetBalances.@NonNull Response> {
         public Result(GetBalances.@NonNull Response response) {
-            assert response != null;
-            this.response = response;
+            super(response);
         }
     }
 
-    @NonNull
-    public final ActorRef<Result> replyTo;
-
-    public final GetBalances.@NonNull GBRequestPayload payload;
 
     /**
      * Constructor.
      */
     public GetBalancesCommand(@NonNull ActorRef<Result> replyTo,
                               GetBalances.@NonNull GBRequestPayload payload) {
-        assert replyTo != null;
-        assert payload != null;
-        this.replyTo = replyTo;
-        this.payload = payload;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("GetBalancesCommand(%s, %s)", replyTo, payload);
+        super(replyTo, payload);
     }
 }

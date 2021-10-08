@@ -3,81 +3,52 @@ package com.myodov.unicherrygarden.messages.connector.impl.actors.messages;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
-import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorCommand;
-import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorNotification;
+import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorCommandImpl;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**
  * Akka API command to “add tracked addresses”.
  */
-public class AddTrackedAddressesCommand implements ConnectorActorCommand {
+public class AddTrackedAddressesCommand
+        extends ConnectorActorCommandImpl<AddTrackedAddresses.@NonNull ATARequestPayload, AddTrackedAddressesCommand.Result> {
+
     /**
-     * During AddTrackedAddressesCommand command execution, we ask the Receptionist
+     * During the command execution, we ask the Receptionist
      * about available service providing this command; this class is the response adapted
      * to handle the command.
      */
-    public static class ReceptionistResponse implements ConnectorActorNotification {
-        public final Receptionist.@NonNull Listing listing;
-
-        public final AddTrackedAddresses.@NonNull ATARequestPayload payload;
-
-        @NonNull
-        public final ActorRef<Result> ataReplyTo;
-
-        public ReceptionistResponse(
-                Receptionist.@NonNull Listing listing,
-                AddTrackedAddresses.@NonNull ATARequestPayload payload,
-                @NonNull ActorRef<Result> ataReplyTo) {
-            assert listing != null;
-            assert payload != null;
-            assert ataReplyTo != null;
-            this.listing = listing;
-            this.payload = payload;
-            this.ataReplyTo = ataReplyTo;
+    public static class ReceptionistResponse
+            extends ConnectorActorCommandImpl.ReceptionistResponseImpl<AddTrackedAddresses.@NonNull ATARequestPayload, Result> {
+        public ReceptionistResponse(Receptionist.@NonNull Listing listing,
+                                    AddTrackedAddresses.@NonNull ATARequestPayload payload,
+                                    @NonNull ActorRef<Result> replyTo) {
+            super(listing, payload, replyTo);
         }
     }
 
-    public static class ATAInternalResult implements ConnectorActorNotification {
-        public final AddTrackedAddresses.@NonNull Response response;
-        @NonNull
-        public final ActorRef<Result> ataReplyTo;
 
-        public ATAInternalResult(AddTrackedAddresses.@NonNull Response response,
-                                 @NonNull ActorRef<Result> ataReplyTo) {
-            assert response != null;
-            assert ataReplyTo != null;
-            this.response = response;
-            this.ataReplyTo = ataReplyTo;
+    public static class InternalResult
+            extends ConnectorActorCommandImpl.InternalResultImpl<AddTrackedAddresses.@NonNull Response, Result> {
+        public InternalResult(AddTrackedAddresses.@NonNull Response response,
+                              @NonNull ActorRef<Result> replyTo) {
+            super(response, replyTo);
         }
     }
 
-    public static class Result {
-        final AddTrackedAddresses.@NonNull Response response;
 
+    public static class Result
+            extends ConnectorActorCommandImpl.ResultImpl<AddTrackedAddresses.@NonNull Response> {
         public Result(AddTrackedAddresses.@NonNull Response response) {
-            assert response != null;
-            this.response = response;
+            super(response);
         }
     }
 
-    @NonNull
-    public final ActorRef<Result> replyTo;
-
-    public final AddTrackedAddresses.@NonNull ATARequestPayload payload;
 
     /**
      * Constructor.
      */
     public AddTrackedAddressesCommand(@NonNull ActorRef<Result> replyTo,
                                       AddTrackedAddresses.@NonNull ATARequestPayload payload) {
-        assert replyTo != null;
-        assert payload != null;
-        this.replyTo = replyTo;
-        this.payload = payload;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("AddTrackedAddressesCommand(%s, %s)", replyTo, payload);
+        super(replyTo, payload);
     }
 }

@@ -80,7 +80,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                 // AddTrackedAddresses
                 .onMessage(AddTrackedAddressesCommand.class, this::onAddTrackedAddresses)
                 .onMessage(AddTrackedAddressesCommand.ReceptionistResponse.class, this::onAddTrackedAddressesReceptionistResponse)
-                .onMessage(AddTrackedAddressesCommand.ATAInternalResult.class, this::onAddTrackedAddressesResult)
+                .onMessage(AddTrackedAddressesCommand.InternalResult.class, this::onAddTrackedAddressesResult)
                 // GetBalances
                 .onMessage(GetBalancesCommand.class, this::onGetBalances)
                 .onMessage(GetBalancesCommand.ReceptionistResponse.class, this::onGetBalancesReceptionistResponse)
@@ -286,7 +286,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                     // Adapt the incoming response
                     (GetCurrencies.Response response, Throwable throwable) -> {
                         logger.debug("Returned GetCurrencies response: {}", response);
-                        return new GetCurrenciesCommand.InternalResult(response, msg.gcReplyTo);
+                        return new GetCurrenciesCommand.InternalResult(response, msg.replyTo);
                     }
             );
         }
@@ -319,7 +319,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                     // Adapt the incoming response
                     (GetTrackedAddresses.Response response, Throwable throwable) -> {
                         logger.debug("Returned GetTrackedAddresses response: {}", response);
-                        return new GetTrackedAddressesCommand.InternalResult(response, msg.gtaReplyTo);
+                        return new GetTrackedAddressesCommand.InternalResult(response, msg.replyTo);
                     }
             );
         }
@@ -350,7 +350,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                     // Adapt the incoming response
                     (AddTrackedAddresses.Response response, Throwable throwable) -> {
                         logger.debug("Returned AddTrackedAddresses response: {}", response);
-                        return new AddTrackedAddressesCommand.ATAInternalResult(response, msg.ataReplyTo);
+                        return new AddTrackedAddressesCommand.InternalResult(response, msg.replyTo);
                     }
             );
         }
@@ -381,7 +381,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                     // Adapt the incoming response
                     (GetBalances.Response response, Throwable throwable) -> {
                         logger.debug("Returned GetBalances response: {}", response);
-                        return new GetBalancesCommand.InternalResult(response, msg.gbReplyTo);
+                        return new GetBalancesCommand.InternalResult(response, msg.replyTo);
                     }
             );
         }
@@ -389,23 +389,22 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
     }
 
     private Behavior<ConnectorActorMessage> onGetCurrenciesResult(GetCurrenciesCommand.@NonNull InternalResult msg) {
-        msg.gcReplyTo.tell(new GetCurrenciesCommand.Result(msg.response));
+        msg.replyTo.tell(new GetCurrenciesCommand.Result(msg.response));
         return this;
     }
 
     private Behavior<ConnectorActorMessage> onGetTrackedAddressesResult(GetTrackedAddressesCommand.@NonNull InternalResult msg) {
-        msg.gtaReplyTo.tell(new GetTrackedAddressesCommand.Result(msg.response));
+        msg.replyTo.tell(new GetTrackedAddressesCommand.Result(msg.response));
         return this;
     }
 
-    private Behavior<ConnectorActorMessage> onAddTrackedAddressesResult(AddTrackedAddressesCommand.ATAInternalResult msg) {
-        msg.ataReplyTo.tell(new AddTrackedAddressesCommand.Result(msg.response));
+    private Behavior<ConnectorActorMessage> onAddTrackedAddressesResult(AddTrackedAddressesCommand.@NonNull InternalResult msg) {
+        msg.replyTo.tell(new AddTrackedAddressesCommand.Result(msg.response));
         return this;
     }
 
     private Behavior<ConnectorActorMessage> onGetBalancesResult(GetBalancesCommand.@NonNull InternalResult msg) {
-        msg.gbReplyTo.tell(new GetBalancesCommand.Result(msg.response));
+        msg.replyTo.tell(new GetBalancesCommand.Result(msg.response));
         return this;
     }
-
 }
