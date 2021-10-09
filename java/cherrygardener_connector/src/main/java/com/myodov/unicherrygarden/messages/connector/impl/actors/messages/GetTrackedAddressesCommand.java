@@ -2,6 +2,7 @@ package com.myodov.unicherrygarden.messages.connector.impl.actors.messages;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
+import akka.actor.typed.receptionist.ServiceKey;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
 import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorCommandImpl;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -10,8 +11,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
  * Akka API command to “list tracked addresses”.
  */
 public class GetTrackedAddressesCommand
-        extends ConnectorActorCommandImpl<GetTrackedAddresses.@NonNull GTARequestPayload, GetTrackedAddressesCommand.Result> {
-
+        extends ConnectorActorCommandImpl<GetTrackedAddresses.@NonNull GTARequestPayload, GetTrackedAddressesCommand.Result, GetTrackedAddresses.Response> {
     /**
      * During the command execution, we ask the Receptionist
      * about available service providing this command; this class is the response adapted
@@ -50,5 +50,11 @@ public class GetTrackedAddressesCommand
     public GetTrackedAddressesCommand(@NonNull ActorRef<Result> replyTo,
                                       GetTrackedAddresses.@NonNull GTARequestPayload payload) {
         super(replyTo, payload);
+    }
+
+    @Override
+    @NonNull
+    public ServiceKey<GetTrackedAddresses.Request> getServiceKey() {
+        return GetTrackedAddresses.SERVICE_KEY;
     }
 }

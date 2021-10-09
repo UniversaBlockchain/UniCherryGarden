@@ -8,6 +8,8 @@ import akka.actor.typed.javadsl.ActorContext;
 import akka.actor.typed.javadsl.Behaviors;
 import akka.actor.typed.javadsl.Receive;
 import akka.actor.typed.receptionist.Receptionist;
+import akka.actor.typed.receptionist.ServiceKey;
+import akka.japi.function.Function;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import com.myodov.unicherrygarden.messages.cherrygardener.PingCherryGardener;
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
@@ -19,6 +21,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Constructor;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -72,19 +75,35 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                 // GetCurrenciesCommand
                 .onMessage(GetCurrenciesCommand.class, this::onGetCurrencies)
                 .onMessage(GetCurrenciesCommand.ReceptionistResponse.class, this::onGetCurrenciesReceptionistResponse)
-                .onMessage(GetCurrenciesCommand.InternalResult.class, this::onGetCurrenciesResult)
+                .onMessage(
+                        GetCurrenciesCommand.InternalResult.class,
+                        makeMsgResultHandler(
+                                GetCurrencies.Response.class,
+                                GetCurrenciesCommand.Result.class))
                 // GetTrackedAddresses
                 .onMessage(GetTrackedAddressesCommand.class, this::onGetTrackedAddresses)
                 .onMessage(GetTrackedAddressesCommand.ReceptionistResponse.class, this::onGetTrackedAddressesReceptionistResponse)
-                .onMessage(GetTrackedAddressesCommand.InternalResult.class, this::onGetTrackedAddressesResult)
+                .onMessage(
+                        GetTrackedAddressesCommand.InternalResult.class,
+                        makeMsgResultHandler(
+                                GetTrackedAddresses.Response.class,
+                                GetTrackedAddressesCommand.Result.class))
                 // AddTrackedAddresses
                 .onMessage(AddTrackedAddressesCommand.class, this::onAddTrackedAddresses)
                 .onMessage(AddTrackedAddressesCommand.ReceptionistResponse.class, this::onAddTrackedAddressesReceptionistResponse)
-                .onMessage(AddTrackedAddressesCommand.InternalResult.class, this::onAddTrackedAddressesResult)
+                .onMessage(
+                        AddTrackedAddressesCommand.InternalResult.class,
+                        makeMsgResultHandler(
+                                AddTrackedAddresses.Response.class,
+                                AddTrackedAddressesCommand.Result.class))
                 // GetBalances
                 .onMessage(GetBalancesCommand.class, this::onGetBalances)
                 .onMessage(GetBalancesCommand.ReceptionistResponse.class, this::onGetBalancesReceptionistResponse)
-                .onMessage(GetBalancesCommand.InternalResult.class, this::onGetBalancesResult)
+                .onMessage(
+                        GetBalancesCommand.InternalResult.class,
+                        makeMsgResultHandler(
+                                GetBalances.Response.class,
+                                GetBalancesCommand.Result.class))
                 .build();
     }
 
@@ -133,7 +152,6 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         return this;
     }
 
-
     /**
      * When someone (like ClientConnector) has sent the {@link GetCurrenciesCommand} message to the actor system
      * and expect it to be processed and return the result.
@@ -144,6 +162,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
 
         final ActorContext<ConnectorActorMessage> context = getContext();
         final ActorRef<Receptionist.Command> receptionist = context.getSystem().receptionist();
+        final ServiceKey<GetCurrencies.Request> serviceKey = msg.getServiceKey();
 
         context.ask(
                 Receptionist.Listing.class,
@@ -151,12 +170,12 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                 DEFAULT_CALL_TIMEOUT,
                 // Construct the outgoing message
                 (ActorRef<Receptionist.Listing> replyTo) ->
-                        Receptionist.find(GetCurrencies.SERVICE_KEY, replyTo),
+                        Receptionist.find(serviceKey, replyTo),
                 // Adapt the incoming response into `GetCurrenciesCommand.ReceptionistResponse`
                 (Receptionist.Listing response, Throwable throwable) -> {
                     logger.debug("Returned listing response: {}", response);
                     final Set<ActorRef<GetCurrencies.Request>> serviceInstances =
-                            response.getServiceInstances(GetCurrencies.SERVICE_KEY);
+                            response.getServiceInstances(serviceKey);
                     logger.debug("Service instances for {}: {}", response.getKey(), serviceInstances);
                     return new GetCurrenciesCommand.ReceptionistResponse(response, msg.payload, msg.replyTo);
                 }
@@ -175,6 +194,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
 
         final ActorContext<ConnectorActorMessage> context = getContext();
         final ActorRef<Receptionist.Command> receptionist = context.getSystem().receptionist();
+        final ServiceKey<GetTrackedAddresses.Request> serviceKey = msg.getServiceKey();
 
         context.ask(
                 Receptionist.Listing.class,
@@ -182,12 +202,12 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                 DEFAULT_CALL_TIMEOUT,
                 // Construct the outgoing message
                 (ActorRef<Receptionist.Listing> replyTo) ->
-                        Receptionist.find(GetTrackedAddresses.SERVICE_KEY, replyTo),
+                        Receptionist.find(serviceKey, replyTo),
                 // Adapt the incoming response into `GetTrackedAddressesCommand.ReceptionistResponse`
                 (Receptionist.Listing response, Throwable throwable) -> {
                     logger.debug("Returned listing response: {}", response);
                     final Set<ActorRef<GetTrackedAddresses.Request>> serviceInstances =
-                            response.getServiceInstances(GetTrackedAddresses.SERVICE_KEY);
+                            response.getServiceInstances(serviceKey);
                     logger.debug("Service instances for {}: {}", response.getKey(), serviceInstances);
                     return new GetTrackedAddressesCommand.ReceptionistResponse(response, msg.payload, msg.replyTo);
                 }
@@ -206,6 +226,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
 
         final ActorContext<ConnectorActorMessage> context = getContext();
         final ActorRef<Receptionist.Command> receptionist = context.getSystem().receptionist();
+        final ServiceKey<AddTrackedAddresses.Request> serviceKey = msg.getServiceKey();
 
         context.ask(
                 Receptionist.Listing.class,
@@ -213,12 +234,12 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                 DEFAULT_CALL_TIMEOUT,
                 // Construct the outgoing message
                 (ActorRef<Receptionist.Listing> replyTo) ->
-                        Receptionist.find(AddTrackedAddresses.SERVICE_KEY, replyTo),
+                        Receptionist.find(serviceKey, replyTo),
                 // Adapt the incoming response into `AddTrackedAddressesCommand.ReceptionistResponse`
                 (Receptionist.Listing response, Throwable throwable) -> {
                     logger.debug("Returned listing response: {}", response);
                     final Set<ActorRef<AddTrackedAddresses.Request>> serviceInstances =
-                            response.getServiceInstances(AddTrackedAddresses.SERVICE_KEY);
+                            response.getServiceInstances(serviceKey);
                     logger.debug("Service instances for {}: {}", response.getKey(), serviceInstances);
                     return new AddTrackedAddressesCommand.ReceptionistResponse(response, msg.payload, msg.replyTo);
                 }
@@ -237,6 +258,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
 
         final ActorContext<ConnectorActorMessage> context = getContext();
         final ActorRef<Receptionist.Command> receptionist = context.getSystem().receptionist();
+        final ServiceKey<GetBalances.Request> serviceKey = msg.getServiceKey();
 
         context.ask(
                 Receptionist.Listing.class,
@@ -244,12 +266,12 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                 DEFAULT_CALL_TIMEOUT,
                 // Construct the outgoing message
                 (ActorRef<Receptionist.Listing> replyTo) ->
-                        Receptionist.find(GetBalances.SERVICE_KEY, replyTo),
+                        Receptionist.find(serviceKey, replyTo),
                 // Adapt the incoming response into `GetBalancesCommand.ReceptionistResponse`
                 (Receptionist.Listing response, Throwable throwable) -> {
                     logger.debug("Returned listing response: {}", response);
                     final Set<ActorRef<GetBalances.Request>> serviceInstances =
-                            response.getServiceInstances(GetBalances.SERVICE_KEY);
+                            response.getServiceInstances(serviceKey);
                     logger.debug("Service instances for {}: {}", response.getKey(), serviceInstances);
                     return new GetBalancesCommand.ReceptionistResponse(response, msg.payload, msg.replyTo);
                 }
@@ -279,8 +301,6 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                     gclProvider,
                     DEFAULT_CALL_TIMEOUT,
                     // Construct the outgoing message
-
-
                     (ActorRef<GetCurrencies.Response> replyTo) ->
                             new GetCurrencies.Request(replyTo, msg.payload),
                     // Adapt the incoming response
@@ -388,23 +408,34 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         return this;
     }
 
-    private Behavior<ConnectorActorMessage> onGetCurrenciesResult(GetCurrenciesCommand.@NonNull InternalResult msg) {
-        msg.replyTo.tell(new GetCurrenciesCommand.Result(msg.response));
-        return this;
-    }
+    /**
+     * A generic method that makes a handler for any “InternalResult” (<code>IntRes</code>)
+     * for any ConnectorActorCommand.
+     * This InternalResult actually contains a real response (of type <code>Res</code>) inside.
+     * The generated handler takes the <code>replyTo</code> field of IntRes, and sends it a message
+     * of type <code>Res</code>.
+     * <p>
+     * Examples:
+     * Resp=GetCurrencies.Response
+     * Res=GetCurrenciesCommand.Result
+     * IntRes=GetCurrenciesCommand.InternalResult
+     */
+    private <Resp, Res, IntRes extends ConnectorActorCommandImpl.InternalResultImpl<Resp, Res>> Function<IntRes, Behavior<ConnectorActorMessage>> makeMsgResultHandler(
+            Class<Resp> respClass,
+            Class<Res> resClass
+    ) {
+        final Constructor<Res> constructor;
+        try {
+            constructor = resClass.getConstructor(respClass);
+        } catch (NoSuchMethodException e) {
+            logger.error("No constructor for {}({})", resClass, respClass);
+            logger.error("Stack:", e);
+            throw new RuntimeException(String.format("Failed to make Result Handler for %s(%s)", resClass, respClass));
+        }
 
-    private Behavior<ConnectorActorMessage> onGetTrackedAddressesResult(GetTrackedAddressesCommand.@NonNull InternalResult msg) {
-        msg.replyTo.tell(new GetTrackedAddressesCommand.Result(msg.response));
-        return this;
-    }
-
-    private Behavior<ConnectorActorMessage> onAddTrackedAddressesResult(AddTrackedAddressesCommand.@NonNull InternalResult msg) {
-        msg.replyTo.tell(new AddTrackedAddressesCommand.Result(msg.response));
-        return this;
-    }
-
-    private Behavior<ConnectorActorMessage> onGetBalancesResult(GetBalancesCommand.@NonNull InternalResult msg) {
-        msg.replyTo.tell(new GetBalancesCommand.Result(msg.response));
-        return this;
+        return (final IntRes msg) -> {
+            msg.replyTo.tell(constructor.newInstance(msg.response));
+            return this;
+        };
     }
 }

@@ -17,8 +17,10 @@ import java.util.Set;
 
 
 public class AddTrackedAddresses {
-    public static final @NonNull ServiceKey<Request> SERVICE_KEY =
+    @NonNull
+    public static final ServiceKey<Request> SERVICE_KEY =
             ServiceKey.create(Request.class, "addTrackedAddressesService");
+
 
     /**
      * From what block should we start tracking an address/addresses.

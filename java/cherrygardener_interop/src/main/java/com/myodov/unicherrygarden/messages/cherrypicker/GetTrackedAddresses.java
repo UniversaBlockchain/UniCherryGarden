@@ -12,8 +12,10 @@ import java.util.List;
 
 
 public class GetTrackedAddresses {
-    public static final @NonNull ServiceKey<Request> SERVICE_KEY =
+    @NonNull
+    public static final ServiceKey<Request> SERVICE_KEY =
             ServiceKey.create(Request.class, "getTrackedAddressesService");
+
 
     public static final class GTARequestPayload
             implements RequestPayload {

@@ -2,6 +2,7 @@ package com.myodov.unicherrygarden.messages.connector.impl.actors.messages;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
+import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorCommandImpl;
@@ -11,11 +12,11 @@ import org.checkerframework.checker.nullness.qual.NonNull;
  * Akka API command to “get currencies” (which are supported by the system).
  * <p>
  * ReqPayload=`GetCurrencies.@NonNull GCRequestPayload`
- * Res=`Result`
+ * Res=`GetCurrencies.Result`
+ * Resp=`GetCurrencies.Response`
  */
 public class GetCurrenciesCommand
-        extends ConnectorActorCommandImpl<GetCurrencies.@NonNull GCRequestPayload, GetCurrenciesCommand.Result> {
-
+        extends ConnectorActorCommandImpl<GetCurrencies.@NonNull GCRequestPayload, GetCurrenciesCommand.Result, GetCurrencies.Response> {
     /**
      * During the command execution, we ask the Receptionist
      * about available service providing this command; this class is the response adapted
@@ -73,5 +74,11 @@ public class GetCurrenciesCommand
      */
     public GetCurrenciesCommand(@NonNull ActorRef<Result> replyTo) {
         this(replyTo, new GetCurrencies.GCRequestPayload());
+    }
+
+    @NonNull
+    @Override
+    public ServiceKey<GetCurrencies.Request> getServiceKey() {
+        return GetCurrencies.SERVICE_KEY;
     }
 }

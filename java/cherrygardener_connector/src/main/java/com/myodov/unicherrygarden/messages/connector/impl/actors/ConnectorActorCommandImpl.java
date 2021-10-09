@@ -5,10 +5,12 @@ import akka.actor.typed.receptionist.Receptionist;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**
- * Generic command to ConnectorActor.
+ * Abstract generic service command to ConnectorActor.
  */
-public class ConnectorActorCommandImpl<ReqPayload, Res>
-        implements ConnectorActorCommand {
+public abstract class ConnectorActorCommandImpl<
+        ReqPayload, Res, Resp
+        >
+        implements ServiceKeyedConnectorActorCommand<ReqPayload, Resp> {
     /**
      * Generic response from {@link Receptionist},
      * which should be delivered to <code>replyTo</code> actor

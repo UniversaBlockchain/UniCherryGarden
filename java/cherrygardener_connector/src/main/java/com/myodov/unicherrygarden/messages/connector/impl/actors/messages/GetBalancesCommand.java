@@ -2,6 +2,8 @@ package com.myodov.unicherrygarden.messages.connector.impl.actors.messages;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
+import akka.actor.typed.receptionist.ServiceKey;
+import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
 import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorCommandImpl;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -10,8 +12,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
  * Akka API command to “get balances”.
  */
 public class GetBalancesCommand
-        extends ConnectorActorCommandImpl<GetBalances.@NonNull GBRequestPayload, GetBalancesCommand.Result> {
-
+        extends ConnectorActorCommandImpl<GetBalances.@NonNull GBRequestPayload, GetBalancesCommand.Result, GetBalances.Response> {
     /**
      * During the command execution, we ask the Receptionist
      * about available service providing this command; this class is the response adapted
@@ -50,5 +51,11 @@ public class GetBalancesCommand
     public GetBalancesCommand(@NonNull ActorRef<Result> replyTo,
                               GetBalances.@NonNull GBRequestPayload payload) {
         super(replyTo, payload);
+    }
+
+    @NonNull
+    @Override
+    public ServiceKey<GetBalances.Request> getServiceKey() {
+        return GetBalances.SERVICE_KEY;
     }
 }

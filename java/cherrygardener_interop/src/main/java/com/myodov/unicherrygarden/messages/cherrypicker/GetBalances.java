@@ -14,8 +14,10 @@ import java.util.List;
 
 
 public class GetBalances {
-    public static final @NonNull ServiceKey<Request> SERVICE_KEY =
+    @NonNull
+    public static final ServiceKey<Request> SERVICE_KEY =
             ServiceKey.create(Request.class, "getBalancesService");
+
 
     public static final class GBRequestPayload
             implements RequestPayload {
