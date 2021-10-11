@@ -5,7 +5,7 @@ import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
-import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses
+import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.typesafe.scalalogging.LazyLogging
 
@@ -101,29 +101,43 @@ object CherryPicker extends LazyLogging {
       logger.info(s"Launching CherryPicker: v. $propVersionStr, built at $propBuildTimestampStr")
 
       context.system.receptionist ! Receptionist.Register(GetTrackedAddresses.SERVICE_KEY, context.self)
+      context.system.receptionist ! Receptionist.Register(AddTrackedAddresses.SERVICE_KEY, context.self)
+      context.system.receptionist ! Receptionist.Register(GetBalances.SERVICE_KEY, context.self)
 
       logger.debug("Setting up CherryPicker actor with timers")
       Behaviors.withTimers(timers => {
-        def scheduleNextIteration() = timers.startSingleTimer(Iterate(), ITERATION_PERIOD)
+        // On startup, schedule a single iteration;
+        // It will re-schedule itself when/if needed.
+        // We don’t setup a “regular” timer because sometimes a new iteration should happen without a pause;
+        // and sometimes a new iteration should happen not 5 (or so) seconds after the previous iteration *started*,
+        // but 5 seconds after a previous iteration *completed*.
+        // The latter though can be resolved by scheduleWithFixedDelay.
+        logger.error("Running first iteration of CherryPicker...")
+        context.self ! Iterate()
 
-        def handleIteration(): Behaviors.Receive[CherryPickerRequest] = Behaviors.receiveMessage {
-          (message: CherryPickerRequest) => {
-            logger.debug("Receiving CherryPicker message")
-            message match {
-              case Iterate() => {
-                picker.nextIteration()
-              }
-              case unknownMessage => {
-                logger.error(s"Unexpected message $unknownMessage")
-              }
-            }
-            scheduleNextIteration
+        Behaviors.receiveMessage {
+          case Iterate() => {
+            picker.nextIteration()
+            timers.startSingleTimer(Iterate(), ITERATION_PERIOD)
+            Behaviors.same
+          }
+          case message: GetTrackedAddresses.Request => {
+            logger.debug(s"Receiving GetTrackedAddresses message: $message")
+            Behaviors.same
+          }
+          case message: AddTrackedAddresses.Request => {
+            logger.debug(s"Receiving AddTrackedAddresses message: $message")
+            Behaviors.same
+          }
+          case message: GetBalances.Request => {
+            logger.debug(s"Receiving GetBalances message: $message")
+            Behaviors.same
+          }
+          case unknownMessage => {
+            logger.error(s"Unexpected message $unknownMessage")
             Behaviors.same
           }
         }
-
-        //      scheduleNextIteration
-        handleIteration()
       })
     }
   }

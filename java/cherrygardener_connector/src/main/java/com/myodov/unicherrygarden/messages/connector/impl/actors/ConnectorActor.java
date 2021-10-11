@@ -172,12 +172,13 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                 (ActorRef<Receptionist.Listing> replyTo) ->
                         Receptionist.find(serviceKey, replyTo),
                 // Adapt the incoming response into `GetCurrenciesCommand.ReceptionistResponse`
-                (Receptionist.Listing response, Throwable throwable) -> {
-                    logger.debug("Returned listing response: {}", response);
+                (Receptionist.Listing listing, Throwable throwable) -> {
+                    logger.debug("Returned listing response: {}", listing);
                     final Set<ActorRef<GetCurrencies.Request>> serviceInstances =
-                            response.getServiceInstances(serviceKey);
-                    logger.debug("Service instances for {}: {}", response.getKey(), serviceInstances);
-                    return new GetCurrenciesCommand.ReceptionistResponse(response, msg.payload, msg.replyTo);
+                            listing.getServiceInstances(serviceKey);
+                    logger.debug("Service instances for {}: {}", listing.getKey(), serviceInstances);
+                    return new GetCurrenciesCommand.ReceptionistResponse(
+                            listing, msg.payload, msg.replyTo);
                 }
         );
 

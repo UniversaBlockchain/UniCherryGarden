@@ -55,8 +55,8 @@ object CherryGardener extends LazyLogging {
     Behaviors.setup { context =>
       logger.info(s"Launching CherryGardener: v. $propVersionStr, built at $propBuildTimestampStr")
 
-      context.system.receptionist ! Receptionist.Register(GetCurrencies.SERVICE_KEY, context.self)
       context.system.receptionist ! Receptionist.Register(PingCherryGardener.SERVICE_KEY, context.self)
+      context.system.receptionist ! Receptionist.Register(GetCurrencies.SERVICE_KEY, context.self)
 
       Behaviors.receiveMessage {
         case message: GetCurrencies.Request => {

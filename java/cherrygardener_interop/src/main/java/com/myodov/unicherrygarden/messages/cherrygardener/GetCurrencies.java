@@ -15,8 +15,10 @@ import java.util.List;
 
 
 public class GetCurrencies {
-    public static final @NonNull ServiceKey<Request> SERVICE_KEY =
+    @NonNull
+    public static final ServiceKey<Request> SERVICE_KEY =
             ServiceKey.create(Request.class, "getCurrenciesService");
+
 
     // We want to be able to serialize this, no matter the class is empty.
     // Otherwise Jackson fails with a error like
@@ -34,6 +36,7 @@ public class GetCurrencies {
     public static final class Request
             extends RequestWithReplyTo<GCRequestPayload, Response>
             implements CherryGardenerRequest {
+
         @JsonCreator
         public Request(@NonNull ActorRef<Response> replyTo,
                        @NonNull GCRequestPayload payload) {
