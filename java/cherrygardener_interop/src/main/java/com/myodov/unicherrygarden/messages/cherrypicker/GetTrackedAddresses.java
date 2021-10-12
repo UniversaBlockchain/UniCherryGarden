@@ -126,7 +126,7 @@ public class GetTrackedAddresses {
 
         @Override
         public String toString() {
-            return String.format("GetTrackedAddresses.Response(%s: %s, incComm=%s, incSyncFrom=%s, incSyncTo=%s)",
+            return String.format("GetTrackedAddresses.Response(%s, incComm=%s, incSyncFrom=%s, incSyncTo=%s)",
                     addresses, includeComment, includeSyncedFrom, includeSyncedTo);
         }
     }

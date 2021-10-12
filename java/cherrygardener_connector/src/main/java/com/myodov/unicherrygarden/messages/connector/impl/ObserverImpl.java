@@ -9,6 +9,7 @@ import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
 import com.myodov.unicherrygarden.messages.connector.api.Observer;
 import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActor;
 import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorMessage;
+import com.myodov.unicherrygarden.messages.connector.impl.actors.messages.AddTrackedAddressesCommand;
 import com.myodov.unicherrygarden.messages.connector.impl.actors.messages.GetBalancesCommand;
 import com.myodov.unicherrygarden.messages.connector.impl.actors.messages.GetTrackedAddressesCommand;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -16,6 +17,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
@@ -46,19 +48,49 @@ public class ObserverImpl implements Observer {
                                         AddTrackedAddresses.@NonNull StartTrackingAddressMode mode,
                                         @Nullable Integer blockNumber,
                                         @Nullable String comment) {
-        throw new RuntimeException("TODO: not implemented");
+        assert (address != null) && EthUtils.Addresses.isValidLowercasedAddress(address) : address;
+        if (!EthUtils.Addresses.isValidLowercasedAddress(address)) {
+            throw new RuntimeException(String.format("%s is not a properly formed lowercased Ethereum address!"));
+        }
+
+        final CompletionStage<AddTrackedAddressesCommand.Result> stage =
+                AskPattern.ask(
+                        actorSystem,
+                        (replyTo) -> new AddTrackedAddressesCommand(
+                                replyTo,
+                                new AddTrackedAddresses.ATARequestPayload(
+                                        mode,
+                                        new ArrayList<AddTrackedAddresses.AddressDataToTrack>() {{
+                                            add(new AddTrackedAddresses.AddressDataToTrack(address, comment));
+                                        }},
+                                        blockNumber.intValue()
+
+                                )),
+                        ConnectorActor.DEFAULT_CALL_TIMEOUT,
+                        actorSystem.scheduler());
+
+        try {
+            final AddTrackedAddresses.Response response = stage.toCompletableFuture().join().response;
+            // We've requested just a single address. Therefore, the result `response.addresses`
+            // should be a set containing just it.
+            if (response.addresses.size() == 1 &&
+                    response.addresses.iterator().next() == address) {
+                return true;
+            } else {
+                logger.error("Received the weird response (not a single item {} but {}), " +
+                                "treating as failure.",
+                        address, response.addresses);
+                return false;
+            }
+        } catch (CancellationException | CompletionException exc) {
+            logger.error("Could not complete AddTrackedAddressesCommand command", exc);
+            return false;
+        }
     }
 
     @Override
     @Nullable
     public List<@NonNull String> getTrackedAddresses() {
-        // TODO: implement real data
-//        return new ArrayList<String>() {{
-//            add("0x884191033518be08616821d7676ca01695698451");
-//            add("0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24");
-//            add("0x3452519f4711703e13ea0863487eb8401bd6ae57");
-//        }};
-
         final CompletionStage<GetTrackedAddressesCommand.Result> stage =
                 AskPattern.ask(
                         actorSystem,
@@ -73,8 +105,7 @@ public class ObserverImpl implements Observer {
                         actorSystem.scheduler());
 
         try {
-            final GetTrackedAddressesCommand.Result result = stage.toCompletableFuture().join();
-            final GetTrackedAddresses.Response response = result.response;
+            final GetTrackedAddresses.Response response = stage.toCompletableFuture().join().response;
             // We didn’t request the comments/syncedFrom/syncedTo,
             // so they should not be present in the response.
             assert response.includeComment == false : response;
@@ -97,17 +128,26 @@ public class ObserverImpl implements Observer {
     }
 
     @Override
-    @NonNull
-    public BalanceRequestResult getAddressBalances(@NonNull String address,
-                                                   @Nullable Set<String> filterCurrencyKeys,
-                                                   int confirmations) {
+    public GetBalances.@NonNull BalanceRequestResult getAddressBalances(@NonNull String address,
+                                                                        @Nullable Set<String> filterCurrencyKeys,
+                                                                        int confirmations) {
         final CompletionStage<GetBalancesCommand.Result> stage =
                 AskPattern.ask(
                         actorSystem,
-                        (replyTo) -> new GetBalancesCommand(replyTo, new GetBalances.GBRequestPayload(confirmations)),
+                        (replyTo) -> new GetBalancesCommand(
+                                replyTo,
+                                new GetBalances.GBRequestPayload(
+                                        confirmations,
+                                        filterCurrencyKeys)),
                         ConnectorActor.DEFAULT_CALL_TIMEOUT,
                         actorSystem.scheduler());
 
-        throw new RuntimeException("TODO: not implemented");
+        try {
+            final GetBalances.Response response = stage.toCompletableFuture().join().response;
+            return response.result;
+        } catch (CancellationException | CompletionException exc) {
+            logger.error("Could not complete GetAddressBalances command", exc);
+            return GetBalances.BalanceRequestResult.unsuccessful();
+        }
     }
 }

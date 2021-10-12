@@ -49,6 +49,31 @@ public class AddTrackedAddresses {
         public final String address;
         @Nullable
         public final String comment;
+
+        /**
+         * Constructor.
+         */
+        @JsonCreator
+        public AddressDataToTrack(@NonNull String address,
+                                  @Nullable String comment) {
+            assert (address != null) && EthUtils.Addresses.isValidLowercasedAddress(address) : address;
+            this.address = address;
+            this.comment = comment;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("AddTrackedAddresses.AddressDataToTrack(%s, %s)",
+                    address, comment);
+        }
+    }
+
+    public static final class ATARequestPayload
+            implements RequestPayload {
+        @NonNull
+        public final StartTrackingAddressMode trackingMode;
+        @NonNull
+        public final List<AddressDataToTrack> addressesToTrack;
         public final int fromBlock;
 
         /**
@@ -60,41 +85,21 @@ public class AddTrackedAddresses {
          *                  otherwise should be <code>0</code>.
          */
         @JsonCreator
-        public AddressDataToTrack(@NonNull String address,
-                                  @Nullable String comment,
-                                  int fromBlock) {
-            assert (address != null) && EthUtils.Addresses.isValidLowercasedAddress(address) : address;
+        public ATARequestPayload(@NonNull StartTrackingAddressMode trackingMode,
+                                 @NonNull List<AddressDataToTrack> addressesToTrack,
+                                 int fromBlock) {
+            assert trackingMode != null;
+            assert addressesToTrack != null;
             assert fromBlock >= 0 : fromBlock;
-            this.address = address;
-            this.comment = comment;
+            this.trackingMode = trackingMode;
+            this.addressesToTrack = addressesToTrack;
             this.fromBlock = fromBlock;
         }
 
         @Override
         public String toString() {
-            return String.format("AddTrackedAddresses.AddressDataToTrack(%s, %s, %s)", address, comment, fromBlock);
-        }
-    }
-
-    public static final class ATARequestPayload
-            implements RequestPayload {
-        @NonNull
-        public final StartTrackingAddressMode trackingMode;
-        @NonNull
-        public final List<AddressDataToTrack> addressesToTrack;
-
-        @JsonCreator
-        public ATARequestPayload(@NonNull StartTrackingAddressMode trackingMode,
-                                 @NonNull List<AddressDataToTrack> addressesToTrack) {
-            assert trackingMode != null;
-            assert addressesToTrack != null;
-            this.trackingMode = trackingMode;
-            this.addressesToTrack = addressesToTrack;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("AddTrackedAddresses.ATARequestPayload(%s, %s)", trackingMode, addressesToTrack);
+            return String.format("AddTrackedAddresses.ATARequestPayload(%s, %s, %s)",
+                    trackingMode, addressesToTrack, fromBlock);
         }
     }
 

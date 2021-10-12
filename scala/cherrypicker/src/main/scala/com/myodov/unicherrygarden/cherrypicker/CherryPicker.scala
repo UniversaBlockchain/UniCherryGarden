@@ -5,11 +5,14 @@ import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
+import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult
+import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult.CurrencyBalanceFact
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 
 /** The main actor “cherry-picking” the data from the Ethereum blockchain into the DB. */
@@ -113,7 +116,7 @@ object CherryPicker extends LazyLogging {
         // but 5 seconds after a previous iteration *completed*.
         // The latter though can be resolved by scheduleWithFixedDelay.
         logger.error("Running first iteration of CherryPicker...")
-        context.self ! Iterate()
+        // context.self ! Iterate() // TODO: enable
 
         Behaviors.receiveMessage {
           case Iterate() => {
@@ -123,14 +126,40 @@ object CherryPicker extends LazyLogging {
           }
           case message: GetTrackedAddresses.Request => {
             logger.debug(s"Receiving GetTrackedAddresses message: $message")
+            val payload = message.payload
+            message.replyTo ! new GetTrackedAddresses.Response(
+              List().asJava,
+              payload.includeComment,
+              payload.includeSyncedFrom,
+              payload.includeSyncedTo
+            )
             Behaviors.same
           }
           case message: AddTrackedAddresses.Request => {
             logger.debug(s"Receiving AddTrackedAddresses message: $message")
+            message.replyTo ! new AddTrackedAddresses.Response(
+              Set[String]().asJava
+            )
             Behaviors.same
           }
           case message: GetBalances.Request => {
             logger.debug(s"Receiving GetBalances message: $message")
+            message.replyTo ! new GetBalances.Response(
+              new BalanceRequestResult(
+                false,
+//                List[CurrencyBalanceFact](
+//                  new CurrencyBalanceFact(
+//                    Currency.newEthCurrency(),
+//                    BigDecimal(123.45).underlying(),
+//                    BalanceRequestResult.CurrencyBalanceFact.BalanceSyncState.SYNCED_TO_LATEST_UNICHERRYGARDEN_TOKEN_STATE,
+//                    15
+//                  )
+//                ).asJava,
+                List.empty[CurrencyBalanceFact].asJava,
+                0,
+                0,
+                0)
+            )
             Behaviors.same
           }
           case unknownMessage => {

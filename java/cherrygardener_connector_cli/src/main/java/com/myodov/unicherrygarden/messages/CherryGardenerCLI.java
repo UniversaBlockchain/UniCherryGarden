@@ -3,6 +3,7 @@ package com.myodov.unicherrygarden.messages;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
+import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
 import com.myodov.unicherrygarden.messages.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.messages.connector.api.Observer;
 import com.myodov.unicherrygarden.messages.connector.impl.ClientConnectorImpl;
@@ -281,18 +282,19 @@ public class CherryGardenerCLI {
         assert line != null;
 
         printTitle(System.err);
-        System.err.println("Getting supported currencies...");
 
         final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
 
         if (connectUrlsOpt.isPresent()) {
+            System.err.println("Getting supported currencies...");
+
             try {
                 final ClientConnector connector = new ClientConnectorImpl(connectUrlsOpt.get());
                 final @Nullable List<Currency> currencies = connector.getCurrencies();
                 if (currencies == null) {
                     System.err.println("ERROR: Could not get the supported currencies!");
                 } else {
-                    System.err.println("Received list of currencies:");
+                    System.err.printf("Supported currencies (%s):\n", currencies.size());
                     for (final Currency c : currencies) {
                         final @Nullable String optComment = c.getComment();
                         System.err.printf("  %s: \"%s\" - %s%s\n",
@@ -304,6 +306,7 @@ public class CherryGardenerCLI {
                                 (optComment == null) ? "" : String.format(" (%s)", optComment)
                         );
                     }
+                    System.err.println("---");
                     connector.shutdown();
                 }
             } catch (CompletionException exc) {
@@ -316,11 +319,12 @@ public class CherryGardenerCLI {
         assert line != null;
 
         printTitle(System.err);
-        System.err.println("Getting tracked addresses...");
 
         final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
 
         if (connectUrlsOpt.isPresent()) {
+            System.err.println("Getting tracked addresses...");
+
             try {
                 final ClientConnector connector = new ClientConnectorImpl(connectUrlsOpt.get());
                 final Observer observer = connector.getObserver();
@@ -329,9 +333,11 @@ public class CherryGardenerCLI {
                 if (trackedAddresses == null) {
                     System.err.println("ERROR: Could not get the tracked addresses!");
                 } else {
+                    System.err.printf("Tracked addresses (%s):\n", trackedAddresses.size());
                     for (final String addr : trackedAddresses) {
                         System.err.printf("  %s\n", addr);
                     }
+                    System.err.println("---");
                 }
                 connector.shutdown();
             } catch (CompletionException exc) {
@@ -378,7 +384,7 @@ public class CherryGardenerCLI {
                 if (success) {
                     System.err.printf("Address %s successfully added!\n");
                 } else {
-                    System.err.printf("ERROR: Address %s failed to add!\n");
+                    System.err.printf("ERROR: Address %s failed to add!\n", address);
                 }
 
                 connector.shutdown();
@@ -393,7 +399,6 @@ public class CherryGardenerCLI {
         assert line != null;
 
         printTitle(System.err);
-        System.err.println("Getting balances...");
 
         final @NonNull Optional<String> addressOpt = parseEthereumAddressOption(line, "get-balances");
         final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
@@ -406,37 +411,38 @@ public class CherryGardenerCLI {
         ) {
             final String address = addressOpt.get();
             final int confirmations = confirmationsOpt.get().intValue();
+
+            System.err.printf("Getting balances for %s with %s confirmation(s)...\n",
+                    address, confirmations);
+
             try {
                 final ClientConnector connector = new ClientConnectorImpl(connectUrlsOpt.get());
-                final Observer.@NonNull BalanceRequestResult balanceResult = connector.getObserver().getAddressBalances(
+                final GetBalances.@NonNull BalanceRequestResult balanceResult = connector.getObserver().getAddressBalances(
                         address,
                         null,
                         confirmations
                 );
-                if (!balanceResult.overallBalancesSuccess) {
+                if (!balanceResult.overallSuccess) {
                     System.err.printf("ERROR: Could not get the balances for %s!\n", address);
                 } else {
                     System.err.printf("Received the balances for %s (with %s confirmation(s)):\n",
                             address, confirmations);
 
-                    for (final Map.Entry<Currency, Observer.BalanceRequestResult.@NonNull CurrencyBalanceFact> entry :
-                            balanceResult.balances.entrySet()) {
-                        final @NonNull Currency currencyKey = entry.getKey();
-                        final Observer.BalanceRequestResult.@NonNull CurrencyBalanceFact balanceFact = entry.getValue();
-
+                    for (final GetBalances.BalanceRequestResult.CurrencyBalanceFact balanceFact :
+                            balanceResult.balances) {
                         System.err.printf("  %s: %s (synced to %s, %s)\n",
-                                currencyKey,
+                                balanceFact.currency,
                                 balanceFact.amount,
                                 balanceFact.syncedToBlock,
                                 balanceFact.syncState
                         );
                     }
                     System.err.printf("" +
-                                    "Overall status:\n" +
-                                    "  block %10s: latest known,\n",
-                            "  block %10s: latest synced by node,\n",
-                            "  block %10s: latest processed by UniCherryGarden.\n",
-                            balanceResult,
+                                    "Overall status: %s\n" +
+                                    "  block %10s: latest known,\n" +
+                                    "  block %10s: latest synced by node,\n" +
+                                    "  block %10s: latest processed by UniCherryGarden.\n",
+                            balanceResult.overallSuccess,
                             balanceResult.latestBlockchainKnownBlock,
                             balanceResult.latestBlockchainSyncedBlock,
                             balanceResult.latestUniCherryGardenSyncedBlock

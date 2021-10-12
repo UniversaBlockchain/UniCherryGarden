@@ -1,6 +1,8 @@
 package com.myodov.unicherrygarden.api.types.dlt;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
+import com.myodov.unicherrygarden.messages.Serializable;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -12,11 +14,13 @@ import java.util.Objects;
  * @implNote Concrete class instead of some Java interface,
  * so it can be directly used in Akka serialized messages.
  */
-public class Currency {
-    public enum CurrencyType {
+public class Currency implements Serializable {
+
+    public enum CurrencyType implements Serializable {
         ETH,
         ERC20
     }
+
 
     @NonNull
     protected final CurrencyType type;
@@ -38,6 +42,7 @@ public class Currency {
      *
      * @param dAppAddress should be lowercased or <code>null</code>.
      */
+    @JsonCreator
     public Currency(
             @NonNull CurrencyType type,
             @Nullable String dAppAddress,
