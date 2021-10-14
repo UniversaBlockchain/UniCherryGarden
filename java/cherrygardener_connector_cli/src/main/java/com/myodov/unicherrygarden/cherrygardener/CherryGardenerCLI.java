@@ -1,4 +1,4 @@
-package com.myodov.unicherrygarden.messages;
+package com.myodov.unicherrygarden.cherrygardener;
 
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.ethereum.EthUtils;

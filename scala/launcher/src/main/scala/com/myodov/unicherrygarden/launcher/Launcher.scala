@@ -5,11 +5,11 @@ import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.ClusterEvent.MemberEvent
 import akka.cluster.typed.{Cluster, Subscribe}
 import com.myodov.unicherrygarden.cherrygardener.CherryGardener
-import com.myodov.unicherrygarden.{CherryPicker, CherryPlanter, LoggingConfigurator, UnicherrygardenVersion}
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
-import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryGardenerResponse, CherryPickerRequest, CherryPlanterRequest}
-import com.typesafe.config.ConfigFactory
+import com.myodov.unicherrygarden.storages.PostgreSQLStorage
+import com.myodov.unicherrygarden.{CherryPicker, CherryPlanter, LoggingConfigurator, UnicherrygardenVersion}
+import com.typesafe.config.{ConfigException, ConfigFactory}
 import com.typesafe.scalalogging.LazyLogging
 import scopt.OParser
 
@@ -57,7 +57,12 @@ You can choose a different HOCON configuration file instead of the regular appli
     val jdbcUrl = config.getString("db.jdbc_url")
     val dbUser = config.getString("db.user")
     val dbPassword = config.getString("db.password")
-    val dbMigrations = config.getStringList("db.migrations").asScala.toList
+    // This setting contains the optional database migrations, but may be omitted
+    val dbMigrations: List[String] = try {
+      config.getStringList("db.migrations").asScala.toList
+    } catch {
+      case _: ConfigException.Missing => List.empty[String]
+    }
     PostgreSQLStorage(jdbcUrl, dbUser, dbPassword, wipe, dbMigrations)
   }
 
