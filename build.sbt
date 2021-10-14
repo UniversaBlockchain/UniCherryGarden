@@ -17,7 +17,7 @@ val scalaTestVersion = "3.1.0"
 val scalikeJdbcVersion = "3.5.0"
 val syslogAppenderVersion = "1.0.0"
 val web3jVersion = "4.8.4"
-val jacksonCoreVersion = "2.11.4" // same version as used by akka-serialization-jackson
+val jacksonCoreVersion = "2.11.4" // same version as used by akka-serialization-jackson for Scala 2.13
 
 val javaSlf4jVersion = "1.7.30"
 val javaJunitVersion = "4.13.2"
@@ -44,7 +44,7 @@ sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
 sonatypeCredentialHost := "s01.oss.sonatype.org"
 publishTo := sonatypePublishToBundle.value
 
-val projectVersion = "0.1.2-SNAPSHOT"
+val projectVersion = "0.1.2"
 name := "unicherrygarden"
 version := projectVersion
 
