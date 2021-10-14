@@ -1,4 +1,4 @@
-package com.myodov.unicherrygarden.messages.connector.impl.actors;
+package com.myodov.unicherrygarden.connector.impl.actors;
 
 /**
  * Any notification (typically a reply for any message outgoing from {@link ConnectorActor})

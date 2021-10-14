@@ -3,14 +3,14 @@ import java.time.Instant
 import sbt.Compile
 // Versions
 
-val akkaVersion = "2.6.15"
+val akkaVersion = "2.6.16"
 val commonsIoVersion = "2.6"
 val configLibVersion = "1.4.1"
 val scoptVersion = "4.0.0"
 val h2DatabaseVersion = "1.4.199"
 val flywayDbVersion = "7.5.3"
 val logbackVersion = "1.2.3"
-val postgresqlVersion = "42.2.5"
+val postgresqlVersion = "42.2.24"
 val scalaLoggingVersion = "3.9.2"
 val scalaParallelCollectionsVersion = "1.0.0"
 val scalaTestVersion = "3.1.0"

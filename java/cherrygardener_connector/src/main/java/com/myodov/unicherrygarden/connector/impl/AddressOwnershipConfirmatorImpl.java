@@ -1,9 +1,9 @@
-package com.myodov.unicherrygarden.messages.connector.impl;
+package com.myodov.unicherrygarden.connector.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.myodov.unicherrygarden.messages.connector.api.AddressOwnershipConfirmator;
+import com.myodov.unicherrygarden.connector.api.AddressOwnershipConfirmator;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import org.bouncycastle.util.encoders.DecoderException;
 import org.bouncycastle.util.encoders.Hex;

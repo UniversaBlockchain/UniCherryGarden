@@ -1,9 +1,7 @@
-package com.myodov.unicherrygarden.messages.connector.impl.actors;
+package com.myodov.unicherrygarden.connector.impl.actors;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
-import akka.actor.typed.receptionist.ServiceKey;
-import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**

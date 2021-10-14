@@ -1,10 +1,10 @@
-package com.myodov.unicherrygarden.messages.connector.impl.actors.messages;
+package com.myodov.unicherrygarden.connector.impl.actors.messages;
 
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
-import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorCommandImpl;
+import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommandImpl;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**

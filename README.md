@@ -54,13 +54,13 @@ libraryDependencies += "com.myodov.unicherrygarden" % "cherrygardener_connector"
 
 ### Usage in the code
 
-After you’ve made a dependency on `cherrygardener_connector`, you have the Java API interfaces available in `com.myodov.unicherrygarden.cherrygardener.connector.api`, and the default implementation in `com.myodov.unicherrygarden.cherrygardener.connector.impl`.
+After you’ve made a dependency on `cherrygardener_connector`, you have the Java API interfaces available in `com.myodov.unicherrygarden.connector.api`, and the default implementation in `com.myodov.unicherrygarden.connector.impl`.
 
 Create an instance of the connector in this way:
 
 ~~~java
-import com.myodov.unicherrygarden.messages.connector.api.ClientConnector
-import com.myodov.unicherrygarden.messages.connector.impl.ClientConnectorImpl
+import com.myodov.unicherrygarden.connector.api.ClientConnector;
+import com.myodov.unicherrygarden.connector.impl.ClientConnectorImpl;
 
 // ...
 

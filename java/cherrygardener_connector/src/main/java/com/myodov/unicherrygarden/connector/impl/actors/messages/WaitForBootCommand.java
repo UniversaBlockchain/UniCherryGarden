@@ -1,7 +1,7 @@
-package com.myodov.unicherrygarden.messages.connector.impl.actors.messages;
+package com.myodov.unicherrygarden.connector.impl.actors.messages;
 
 import akka.actor.typed.ActorRef;
-import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorCommand;
+import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommand;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**

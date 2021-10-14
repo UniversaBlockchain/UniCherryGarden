@@ -1,4 +1,4 @@
-package com.myodov.unicherrygarden.messages.connector.api;
+package com.myodov.unicherrygarden.connector.api;
 
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import org.checkerframework.checker.nullness.qual.NonNull;

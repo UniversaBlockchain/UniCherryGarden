@@ -1,7 +1,8 @@
 package com.myodov.unicherrygarden.messages.connector.impl;
 
-import com.myodov.unicherrygarden.messages.connector.api.AddressOwnershipConfirmator;
+import com.myodov.unicherrygarden.connector.api.AddressOwnershipConfirmator;
 import com.myodov.unicherrygarden.api.types.PrivateKey;
+import com.myodov.unicherrygarden.connector.impl.AddressOwnershipConfirmatorImpl;
 import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.Nullable;

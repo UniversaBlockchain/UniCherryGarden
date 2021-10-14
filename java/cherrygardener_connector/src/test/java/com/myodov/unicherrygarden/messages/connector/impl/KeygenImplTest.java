@@ -1,6 +1,7 @@
 package com.myodov.unicherrygarden.messages.connector.impl;
 
 import com.myodov.unicherrygarden.api.types.PrivateKey;
+import com.myodov.unicherrygarden.connector.impl.KeygenImpl;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import org.junit.Test;
 import org.slf4j.Logger;

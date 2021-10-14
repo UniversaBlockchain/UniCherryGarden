@@ -1,7 +1,7 @@
-package com.myodov.unicherrygarden.messages.connector.impl.actors.messages;
+package com.myodov.unicherrygarden.connector.impl.actors.messages;
 
 import akka.actor.typed.receptionist.Receptionist;
-import com.myodov.unicherrygarden.messages.connector.impl.actors.ConnectorActorNotification;
+import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorNotification;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 public class ReceptionistSubscribeCherryGardenResponse implements ConnectorActorNotification {

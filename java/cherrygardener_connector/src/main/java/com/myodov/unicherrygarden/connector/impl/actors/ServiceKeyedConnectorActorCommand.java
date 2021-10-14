@@ -1,8 +1,8 @@
-package com.myodov.unicherrygarden.messages.connector.impl.actors;
+package com.myodov.unicherrygarden.connector.impl.actors;
 
 import akka.actor.typed.receptionist.ServiceKey;
 import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
-import com.myodov.unicherrygarden.messages.connector.impl.ClientConnectorImpl;
+import com.myodov.unicherrygarden.connector.impl.ClientConnectorImpl;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**

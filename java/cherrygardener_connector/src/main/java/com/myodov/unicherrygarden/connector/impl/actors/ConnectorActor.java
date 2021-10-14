@@ -1,4 +1,4 @@
-package com.myodov.unicherrygarden.messages.connector.impl.actors;
+package com.myodov.unicherrygarden.connector.impl.actors;
 
 
 import akka.actor.typed.ActorRef;
@@ -10,13 +10,13 @@ import akka.actor.typed.javadsl.Receive;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.japi.function.Function;
+import com.myodov.unicherrygarden.connector.impl.ClientConnectorImpl;
+import com.myodov.unicherrygarden.connector.impl.actors.messages.*;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import com.myodov.unicherrygarden.messages.cherrygardener.PingCherryGardener;
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
-import com.myodov.unicherrygarden.messages.connector.impl.ClientConnectorImpl;
-import com.myodov.unicherrygarden.messages.connector.impl.actors.messages.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,6 +1,6 @@
-package com.myodov.unicherrygarden.messages.connector.impl.actors;
+package com.myodov.unicherrygarden.connector.impl.actors;
 
-import com.myodov.unicherrygarden.messages.connector.impl.ClientConnectorImpl;
+import com.myodov.unicherrygarden.connector.impl.ClientConnectorImpl;
 
 /**
  * Any command (typically from {@link ClientConnectorImpl})
