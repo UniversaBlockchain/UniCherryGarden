@@ -17,7 +17,7 @@ import scala.jdk.CollectionConverters._
 
 object CLIMode extends Enumeration {
   type CLIMode = Value
-  val Init, Wipe, LaunchGardenWatcher, LaunchGardener = Value
+  val Init, Wipe, LaunchGardenWatcher, LaunchGardener, LaunchGardenerGardenWatcher = Value
 }
 
 /** The primary launcher for '''UniCherryGarden''' (and all its major subsystems). */
@@ -38,12 +38,20 @@ object LauncherApp extends App with LazyLogging {
         version('v', "version").text("print version"),
         cmd("init").text("Initializes UniCherryGarden database.")
           .action((_, c) => c.copy(mode = CLIMode.Init)),
-        cmd("wipe").text("Initializes UniCherryGarden database, wiping it in the process (DO NOT EVER USE IN PRODUCTION!)")
+        cmd("wipe").text(
+          "Initializes UniCherryGarden database, wiping it in the process " +
+            "(DO NOT EVER USE IN PRODUCTION!)")
           .action((_, c) => c.copy(mode = CLIMode.Wipe)),
         cmd("launch-gardenwatcher").text("Launches GardenWatcher watchdog.")
           .action((_, c) => c.copy(mode = CLIMode.LaunchGardenWatcher)),
-        cmd("launch-gardener").text("Launches CherryGardener (including CherryPicker and CherryPlanter) processes altogether.")
+        cmd("launch-gardener").text(
+          "Launches CherryGardener (including CherryPicker and CherryPlanter) " +
+            "processes altogether.")
           .action((_, c) => c.copy(mode = CLIMode.LaunchGardener)),
+        cmd("launch-gardener-gardenwatcher").text(
+          "Launches CherryGardener (including CherryPicker and CherryPlanter) " +
+            "and GardenWatcher processes altogether. Should not be used in production!")
+          .action((_, c) => c.copy(mode = CLIMode.LaunchGardenerGardenWatcher)),
         note(
           """
 You can choose a different HOCON configuration file instead of the regular application.conf using the standard approach, passing the following argument to VM:
@@ -121,6 +129,10 @@ You can choose a different HOCON configuration file instead of the regular appli
           case CLIMode.Wipe => init(wipe = true)
           case CLIMode.LaunchGardenWatcher => launchWatcher
           case CLIMode.LaunchGardener => launchGardener
+          case CLIMode.LaunchGardenerGardenWatcher => {
+            launchWatcher
+            launchGardener
+          }
           case unhandledMode => println(s"Unhandled mode $unhandledMode!")
         }
       case _ =>
@@ -192,6 +204,7 @@ object LauncherActor extends LazyLogging {
           val cluster = Cluster(context.system)
           cluster.subscriptions ! Subscribe(clusterSubscriber: ActorRef[MemberEvent], classOf[MemberEvent])
         }
+
         // CherryGardenerResponse and further are Java interfaces, so we cannot use convenient
         // unapply-based pattern matching.
         case response: CherryGardenerResponse => {
