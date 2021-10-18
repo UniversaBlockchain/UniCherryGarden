@@ -158,9 +158,31 @@ object CherryPicker extends LazyLogging {
           }
           case message: AddTrackedAddresses.Request => {
             logger.debug(s"Receiving AddTrackedAddresses message: $message")
+            val payload: AddTrackedAddresses.ATARequestPayload = message.payload
+
+            // Here goes the list of all added addresses
+            // (as Options; with Option.empty instead of any address that failed to add)
+            val addressesMaybeAdded: List[Option[String]] =
+              for (addr: AddTrackedAddresses.AddressDataToTrack <- payload.addressesToTrack.asScala.toList)
+                yield {
+                  if (pgStorage.trackedAddresses.addTrackedAddress(
+                    addr.address,
+                    Option(addr.comment),
+                    payload.trackingMode,
+                    Option(payload.fromBlock)
+                  )) {
+                    Option(addr.address)
+                  } else {
+                    Option.empty[String]
+                  }
+                }
+
+            // Flatten it to just the added elements
+            val addressesActuallyAdded: Set[String] = addressesMaybeAdded.flatten.toSet
+            logger.debug(s"Actually added the following addresses to watch: $addressesActuallyAdded")
 
             val response = new AddTrackedAddresses.Response(
-              Set[String]().asJava
+              addressesActuallyAdded.asJava
             )
             logger.debug(s"Replying with $response")
             message.replyTo ! response

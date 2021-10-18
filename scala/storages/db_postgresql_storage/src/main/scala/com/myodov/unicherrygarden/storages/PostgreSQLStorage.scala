@@ -1,6 +1,10 @@
 package com.myodov.unicherrygarden.storages
 
+import java.sql.SQLException
+
 import com.myodov.unicherrygarden.api.types.dlt
+import com.myodov.unicherrygarden.ethereum.EthUtils
+import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
 import com.typesafe.scalalogging.LazyLogging
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.{CleanResult, MigrateResult}
@@ -13,8 +17,6 @@ class PostgreSQLStorage(jdbcUrl: String,
                         wipeOnStart: Boolean,
                         migrationPaths: List[String]
                        ) extends LazyLogging {
-  //  private[this] implicit val session: AutoSession.type = AutoSession
-
   private[this] lazy val flw: Flyway = {
     val stockMigrations = List("classpath:com/myodov/unicherrygarden/db/migrations")
     val totalMigrations = stockMigrations ::: migrationPaths
@@ -99,7 +101,7 @@ class PostgreSQLStorage(jdbcUrl: String,
      * @param blocks                      : progress of syncing as per `ucg_block` table.
      * @param trackedAddresses            : progress of syncing as per `ucg_tracked_address` table.
      * @param perCurrencyTrackedAddresses : progress of syncing as per `ucg_currency_tracked_address_progress` tble.
-     * */
+     **/
     case class Progress(overall: OverallSyncStatus,
                         currencies: CurrenciesSyncStatus,
                         blocks: BlocksSyncStatus,
@@ -144,7 +146,10 @@ class PostgreSQLStorage(jdbcUrl: String,
 
     /** If we have any Per Currency Tracked Addresses (PCT Addresses) which have never been synced,
      * find a (earliest possible) block to sync any of them.
-     * */
+     *
+     * @return: [[Option]] with the first unsynced PCT address;
+     *          Option is empty if there is no such address found.
+     **/
     def getFirstBlockResolvingSomeUnsyncedPCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
       sql"""
       SELECT MIN(ucg_currency_tracked_address_progress.synced_from_block_number) AS min_synced_from_block_number
@@ -283,6 +288,50 @@ class PostgreSQLStorage(jdbcUrl: String,
         rs.intOpt("synced_from_block_number"),
         rs.intOpt("synced_to_block_number")
       )).list.apply()
+    }
+
+    /** Add a new address to be tracked.
+     *
+     * @return whether the adding happened successfully.
+     **/
+    def addTrackedAddress(
+                           address: String,
+                           comment: Option[String],
+                           mode: StartTrackingAddressMode,
+                           fromBlock: Option[Int]
+                         )(implicit
+                           session: DBSession = AutoSession
+                         ): Boolean = {
+      require(EthUtils.Addresses.isValidLowercasedAddress(address))
+      require((mode == StartTrackingAddressMode.FROM_BLOCK) == fromBlock.nonEmpty)
+
+      try {
+        sql"""
+      INSERT INTO ucg_tracked_address(
+        address,
+        ucg_comment,
+        synced_from_block_number)
+      VALUES (
+        $address,
+        $comment,
+        CASE ${mode.toString}
+          WHEN 'FROM_BLOCK' THEN $fromBlock
+          WHEN 'LATEST_KNOWN_BLOCK' THEN 0
+          ELSE NULL -- should fail
+        END
+      );
+      """.execute.apply()
+        true
+      } catch {
+        case ex: SQLException => {
+          logger.warn(s"Reinserting prevented: $address, $comment, $mode")
+          false
+        }
+        case ex: Throwable => {
+          logger.error(s"Unexpected error: $ex")
+          false
+        }
+      }
     }
   }
 
