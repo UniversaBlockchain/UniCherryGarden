@@ -146,19 +146,24 @@ object CherryPicker extends LazyLogging {
                 item.syncedTo.map(Integer.valueOf).orNull)
               )
 
-            message.replyTo ! new GetTrackedAddresses.Response(
+            val response = new GetTrackedAddresses.Response(
               results.asJava,
               payload.includeComment,
               payload.includeSyncedFrom,
               payload.includeSyncedTo
             )
+            logger.debug(s"Replying with $response")
+            message.replyTo ! response
             Behaviors.same
           }
           case message: AddTrackedAddresses.Request => {
             logger.debug(s"Receiving AddTrackedAddresses message: $message")
-            message.replyTo ! new AddTrackedAddresses.Response(
+
+            val response = new AddTrackedAddresses.Response(
               Set[String]().asJava
             )
+            logger.debug(s"Replying with $response")
+            message.replyTo ! response
             Behaviors.same
           }
           case message: GetBalances.Request => {

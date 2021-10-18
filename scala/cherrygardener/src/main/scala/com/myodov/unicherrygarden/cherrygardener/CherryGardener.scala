@@ -61,7 +61,10 @@ object CherryGardener extends LazyLogging {
       Behaviors.receiveMessage {
         case message: GetCurrencies.Request => {
           logger.debug(s"Received GetCurrencies($message) command")
-          message.replyTo ! gardener.getCurrencies()
+
+          val response = gardener.getCurrencies()
+          logger.debug(s"Replying with $response")
+          message.replyTo ! response
           Behaviors.same
         }
         case unknown => {
