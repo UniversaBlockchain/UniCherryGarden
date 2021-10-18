@@ -224,6 +224,7 @@ class PostgreSQLStorage(jdbcUrl: String,
       }
     }
 
+    /** Single instance of currency/token/asset. */
     case class Currency(currencyType: CurrencyTypes.CurrencyType,
                         dAppAddress: Option[String],
                         name: Option[String],
@@ -245,6 +246,47 @@ class PostgreSQLStorage(jdbcUrl: String,
   }
 
   lazy val currencies: Currencies = new Currencies
+
+
+  class TrackedAddresses {
+
+    /** Single instance of tracked address.
+     * Note that the [[Option]] arguments being [[Option.empty]] don’t necessary mean the data really has NULL here:
+     * they may be empty if the result has been requested without this piece of data.
+     * */
+    case class TrackedAddress(address: String,
+                              comment: Option[String],
+                              syncedFrom: Option[Int],
+                              syncedTo: Option[Int]
+                             )
+
+    /** Get the list of all tracked addresses;
+     * optionally containing (or not containing) various extra information about each address.
+     * */
+    def getTrackedAddresses(
+                             includeComment: Boolean,
+                             includeSyncedFrom: Boolean,
+                             includeSyncedTo: Boolean
+                           )(implicit
+                             session: DBSession = ReadOnlyAutoSession
+                           ): List[TrackedAddress] = {
+      sql"""
+      SELECT
+       address,
+       CASE WHEN $includeComment THEN ucg_comment ELSE NULL END AS ucg_comment,
+       CASE WHEN $includeSyncedFrom THEN synced_from_block_number ELSE NULL END AS synced_from_block_number,
+       CASE WHEN $includeSyncedTo THEN synced_to_block_number ELSE NULL END AS synced_to_block_number
+      FROM ucg_tracked_address;
+      """.map(rs => TrackedAddress(
+        rs.string("address"),
+        rs.stringOpt("ucg_comment"),
+        rs.intOpt("synced_from_block_number"),
+        rs.intOpt("synced_to_block_number")
+      )).list.apply()
+    }
+  }
+
+  lazy val trackedAddresses: TrackedAddresses = new TrackedAddresses
 }
 
 object PostgreSQLStorage {

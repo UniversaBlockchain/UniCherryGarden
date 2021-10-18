@@ -7,6 +7,7 @@ import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult.CurrencyBalanceFact
+import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.Response
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.typesafe.scalalogging.LazyLogging
@@ -14,6 +15,7 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
+
 
 /** The main actor “cherry-picking” the data from the Ethereum blockchain into the DB. */
 class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
@@ -95,6 +97,7 @@ object CherryPicker extends LazyLogging {
   //  private val ITERATION_PERIOD = 15 seconds
   protected val ITERATION_PERIOD = 1 second
 
+  /** Object constructor. */
   def apply(pgStorage: PostgreSQLStorage,
             ethereumConnector: EthereumRpcSingleConnector): Behavior[CherryPickerRequest] = {
 
@@ -126,9 +129,25 @@ object CherryPicker extends LazyLogging {
           }
           case message: GetTrackedAddresses.Request => {
             logger.debug(s"Receiving GetTrackedAddresses message: $message")
-            val payload = message.payload
+            val payload: GetTrackedAddresses.GTARequestPayload = message.payload
+
+            val results: List[Response.TrackedAddressInformation] = pgStorage
+              .trackedAddresses
+              .getTrackedAddresses(
+                payload.includeComment,
+                payload.includeSyncedFrom,
+                payload.includeSyncedTo)
+              .map(item => new Response.TrackedAddressInformation(
+                item.address,
+                // The subsequent items may be Java-nullable
+                item.comment.orNull,
+                // Converting the Option[Int] to nullable Java Integers needs some cunning
+                item.syncedFrom.map(Integer.valueOf).orNull,
+                item.syncedTo.map(Integer.valueOf).orNull)
+              )
+
             message.replyTo ! new GetTrackedAddresses.Response(
-              List().asJava,
+              results.asJava,
               payload.includeComment,
               payload.includeSyncedFrom,
               payload.includeSyncedTo
@@ -147,14 +166,14 @@ object CherryPicker extends LazyLogging {
             message.replyTo ! new GetBalances.Response(
               new BalanceRequestResult(
                 false,
-//                List[CurrencyBalanceFact](
-//                  new CurrencyBalanceFact(
-//                    Currency.newEthCurrency(),
-//                    BigDecimal(123.45).underlying(),
-//                    BalanceRequestResult.CurrencyBalanceFact.BalanceSyncState.SYNCED_TO_LATEST_UNICHERRYGARDEN_TOKEN_STATE,
-//                    15
-//                  )
-//                ).asJava,
+                //                List[CurrencyBalanceFact](
+                //                  new CurrencyBalanceFact(
+                //                    Currency.newEthCurrency(),
+                //                    BigDecimal(123.45).underlying(),
+                //                    BalanceRequestResult.CurrencyBalanceFact.BalanceSyncState.SYNCED_TO_LATEST_UNICHERRYGARDEN_TOKEN_STATE,
+                //                    15
+                //                  )
+                //                ).asJava,
                 List.empty[CurrencyBalanceFact].asJava,
                 0,
                 0,

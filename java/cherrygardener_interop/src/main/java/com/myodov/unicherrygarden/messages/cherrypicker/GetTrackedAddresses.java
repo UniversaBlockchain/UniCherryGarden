@@ -85,7 +85,7 @@ public class GetTrackedAddresses {
 
             @Override
             public String toString() {
-                return String.format("GetTrackedAddresses.Response.TrackedAddressInformation(%s, %s, %s, %)",
+                return String.format("GetTrackedAddresses.Response.TrackedAddressInformation(%s, %s, %s, %s)",
                         address, comment, syncedFrom, syncedTo);
             }
         }
