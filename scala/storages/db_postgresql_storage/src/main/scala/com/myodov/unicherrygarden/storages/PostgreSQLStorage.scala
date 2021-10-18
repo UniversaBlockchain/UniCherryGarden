@@ -302,6 +302,7 @@ class PostgreSQLStorage(jdbcUrl: String,
                          )(implicit
                            session: DBSession = AutoSession
                          ): Boolean = {
+      logger.debug(s"Tracking address $address: $comment, $mode, $fromBlock")
       require(EthUtils.Addresses.isValidLowercasedAddress(address))
       require((mode == StartTrackingAddressMode.FROM_BLOCK) == fromBlock.nonEmpty)
 
@@ -316,7 +317,7 @@ class PostgreSQLStorage(jdbcUrl: String,
         $comment,
         CASE ${mode.toString}
           WHEN 'FROM_BLOCK' THEN $fromBlock
-          WHEN 'LATEST_KNOWN_BLOCK' THEN 0
+          WHEN 'LATEST_KNOWN_BLOCK' THEN NULL
           ELSE NULL -- should fail
         END
       );

@@ -1,12 +1,12 @@
 package com.myodov.unicherrygarden.cherrygardener;
 
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
-import com.myodov.unicherrygarden.ethereum.EthUtils;
-import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.connector.api.Observer;
 import com.myodov.unicherrygarden.connector.impl.ClientConnectorImpl;
+import com.myodov.unicherrygarden.ethereum.EthUtils;
+import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
+import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
 import org.apache.commons.cli.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -164,6 +164,15 @@ public class CherryGardenerCLI {
             assert block >= 0 : block;
             this.mode = mode;
             this.block = block;
+        }
+
+        /**
+         * Return the block number as nullable.
+         */
+        @Nullable
+        public final Integer getBlock() {
+            return (mode == AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK) ?
+                    block : null;
         }
     }
 
@@ -365,11 +374,12 @@ public class CherryGardenerCLI {
             final @NonNull String address = addressOpt.get();
             final @NonNull TrackFromBlockOption trackFromBlock = trackFromBlockOpt.get();
 
-            System.err.printf("Adding tracked address %s with %s; tracking from %s, %s...\n",
+            System.err.printf("Adding tracked address %s with %s; tracking from %s, %s (%s)...\n",
                     address,
                     commentOpt.isPresent() ? String.format("comment \"%s\"", commentOpt) : "no comment",
                     trackFromBlock.mode,
-                    trackFromBlock.block
+                    trackFromBlock.block,
+                    trackFromBlock.getBlock()
             );
 
             try {
@@ -379,7 +389,9 @@ public class CherryGardenerCLI {
                 final boolean success = observer.startTrackingAddress(
                         address,
                         trackFromBlock.mode,
-                        trackFromBlock.block,
+                        // .getBlock() rather than just .block, as it should be null if mode
+                        // is different from FROM_BLOCK
+                        trackFromBlock.getBlock(),
                         commentOpt.orElse(null));
                 if (success) {
                     System.err.printf("Address %s successfully added!\n");

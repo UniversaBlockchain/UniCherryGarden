@@ -50,7 +50,15 @@ public class ObserverImpl implements Observer {
                                         @Nullable String comment) {
         assert (address != null) && EthUtils.Addresses.isValidLowercasedAddress(address) : address;
         if (!EthUtils.Addresses.isValidLowercasedAddress(address)) {
-            throw new RuntimeException(String.format("%s is not a properly formed lowercased Ethereum address!"));
+            throw new RuntimeException(String.format(
+                    "%s is not a properly formed lowercased Ethereum address!",
+                    address));
+        }
+
+        if ((mode == AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK) != (blockNumber != null)) {
+            throw new RuntimeException(String.format(
+                    "Tracking mode (%s) should be FROM_BLOCK if and only if blockNumber (%s) is not null!",
+                    mode, blockNumber));
         }
 
         final CompletionStage<AddTrackedAddressesCommand.Result> stage =
@@ -63,8 +71,7 @@ public class ObserverImpl implements Observer {
                                         new ArrayList<AddTrackedAddresses.AddressDataToTrack>() {{
                                             add(new AddTrackedAddresses.AddressDataToTrack(address, comment));
                                         }},
-                                        blockNumber.intValue()
-
+                                        (blockNumber == null)? 0: blockNumber.intValue()
                                 )),
                         ConnectorActor.DEFAULT_CALL_TIMEOUT,
                         actorSystem.scheduler());
