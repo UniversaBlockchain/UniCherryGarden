@@ -157,22 +157,20 @@ public class CherryGardenerCLI {
 
     static class TrackFromBlockOption {
         final AddTrackedAddresses.@NonNull StartTrackingAddressMode mode;
-        final int block; // 0 if any mode is different from FROM_BLOCK.
-
-        TrackFromBlockOption(AddTrackedAddresses.@NonNull StartTrackingAddressMode mode,
-                             int block) {
-            assert block >= 0 : block;
-            this.mode = mode;
-            this.block = block;
-        }
+        @Nullable
+        final Integer block;
 
         /**
-         * Return the block number as nullable.
+         * Constructor.
          */
-        @Nullable
-        public final Integer getBlock() {
-            return (mode == AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK) ?
-                    block : null;
+        TrackFromBlockOption(AddTrackedAddresses.@NonNull StartTrackingAddressMode mode,
+                             @Nullable Integer block) {
+            assert (mode == AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK) == (block != null)
+                    :
+                    String.format("%s:%s", mode, block);
+            assert (block == null) || (block.intValue() >= 0) : block;
+            this.mode = mode;
+            this.block = block;
         }
     }
 
@@ -196,7 +194,7 @@ public class CherryGardenerCLI {
                 case "LATEST_KNOWN":
                     return Optional.of(new TrackFromBlockOption(
                             AddTrackedAddresses.StartTrackingAddressMode.LATEST_KNOWN_BLOCK,
-                            0 // dummy
+                            null
                     ));
 //                case "LATEST_NODE_SYNCED":
 //                    break;
@@ -374,12 +372,11 @@ public class CherryGardenerCLI {
             final @NonNull String address = addressOpt.get();
             final @NonNull TrackFromBlockOption trackFromBlock = trackFromBlockOpt.get();
 
-            System.err.printf("Adding tracked address %s with %s; tracking from %s, %s (%s)...\n",
+            System.err.printf("Adding tracked address %s with %s; tracking from %s, %s...\n",
                     address,
                     commentOpt.isPresent() ? String.format("comment \"%s\"", commentOpt) : "no comment",
                     trackFromBlock.mode,
-                    trackFromBlock.block,
-                    trackFromBlock.getBlock()
+                    trackFromBlock.block
             );
 
             try {
@@ -391,7 +388,7 @@ public class CherryGardenerCLI {
                         trackFromBlock.mode,
                         // .getBlock() rather than just .block, as it should be null if mode
                         // is different from FROM_BLOCK
-                        trackFromBlock.getBlock(),
+                        trackFromBlock.block,
                         commentOpt.orElse(null));
                 if (success) {
                     System.err.printf("Address %s successfully added!\n");

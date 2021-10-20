@@ -74,7 +74,8 @@ public class AddTrackedAddresses {
         public final StartTrackingAddressMode trackingMode;
         @NonNull
         public final List<AddressDataToTrack> addressesToTrack;
-        public final int fromBlock;
+        @Nullable
+        public final Integer fromBlock;
 
         /**
          * Constructor.
@@ -87,10 +88,13 @@ public class AddTrackedAddresses {
         @JsonCreator
         public ATARequestPayload(@NonNull StartTrackingAddressMode trackingMode,
                                  @NonNull List<AddressDataToTrack> addressesToTrack,
-                                 int fromBlock) {
+                                 @Nullable Integer fromBlock) {
             assert trackingMode != null;
             assert addressesToTrack != null;
-            assert fromBlock >= 0 : fromBlock;
+            assert (trackingMode == AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK) == (fromBlock != null)
+                    :
+                    String.format("%s:%s", trackingMode, fromBlock);
+            assert (fromBlock == null) || (fromBlock.intValue() >= 0) : fromBlock;
             this.trackingMode = trackingMode;
             this.addressesToTrack = addressesToTrack;
             this.fromBlock = fromBlock;

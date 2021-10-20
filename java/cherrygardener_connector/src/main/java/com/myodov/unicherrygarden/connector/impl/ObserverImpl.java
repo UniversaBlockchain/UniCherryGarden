@@ -71,7 +71,7 @@ public class ObserverImpl implements Observer {
                                         new ArrayList<AddTrackedAddresses.AddressDataToTrack>() {{
                                             add(new AddTrackedAddresses.AddressDataToTrack(address, comment));
                                         }},
-                                        (blockNumber == null)? 0: blockNumber.intValue()
+                                        blockNumber
                                 )),
                         ConnectorActor.DEFAULT_CALL_TIMEOUT,
                         actorSystem.scheduler());

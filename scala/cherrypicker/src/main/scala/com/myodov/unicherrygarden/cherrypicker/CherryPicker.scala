@@ -169,10 +169,7 @@ object CherryPicker extends LazyLogging {
                     addr.address,
                     Option(addr.comment),
                     payload.trackingMode,
-                    if (payload.trackingMode == AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK)
-                      Option(payload.fromBlock)
-                    else
-                      Option.empty
+                    Option(payload.fromBlock)
                   )) {
                     Option(addr.address)
                   } else {

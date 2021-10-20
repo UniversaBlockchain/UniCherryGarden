@@ -136,20 +136,21 @@ public class GetBalances {
             /**
              * The information is up-to-date to this block number.
              * <p>
-             * Always 0 or higher.
+             * If present, always 0 or higher.
              */
-            public final int syncedToBlock;
+            @Nullable
+            public final Integer syncedToBlock;
 
 
             @JsonCreator
             public CurrencyBalanceFact(@NonNull Currency currency,
                                        @NonNull BigDecimal amount,
                                        @NonNull BalanceSyncState syncState,
-                                       int syncedToBlock) {
+                                       @Nullable Integer syncedToBlock) {
                 assert currency != null;
                 assert amount.compareTo(BigDecimal.ZERO) >= 0 : amount; // amount >= 0
                 assert syncState != null;
-                assert syncedToBlock >= 0 : syncedToBlock;
+                assert syncedToBlock == null || syncedToBlock.intValue() >= 0 : syncedToBlock;
 
                 this.currency = currency;
                 this.amount = amount;
@@ -179,7 +180,7 @@ public class GetBalances {
         public final boolean overallSuccess;
 
         @NonNull
-        public final List<@NonNull CurrencyBalanceFact> balances;
+        public final List<CurrencyBalanceFact> balances;
 
         /**
          * The number of the latest block known to the Ethereum node.
@@ -209,7 +210,7 @@ public class GetBalances {
          */
         @JsonCreator
         public BalanceRequestResult(boolean overallSuccess,
-                                    @NonNull List<@NonNull CurrencyBalanceFact> balances,
+                                    @NonNull List<CurrencyBalanceFact> balances,
                                     int latestBlockchainKnownBlock,
                                     int latestBlockchainSyncedBlock,
                                     int latestUniCherryGardenSyncedBlock) {
