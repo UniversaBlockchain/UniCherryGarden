@@ -9,8 +9,9 @@ import com.typesafe.scalalogging.LazyLogging
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameterNumber
 import org.web3j.protocol.core.methods.response.EthBlock.TransactionObject
-import org.web3j.protocol.core.methods.response.{EthBlock, EthGetTransactionReceipt, Transaction, TransactionReceipt}
+import org.web3j.protocol.core.methods.response._
 import org.web3j.protocol.http.HttpService
+import org.web3j.utils.Numeric.decodeQuantity
 
 import scala.concurrent.ExecutionContext.Implicits._
 import scala.concurrent.duration.Duration
@@ -22,7 +23,7 @@ import scala.jdk.OptionConverters._
 /** Connector that handles a connection to single Ethereum node via RPC, and communicates with it.
  * */
 class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends LazyLogging {
-  override def toString: String = s"EthereumRpcSingleConnector(${nodeUrl})"
+  override def toString: String = s"EthereumRpcSingleConnector($nodeUrl)"
 
   private[this] var web3j: Web3j = rebuildWeb3j()
 
@@ -35,13 +36,87 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
     Web3j.build(new HttpService(nodeUrl))
   }
 
-  /** Get the number of the last block synced by this Ethereum node (`eth.blockNumber`). */
-  private[connectors] def latestSyncedBlockNumber: Option[BigInt] = {
+
+  private[this] case class SyncingStatusData(currentBlock: Int = 0, highestBlock: Int = 0) {
+    assert(currentBlock >= 0)
+    assert(highestBlock >= 0)
+  }
+
+  private[EthereumRpcSingleConnector] class SyncingStatusResult(private val data: Option[SyncingStatusData]) {
+    val isStillSyncing: Boolean = data.nonEmpty
+    lazy val currentBlock: Int = {
+      if (isStillSyncing) data.get.currentBlock
+      else throw new RuntimeException("currentBlock available only if `isStillSyncing`")
+    }
+    lazy val highestBlock: Int = {
+      if (isStillSyncing) data.get.highestBlock
+      else throw new RuntimeException("highestBlock available only if `isStillSyncing`")
+    }
+
+    override val toString: String = {
+      if (isStillSyncing)
+        s"SyncingStatusResult(currentBlock=$currentBlock, highestBlock=$highestBlock)"
+      else
+        s"SyncingStatusResult(not_syncing)"
+    }
+  }
+
+  object SyncingStatusResult {
+    @inline
+    private[this] def apply(data: Option[SyncingStatusData]): SyncingStatusResult = new SyncingStatusResult(data)
+
+    @inline
+    private[EthereumRpcSingleConnector] def createSyncing(currentBlock: Int, highestBlock: Int): SyncingStatusResult =
+      new SyncingStatusResult(Option(SyncingStatusData(currentBlock, highestBlock)))
+
+    @inline
+    private[EthereumRpcSingleConnector] def createNotSyncing(): SyncingStatusResult =
+      new SyncingStatusResult(Option.empty)
+  }
+
+
+  /** Get the status of the syncing process for this Ethereum node (`eth.syncing`).
+   *
+   * @return [[Option]] with the data about the syncing process; the Option is empty if the data could not be received
+   *         (probably due to some network error).
+   **/
+  def syncingStatus: Option[SyncingStatusResult] = {
+    try {
+      val result: EthSyncing.Result = web3j.ethSyncing.send.getResult
+      if (!result.isSyncing) {
+        logger.debug("eth.syncing = not syncing")
+        Option(SyncingStatusResult.createNotSyncing())
+      } else {
+        val syncingResult: EthSyncing.Syncing = result.asInstanceOf[EthSyncing.Syncing]
+
+        val currentBlockStr = syncingResult.getCurrentBlock
+        val highestBlockStr = syncingResult.getHighestBlock
+        logger.debug(s"eth.syncing = current $currentBlockStr, highest $highestBlockStr")
+
+        Option(SyncingStatusResult.createSyncing(
+          decodeQuantity(currentBlockStr).intValueExact(),
+          decodeQuantity(highestBlockStr).intValueExact()))
+      }
+    } catch {
+      case e: Throwable => {
+        logger.error("Cannot call eth.syncing!", e)
+        None
+      }
+    }
+  }
+
+
+  /** Get the number of the last block synced by this Ethereum node (`eth.blockNumber`).
+   *
+   * @return [[Option]] with the data about the syncing process; the Option is empty if the data could not be received
+   *         (probably due to some network error).
+   **/
+  def latestSyncedBlockNumber: Option[BigInt] = {
     try {
       Some(web3j.ethBlockNumber.send.getBlockNumber)
     } catch {
       case e: Throwable => {
-        logger.error(s"Cannot run latestSyncedBlockNumber()!", e)
+        logger.error("Cannot call eth.blockNumber!", e)
         None
       }
     }

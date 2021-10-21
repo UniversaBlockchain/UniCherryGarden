@@ -178,12 +178,31 @@ class PostgreSQLStorage(jdbcUrl: String,
     }
 
     def setSyncState(state: String)(implicit session: DBSession = AutoSession) = {
+      logger.debug(s"Setting sync state: “${state}”")
       sql"""
       UPDATE ucg_state
       SET sync_state = $state
       WHERE sync_state != $state
       """.execute.apply()
-      logger.debug(s"Setting sync state: “${state}”")
+    }
+
+    def setEthNodeData(blockNumber: Int, currentBlock: Int, highestBlock: Int)(implicit session: DBSession = AutoSession) = {
+      require(blockNumber >= 0)
+      require(currentBlock >= 0)
+      require(highestBlock >= 0)
+
+      logger.debug(s"Setting eth_node data: $blockNumber, $currentBlock, $highestBlock")
+      sql"""
+      UPDATE ucg_state
+      SET
+        eth_node_blocknumber = $blockNumber,
+        eth_node_current_block = $currentBlock,
+        eth_node_highest_block = $highestBlock
+      WHERE
+        eth_node_blocknumber != $blockNumber OR
+        eth_node_current_block != $currentBlock OR
+        eth_node_highest_block != $highestBlock
+      """.execute.apply()
     }
 
     def setSyncedFromBlockNumber(blockNumber: Long)(implicit session: DBSession) = {
