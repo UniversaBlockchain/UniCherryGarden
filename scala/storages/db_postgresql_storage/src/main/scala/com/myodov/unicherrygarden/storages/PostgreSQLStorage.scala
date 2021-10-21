@@ -2,7 +2,8 @@ package com.myodov.unicherrygarden.storages
 
 import java.sql.SQLException
 
-import com.myodov.unicherrygarden.api.types.dlt
+import com.myodov.unicherrygarden.api.dlt
+import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
 import com.typesafe.scalalogging.LazyLogging
@@ -228,7 +229,7 @@ class PostgreSQLStorage(jdbcUrl: String,
   class Currencies {
 
     object CurrencyTypes extends Enumeration {
-      type CurrencyType = Value
+      type DBCurrencyType = Value
       val Eth, Erc20 = Value
 
       def fromString(str: String): Value = {
@@ -239,27 +240,41 @@ class PostgreSQLStorage(jdbcUrl: String,
         }
       }
 
-      def toInteropType(v: Value): dlt.Currency.CurrencyType = {
+      def toInteropType(v: Value): Currency.CurrencyType = {
         v match {
-          case CurrencyTypes.Eth => dlt.Currency.CurrencyType.ETH
-          case CurrencyTypes.Erc20 => dlt.Currency.CurrencyType.ERC20
+          case CurrencyTypes.Eth => Currency.CurrencyType.ETH
+          case CurrencyTypes.Erc20 => Currency.CurrencyType.ERC20
           case other => throw new RuntimeException(s"Unsupported currency type $other")
         }
       }
     }
 
-    /** Single instance of currency/token/asset. */
-    case class Currency(currencyType: CurrencyTypes.CurrencyType,
-                        dAppAddress: Option[String],
-                        name: Option[String],
-                        symbol: Option[String],
-                        ucgComment: Option[String]
-                       )
 
-    def getCurrencies(implicit session: DBSession = ReadOnlyAutoSession): List[Currency] = {
+    /** Single instance of currency/token/asset. */
+    case class DBCurrency(currencyType: CurrencyTypes.DBCurrencyType,
+                          dAppAddress: Option[String],
+                          name: Option[String],
+                          symbol: Option[String],
+                          ucgComment: Option[String]
+                         ) {
+      require((currencyType == CurrencyTypes.Eth) == dAppAddress.isEmpty)
+      require(dAppAddress.isEmpty || EthUtils.Addresses.isValidLowercasedAddress(dAppAddress.get))
+
+      def asAsset: dlt.Asset = {
+        currencyType match {
+          case CurrencyTypes.Eth => dlt.Ether
+          case CurrencyTypes.Erc20 => dlt.ERC20Token(dAppAddress.get)
+          case _ => {
+            throw new RuntimeException(s"Unsupported currencyType $currencyType")
+          }
+        }
+      }
+    }
+
+    def getCurrencies(implicit session: DBSession = ReadOnlyAutoSession): List[DBCurrency] = {
       sql"""
       SELECT * FROM ucg_currency;
-      """.map(rs => Currency(
+      """.map(rs => DBCurrency(
         CurrencyTypes.fromString(rs.string("type")),
         rs.stringOpt("dapp_address"),
         rs.stringOpt("name"),
@@ -307,6 +322,13 @@ class PostgreSQLStorage(jdbcUrl: String,
         rs.intOpt("synced_from_block_number"),
         rs.intOpt("synced_to_block_number")
       )).list.apply()
+    }
+
+    /** Get the set of all tracked addresses (and just of the address strings, nothing else). */
+    def getJustAddresses(implicit session: DBSession = ReadOnlyAutoSession): Set[String] = {
+      sql"""
+      SELECT address FROM ucg_tracked_address;
+      """.map(_.string("address")).list.apply().toSet
     }
 
     /** Add a new address to be tracked.

@@ -38,7 +38,7 @@ package com.myodov.unicherrygarden.api.dlt
 /** A transfer from `from` to `to`. */
 case class Transfer(from: Option[String],
                     to: Option[String],
-                    currency: Currency,
+                    currency: Asset,
                     amount: BigDecimal,
                     tr: Transaction) {
   require(from != null)

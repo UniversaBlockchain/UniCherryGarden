@@ -130,7 +130,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
    **/
   def readBlock(blockNumber: BigInt,
                 filterAddresses: Set[String] = Set.empty,
-                filterCurrencies: Set[dlt.Currency] = Set.empty
+                filterCurrencies: Set[dlt.Asset] = Set.empty
                ): Option[(dlt.Block, List[dlt.Transaction], List[dlt.Transfer])] = {
     val startTime = System.nanoTime
 
@@ -327,7 +327,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
           dlt.Transfer(
             from = Option(trw3j.getFrom),
             to = Option(trw3j.getTo),
-            currency = dlt.Ether.ETHER,
+            currency = dlt.Ether,
             amount = EthUtils.Wei.valueFromWeis(trw3j.getValue),
             tr = addressFilteredEthTransactionsByHash(trw3j.getHash)
           )
@@ -339,7 +339,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
           dlt.Transfer(
             from = Option(trw3j.getFrom),
             to = None,
-            currency = dlt.Ether.ETHER,
+            currency = dlt.Ether,
             amount = BigDecimal(EthUtils.Wei.valueFromWeis(trw3j.getGasPrice)) * BigDecimal(receiptsByTrHash(trw3j.getHash).getGasUsed),
             tr = addressFilteredEthTransactionsByHash(trw3j.getHash)
           )
