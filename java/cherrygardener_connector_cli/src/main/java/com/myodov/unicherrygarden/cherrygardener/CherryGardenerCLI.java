@@ -163,14 +163,34 @@ public class CherryGardenerCLI {
         /**
          * Constructor.
          */
-        TrackFromBlockOption(AddTrackedAddresses.@NonNull StartTrackingAddressMode mode,
-                             @Nullable Integer block) {
+        private TrackFromBlockOption(AddTrackedAddresses.@NonNull StartTrackingAddressMode mode,
+                                     @Nullable Integer block) {
             assert (mode == AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK) == (block != null)
                     :
                     String.format("%s:%s", mode, block);
             assert (block == null) || (block.intValue() >= 0) : block;
             this.mode = mode;
             this.block = block;
+        }
+
+        /**
+         * Create the {@link TrackFromBlockOption} when you know the specific number of block.
+         */
+        static TrackFromBlockOption fromSpecificBlock(int block) {
+            assert block >= 0 : block;
+            return new TrackFromBlockOption(AddTrackedAddresses.StartTrackingAddressMode.LATEST_KNOWN_BLOCK, block);
+        }
+
+        /**
+         * Create the {@link TrackFromBlockOption} when you autodetect the number of the block.
+         *
+         * @param mode The mode of detection.
+         *             Use any mode except {@link AddTrackedAddresses.StartTrackingAddressMode#FROM_BLOCK}
+         *             (if you want to use a specific block number, use {@link #fromSpecificBlock(int)} method instead).
+         */
+        static TrackFromBlockOption fromAutoDetectedBlock(AddTrackedAddresses.@NonNull StartTrackingAddressMode mode) {
+            assert mode != null && mode != AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK: mode;
+            return new TrackFromBlockOption(mode,null);
         }
     }
 
@@ -192,22 +212,19 @@ public class CherryGardenerCLI {
         } else {
             switch (trackFromBlockStr.toUpperCase()) {
                 case "LATEST_KNOWN":
-                    return Optional.of(new TrackFromBlockOption(
-                            AddTrackedAddresses.StartTrackingAddressMode.LATEST_KNOWN_BLOCK,
-                            null
-                    ));
-//                case "LATEST_NODE_SYNCED":
-//                    break;
-//                case "LATEST_CHERRYGARDEN_SYNCED":
-//                    break;
+                    return Optional.of(TrackFromBlockOption.fromAutoDetectedBlock(
+                            AddTrackedAddresses.StartTrackingAddressMode.LATEST_KNOWN_BLOCK));
+                case "LATEST_NODE_SYNCED":
+                    return Optional.of(TrackFromBlockOption.fromAutoDetectedBlock(
+                            AddTrackedAddresses.StartTrackingAddressMode.LATEST_NODE_SYNCED_BLOCK));
+                case "LATEST_CHERRYGARDEN_SYNCED":
+                    return Optional.of(TrackFromBlockOption.fromAutoDetectedBlock(
+                            AddTrackedAddresses.StartTrackingAddressMode.LATEST_CHERRYGARDEN_SYNCED_BLOCK));
                 default:
                     try {
                         final int blockNumberCandidate = Integer.parseUnsignedInt(trackFromBlockStr);
                         assert blockNumberCandidate >= 0 : blockNumberCandidate;
-                        return Optional.of(new TrackFromBlockOption(
-                                AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK,
-                                blockNumberCandidate
-                        ));
+                        return Optional.of(TrackFromBlockOption.fromSpecificBlock(blockNumberCandidate));
                     } catch (NumberFormatException e) {
                         System.err.println("" +
                                 "WARNING: --track-from-block option should contain one of the supported constants, " +

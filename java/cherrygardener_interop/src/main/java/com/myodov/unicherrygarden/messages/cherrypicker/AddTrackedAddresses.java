@@ -37,11 +37,11 @@ public class AddTrackedAddresses {
         /**
          * Track an address from a latest block successfully synced by the Ethereum node.
          */
-        // LATEST_NODE_SYNCED_BLOCK, // TODO: add this option later
+        LATEST_NODE_SYNCED_BLOCK,
         /**
          * Track an address from a latest block fully synced by UniCherryGarden.
          */
-        // LATEST_CHERRYGARDEN_SYNCED_BLOCK, // TODO: add this option later
+        LATEST_CHERRYGARDEN_SYNCED_BLOCK,
     }
 
     public static final class AddressDataToTrack {
