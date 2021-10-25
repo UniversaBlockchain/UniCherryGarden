@@ -19,7 +19,7 @@ package com.myodov.unicherrygarden.api.dlt
 ///** The currency operation of moving some amount from `address` to `receiverAddress`.
 //  * `balanceDelta` should be negative assuming that the currency has been moved from address``
 //  * (decreasing its balance) to `receiverAddress` (increasing its balance).
-//  * */
+//  */
 //class Transfer(val senderAddress: String, val receiverAddress: String, balanceDelta: BigDecimal)
 //  extends Operation(senderAddress, -balanceDelta) {
 //
@@ -41,14 +41,14 @@ case class Transfer(from: Option[String],
                     currency: Asset,
                     amount: BigDecimal,
                     tr: Transaction) {
-  require(from != null)
-  require(to != null)
+  require(from != null, from)
+  require(to != null, to)
   require(from.nonEmpty || to.nonEmpty, "At least fromHash or toHash must be non-empty!")
 
-  require(currency != null)
-  require(amount != null && amount > 0)
+  require(currency != null, currency)
+  require(amount != null && amount >= 0, amount)
 
-  require(tr != null)
+  require(tr != null, tr)
 
   lazy val isMint: Boolean = from.isEmpty
 

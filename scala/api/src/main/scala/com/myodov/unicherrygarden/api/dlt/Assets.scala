@@ -20,7 +20,7 @@ trait Token extends Asset {
   /** Some ID of the token, uniquely identifying it in the base blockchain.
    *
    * E.g., for Ethereum blockchain, it is the Ethereum address of the token contract.
-   * */
+   */
   def uid: String
 }
 
@@ -50,7 +50,7 @@ object Ether extends NamedAsset {
 }
 
 case class ERC20Token(uid: String) extends Token {
-  require(uid != null && EthUtils.Addresses.isValidLowercasedAddress(uid))
+  require(uid != null && EthUtils.Addresses.isValidLowercasedAddress(uid), uid)
 
   override val isToken = true
 

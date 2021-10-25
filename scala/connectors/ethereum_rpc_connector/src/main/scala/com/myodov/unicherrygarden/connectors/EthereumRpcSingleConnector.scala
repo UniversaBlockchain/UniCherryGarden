@@ -4,6 +4,7 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 import com.myodov.unicherrygarden.api.dlt
+import com.myodov.unicherrygarden.api.dlt.EthereumBlock
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.typesafe.scalalogging.LazyLogging
 import org.web3j.protocol.Web3j
@@ -21,7 +22,7 @@ import scala.jdk.FutureConverters._
 import scala.jdk.OptionConverters._
 
 /** Connector that handles a connection to single Ethereum node via RPC, and communicates with it.
- * */
+ */
 class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends LazyLogging {
   override def toString: String = s"EthereumRpcSingleConnector($nodeUrl)"
 
@@ -79,7 +80,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
    *
    * @return [[Option]] with the data about the syncing process; the Option is empty if the data could not be received
    *         (probably due to some network error).
-   **/
+   */
   def syncingStatus: Option[SyncingStatusResult] = {
     try {
       val result: EthSyncing.Result = web3j.ethSyncing.send.getResult
@@ -110,7 +111,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
    *
    * @return [[Option]] with the data about the syncing process; the Option is empty if the data could not be received
    *         (probably due to some network error).
-   **/
+   */
   def latestSyncedBlockNumber: Option[BigInt] = {
     try {
       Some(web3j.ethBlockNumber.send.getBlockNumber)
@@ -127,11 +128,11 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
    * @param blockNumber      what block to read (by its number).
    * @param filterAddresses  list of address hashes (all lowercased); only these addresses are returned.
    * @param filterCurrencies list of currencies; only these currencies are returned.
-   **/
+   */
   def readBlock(blockNumber: BigInt,
                 filterAddresses: Set[String] = Set.empty,
                 filterCurrencies: Set[dlt.Asset] = Set.empty
-               ): Option[(dlt.Block, List[dlt.Transaction], List[dlt.Transfer])] = {
+               ): Option[(EthereumBlock, List[dlt.Transaction], List[dlt.Transfer])] = {
     val startTime = System.nanoTime
 
     try {
@@ -305,17 +306,18 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
         for (tr <- transactions if filterAddresses.contains(tr.getFrom))
           yield tr
 
-      val addressFilteredEthTransactions: List[dlt.Transaction] = addressFromToFilteredW3jEthTransactions.map(trw3j =>
+      val addressFilteredEthTransactions: List[dlt.Transaction] = addressFromToFilteredW3jEthTransactions.map(trw3j => {
         dlt.EthereumTransaction(
           hash = trw3j.getHash,
           blockNumber = trw3j.getBlockNumber,
           timestamp = blockTime,
           from = trw3j.getFrom,
-          to = trw3j.getTo,
+          to = Option(trw3j.getTo),
           gasPrice = EthUtils.Wei.valueFromWeis(trw3j.getGasPrice),
           gasLimit = trw3j.getGas,
           gasUsed = receiptsByTrHash(trw3j.getHash).getGasUsed
         )
+      }
       )
       println(s"Filtered ETH! $addressFilteredEthTransactions")
 

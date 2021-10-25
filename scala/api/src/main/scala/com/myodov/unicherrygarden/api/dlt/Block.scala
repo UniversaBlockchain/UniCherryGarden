@@ -9,28 +9,45 @@ trait Block {
   /** Return the block number, typically sequentially increasing.
    *
    * @note `Integer` type instead of BigInt` saves space but must be fixed in 1657 years.
-   * */
-  val number: Integer
-  require(number != null && number >= 0)
+   */
+  val number: Int
+  require(number >= 0, number)
 
   /** Block hash. */
   val hash: String
-  require(hash != null && EthUtils.Hashes.isValidBlockHash(hash))
+  require(hash != null && EthUtils.Hashes.isValidBlockHash(hash), hash)
 
   /** Parent block hash. Note: we may don't know or don't have it. */
-  val parentHash: String
-  require(parentHash != null && EthUtils.Hashes.isValidBlockHash(parentHash))
+  val parentHash: Option[String]
+  require(parentHash.isEmpty || EthUtils.Hashes.isValidBlockHash(parentHash.get), parentHash)
 
   /** Timestamp of the block. */
   val timestamp: Instant
-  require(timestamp != null)
+  require(timestamp != null, timestamp)
 
   //  /** Return the (transfer or creation) operations contained in this block. */
   //  def ops: Seq[Operation]
+
+
+  override def toString = s"Block($number, $hash, $parentHash, $timestamp)"
 }
 
 /** Standard implementation of [[Block]] trait. */
-case class EthereumBlock(number: Integer,
-                         hash: String,
-                         parentHash: String,
-                         timestamp: Instant) extends Block
+class EthereumBlock(val number: Int,
+                    val hash: String,
+                    val parentHash: Option[String],
+                    val timestamp: Instant
+                   ) extends Block {
+  require(EthUtils.Hashes.isValidBlockHash(hash), hash)
+  require(parentHash.isEmpty || EthUtils.Hashes.isValidBlockHash(parentHash.get), parentHash)
+
+  /** Return a copy of this Ethereum block, but having [[EthereumBlock#parentHash]] disabled
+   * (e.g. to store it as a first block in the DB).
+   */
+  def withoutParentHash = new EthereumBlock(number, hash, Option.empty, timestamp)
+}
+
+object EthereumBlock {
+  @inline def apply(number: Int, hash: String, parentHash: String, timestamp: Instant): EthereumBlock =
+    new EthereumBlock(number, hash, Option(parentHash), timestamp)
+}

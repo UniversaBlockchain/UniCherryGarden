@@ -97,8 +97,11 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
 
                   ethereumConnector.readBlock(blockToSync, trackedAddresses, currencies) match {
                     case None => logger.error(s"Cannot read block $blockToSync")
-                    case Some(readBlock) => {
-                      logger.debug(s"Reading block $readBlock")
+                    case Some((block, transactions, transfers)) => {
+                      logger.debug(s"Reading block $block: txes $transactions, transfers $transfers")
+
+                      logger.debug(s"Storing block: $block")
+                      pgStorage.blocks.addBlock(block.withoutParentHash)
                     }
                   }
                 }
@@ -132,8 +135,8 @@ object CherryPicker extends LazyLogging {
   /** A message informing CherryPicker it needs to run a next iteration. */
   final case class Iterate() extends CherryPickerRequest
 
-  //  private val ITERATION_PERIOD = 15 seconds
-  protected val ITERATION_PERIOD = 1 second
+    private val ITERATION_PERIOD = 15 seconds
+//  private val ITERATION_PERIOD = 1 second
 
   /** Object constructor. */
   def apply(pgStorage: PostgreSQLStorage,

@@ -13,12 +13,20 @@ public class EthUtils {
 
 
     /**
+     * Check if a string is a valid “hex string”, like ones used to store hashes.
+     */
+    public static final boolean isValidHexString(@NonNull String str) {
+        assert str != null;
+        return str.startsWith("0x") && str.matches("^0x[0-9a-f]+$");
+    }
+
+    /**
      * Check if a `hash` value is valid for usage in Ethereum.
      */
-    static final boolean isValidHash(@NonNull String str, @NonNull int length) {
+    public static final boolean isValidHash(@NonNull String str, @NonNull int length) {
         assert str != null;
         assert length > 2 : length;
-        return (str.length() == length) && str.startsWith("0x") && str.matches("^0x[0-9a-f]+$");
+        return (str.length() == length) && isValidHexString(str);
     }
 
     /**

@@ -8,27 +8,27 @@ import com.myodov.unicherrygarden.ethereum.EthUtils
 trait Transaction {
   /** Transaction hash. */
   val hash: String
-  require(hash != null && EthUtils.Hashes.isValidTransactionHash(hash))
+  require(hash != null && EthUtils.Hashes.isValidTransactionHash(hash), hash)
 
   /** Sender of the transaction (address). */
   val from: String
-  require(from != null && EthUtils.Addresses.isValidLowercasedAddress(from))
+  require(from != null && EthUtils.Addresses.isValidLowercasedAddress(from), from)
 
-  /** Receiver of the transaction (address). */
-  val to: String
-  require(to != null && EthUtils.Addresses.isValidLowercasedAddress(to))
+  /** Receiver of the transaction (address). May be absent (if this is a transaction creating the smart contract). */
+  val to: Option[String]
+  require(to.isEmpty || EthUtils.Addresses.isValidLowercasedAddress(to.get), to)
 
   //  val transactionFee: BigDecimal
   //  require(transactionFee != null && transactionFee >= 0)
 
   val gasPrice: BigDecimal
-  require(gasPrice != null && gasPrice >= 0)
+  require(gasPrice != null && gasPrice >= 0, gasPrice)
 
   val gasLimit: BigInt
-  require(gasLimit != null && gasLimit >= 0)
+  require(gasLimit != null && gasLimit >= 0, gasLimit)
 
   val gasUsed: BigInt
-  require(gasUsed != null && gasUsed >= 0)
+  require(gasUsed != null && gasUsed >= 0, gasUsed)
 }
 
 /** This is a transaction in blockchain, which has been mined and present in some block. */
@@ -68,7 +68,7 @@ case class EthereumTransaction(hash: String,
                                blockNumber: BigInt,
                                timestamp: Instant,
                                from: String,
-                               to: String,
+                               to: Option[String],
                                gasPrice: BigDecimal,
                                gasLimit: BigInt,
                                gasUsed: BigInt,

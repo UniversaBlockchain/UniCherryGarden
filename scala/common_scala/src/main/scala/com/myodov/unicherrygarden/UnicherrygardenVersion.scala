@@ -6,7 +6,7 @@ import java.util.Properties
 /**
  * The convenient accessor to the versions of each CherryGarden component,
  * which are stored in the sbt-generated `.properties` files.
- **/
+ */
 object UnicherrygardenVersion {
   def loadPropsFromNamedResource(resourceName: String): Properties = {
     val resourcePath = "unicherrygarden/" + resourceName

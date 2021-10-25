@@ -20,7 +20,7 @@ class CherryGardener(private val pgStorage: PostgreSQLStorage,
 
   /**
    * Reply to [[GetCurrencies]] request.
-   **/
+   */
   def getCurrencies(): GetCurrencies.Response = {
     val result: List[Currency] = pgStorage.currencies.getCurrencies().map(
       c => new Currency(

@@ -1,8 +1,10 @@
 package com.myodov.unicherrygarden.storages
 
 import java.sql.SQLException
+import java.time.Instant
 
 import com.myodov.unicherrygarden.api.dlt
+import com.myodov.unicherrygarden.api.dlt.Block
 import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
@@ -52,21 +54,21 @@ class PostgreSQLStorage(jdbcUrl: String,
      *
      * @param from : UniCherrypicker in general has been synced from this block (may be missing).
      * @param to   : UniCherrypicker in general has been synced to this block (may be missing).
-     **/
+     */
     case class OverallSyncStatus(from: Option[Int], to: Option[Int])
 
     /** Sync status of `ucg_currency` table.
      *
      * @param minSyncFrom : minimum `sync_from_block_number` value among all supported currencies (may be missing).
      * @param maxSyncFrom : maximum `sync_from_block_number` value among all supported currencies (may be missing).
-     **/
+     */
     case class CurrenciesSyncStatus(minSyncFrom: Option[Int], maxSyncFrom: Option[Int])
 
     /** Sync status of `ucg_block` table
      *
      * @param from : minimum block number in `ucg_block` table (may be missing).
      * @param to   : maximum block number in `ucg_block` tble (may be missing).
-     **/
+     */
     case class BlocksSyncStatus(from: Option[Int], to: Option[Int])
 
     /** Sync status of `ucg_tracked_address` table.
@@ -77,7 +79,7 @@ class PostgreSQLStorage(jdbcUrl: String,
      * @param maxTo      : maximum `synced_to_block_number` value among all tracked addresses (may be missing).
      * @param toHasNulls : whether `synced_to_block_number` has nulls;
      *                   i.e., for some tracked addresses, the synced_to value is missing.
-     **/
+     */
     case class TrackedAddressesSyncStatus(minFrom: Int, maxFrom: Int,
                                           minTo: Option[Int], maxTo: Option[Int],
                                           toHasNulls: Boolean)
@@ -90,7 +92,7 @@ class PostgreSQLStorage(jdbcUrl: String,
      * @param maxTo      : maximum `synced_to_block_number` value among all currency/tracked-address pairs (may be missing).
      * @param toHasNulls : whether `synced_to_block_number` has nulls;
      *                   i.e., for some currency/tracked-address pairs, the synced_to value is missing.
-     **/
+     */
     case class PerCurrencyTrackedAddressesSyncStatus(minFrom: Int, maxFrom: Int,
                                                      minTo: Option[Int], maxTo: Option[Int],
                                                      toHasNulls: Boolean)
@@ -102,7 +104,7 @@ class PostgreSQLStorage(jdbcUrl: String,
      * @param blocks                      : progress of syncing as per `ucg_block` table.
      * @param trackedAddresses            : progress of syncing as per `ucg_tracked_address` table.
      * @param perCurrencyTrackedAddresses : progress of syncing as per `ucg_currency_tracked_address_progress` tble.
-     **/
+     */
     case class Progress(overall: OverallSyncStatus,
                         currencies: CurrenciesSyncStatus,
                         blocks: BlocksSyncStatus,
@@ -150,7 +152,7 @@ class PostgreSQLStorage(jdbcUrl: String,
      *
      * @return: [[Option]] with the first unsynced PCT address;
      *          Option is empty if there is no such address found.
-     **/
+     */
     def getFirstBlockResolvingSomeUnsyncedPCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
       sql"""
       SELECT MIN(ucg_currency_tracked_address_progress.synced_from_block_number) AS min_synced_from_block_number
@@ -188,9 +190,9 @@ class PostgreSQLStorage(jdbcUrl: String,
     }
 
     def setEthNodeData(blockNumber: Int, currentBlock: Int, highestBlock: Int)(implicit session: DBSession = AutoSession) = {
-      require(blockNumber >= 0)
-      require(currentBlock >= 0)
-      require(highestBlock >= 0)
+      require(blockNumber >= 0, blockNumber)
+      require(currentBlock >= 0, currentBlock)
+      require(highestBlock >= 0, highestBlock)
 
       logger.debug(s"Setting eth_node data: $blockNumber, $currentBlock, $highestBlock")
       sql"""
@@ -257,8 +259,8 @@ class PostgreSQLStorage(jdbcUrl: String,
                           symbol: Option[String],
                           ucgComment: Option[String]
                          ) {
-      require((currencyType == CurrencyTypes.Eth) == dAppAddress.isEmpty)
-      require(dAppAddress.isEmpty || EthUtils.Addresses.isValidLowercasedAddress(dAppAddress.get))
+      require((currencyType == CurrencyTypes.Eth) == dAppAddress.isEmpty, (currencyType, dAppAddress))
+      require(dAppAddress.isEmpty || EthUtils.Addresses.isValidLowercasedAddress(dAppAddress.get), dAppAddress)
 
       def asAsset: dlt.Asset = {
         currencyType match {
@@ -292,7 +294,7 @@ class PostgreSQLStorage(jdbcUrl: String,
     /** Single instance of tracked address.
      * Note that the [[Option]] arguments being [[Option.empty]] don’t necessary mean the data really has NULL here:
      * they may be empty if the result has been requested without this piece of data.
-     * */
+     */
     case class TrackedAddress(address: String,
                               comment: Option[String],
                               syncedFrom: Option[Int],
@@ -301,7 +303,7 @@ class PostgreSQLStorage(jdbcUrl: String,
 
     /** Get the list of all tracked addresses;
      * optionally containing (or not containing) various extra information about each address.
-     * */
+     */
     def getTrackedAddresses(
                              includeComment: Boolean,
                              includeSyncedFrom: Boolean,
@@ -334,7 +336,7 @@ class PostgreSQLStorage(jdbcUrl: String,
     /** Add a new address to be tracked.
      *
      * @return whether the adding happened successfully.
-     **/
+     */
     def addTrackedAddress(
                            address: String,
                            comment: Option[String],
@@ -344,8 +346,8 @@ class PostgreSQLStorage(jdbcUrl: String,
                            session: DBSession = AutoSession
                          ): Boolean = {
       logger.debug(s"Tracking address $address: $comment, $mode, $fromBlock")
-      require(EthUtils.Addresses.isValidLowercasedAddress(address))
-      require((mode == StartTrackingAddressMode.FROM_BLOCK) == fromBlock.nonEmpty)
+      require(EthUtils.Addresses.isValidLowercasedAddress(address), address)
+      require((mode == StartTrackingAddressMode.FROM_BLOCK) == fromBlock.nonEmpty, (mode, fromBlock))
 
       try {
         sql"""
@@ -380,6 +382,107 @@ class PostgreSQLStorage(jdbcUrl: String,
   }
 
   lazy val trackedAddresses: TrackedAddresses = new TrackedAddresses
+
+
+  /** Access `ucg_block` table. */
+  class Blocks {
+
+    def addBlock(block: Block
+                )(implicit
+                  session: DBSession = AutoSession
+                ) = {
+      block.number
+      sql"""
+      INSERT INTO ucg_block(number, hash, parent_hash, timestamp)
+      VALUES (${block.number}, ${block.hash}, ${block.parentHash}, ${block.timestamp})
+      """.execute.apply()
+    }
+  }
+
+  lazy val blocks: Blocks = new Blocks
+
+
+  /** Access `ucg_transaction` table. */
+  class Transactions {
+
+    /** Information for any transaction in Ethereum blockchain; stored in `ucg_transaction` table.
+     *
+     * Includes data from both the transaction (`eth.getTransaction()`)
+     * and transaction receipt (`eth.getTransactionReceipt()`).
+     */
+    case class Transaction(txhash: String,
+                           timestamp: Instant,
+                           from_hash: String,
+                           to_hash: String,
+                           status: Int,
+                           isStatusOk: Boolean,
+                           isInternal: Boolean,
+                           comment: Option[String],
+                           gasPrice: BigInt,
+                           gasLimit: BigInt,
+                           gasUsed: BigInt,
+                           nonce: Int,
+                           transactionIndex: Int,
+                           gas: BigInt,
+                           value: BigInt,
+                           effectiveGasPrice: BigInt,
+                           cumulativeGasUsed: BigInt
+                          ) {
+      require(EthUtils.Hashes.isValidTransactionHash(txhash), txhash)
+      require(EthUtils.Addresses.isValidAddress(from_hash), from_hash)
+      require(EthUtils.Addresses.isValidAddress(to_hash), to_hash)
+      require(gasPrice >= 0, gasPrice)
+      require(gasLimit >= 0, gasLimit)
+      require(gasUsed >= 0, gasUsed)
+      require(nonce >= 0, nonce)
+      require(transactionIndex >= 0, transactionIndex)
+      require(gas >= 0, gas)
+      require(value >= 0, value)
+      require(effectiveGasPrice >= 0, effectiveGasPrice)
+      require(cumulativeGasUsed >= 0, cumulativeGasUsed)
+    }
+
+    def addTransaction(blockNumber: Int,
+                       blockHash: String, // to ensure that the the block hasn’t been reorganized
+                       transaction: Transaction
+                      )(implicit
+                        session: DBSession = AutoSession
+                      ): Boolean = {
+      require(blockNumber >= 0, blockNumber)
+      require(EthUtils.Hashes.isValidBlockHash(blockHash), blockHash)
+      false
+    }
+  }
+
+  lazy val transactions: Transactions = new Transactions
+
+  /** Access `ucg_tx_log` table. */
+  class TxLogs {
+
+    /** Information for any transaction log (in a transaction) in Ethereum blockchain;
+     * stored in `ucg_tx_log` table.
+     */
+    case class TxLog(logIndex: Int,
+                     topics: Array[String],
+                     data: String
+                    ) {
+      require(logIndex >= 0, logIndex)
+      require(topics.forall(topic => EthUtils.isValidHash(topic, 66)), topics)
+      require(EthUtils.isValidHexString(data), data)
+    }
+
+    def addTxLogs(
+                   blockNumber: Int,
+                   transactionHash: String,
+                   txLogs: Seq[TxLog]
+                 )(implicit
+                   session: DBSession = AutoSession
+                 ): Boolean = {
+      false
+    }
+  }
+
+  lazy val txlogs: TxLogs = new TxLogs
 }
 
 object PostgreSQLStorage {
