@@ -3,7 +3,7 @@ package com.myodov.unicherrygarden
 import akka.actor.typed.Behavior
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
-import com.myodov.unicherrygarden.api.dlt.{Asset, Ether}
+import com.myodov.unicherrygarden.api.dlt.Asset
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult
@@ -12,6 +12,7 @@ import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.Resp
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.typesafe.scalalogging.LazyLogging
+import scalikejdbc.DB
 
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
@@ -55,56 +56,56 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
         pgStorage.state.setEthNodeData(ethBlockNumber, currentBlock, highestBlock)
 
         // Since this moment, we may want to use DB in a single atomic DB transaction
+        DB localTx { implicit session =>
+          val optProgress = pgStorage.progress.getProgress
+          lazy val progress = optProgress.get
+          lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
 
-        val optProgress = pgStorage.progress.getProgress
-        lazy val progress = optProgress.get
-        lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
+          if (optProgress.isEmpty) {
+            logger.error("Cannot get the progress, something failed!")
+            pgStorage.state.setSyncState("Cannot get the progress state!")
+          } else if (progress.overall.from.isEmpty) {
+            logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!");
+          } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
+            logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
+              s"is ${progress.currencies.minSyncFrom.get}; " +
+              s"it should not be lower than $overallFrom!")
+          } else if (progress.trackedAddresses.minFrom < overallFrom) {
+            logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
+              s"is ${progress.trackedAddresses.minFrom}; " +
+              s"it should not be lower than $overallFrom!")
+          } else {
+            // optProgress is not Empty
+            // progress.overall.from is not Empty
 
-        if (optProgress.isEmpty) {
-          logger.error("Cannot get the progress, something failed!")
-          pgStorage.state.setSyncState("Cannot get the progress state!")
-        } else if (progress.overall.from.isEmpty) {
-          logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!");
-        } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
-          logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
-            s"is ${progress.currencies.minSyncFrom.get}; " +
-            s"it should not be lower than $overallFrom!")
-        } else if (progress.trackedAddresses.minFrom < overallFrom) {
-          logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
-            s"is ${progress.trackedAddresses.minFrom}; " +
-            s"it should not be lower than $overallFrom!")
-        } else {
-          // optProgress is not Empty
-          // progress.overall.from is not Empty
+            if (progress.trackedAddresses.toHasNulls || progress.perCurrencyTrackedAddresses.toHasNulls) {
+              // Some of tracked_addresses (or currency/tracked address M2Ms) have never been synced.
+              // Find the earliest of them and sync.
+              logger.debug(s"Progress is: $progress")
 
-          if (progress.trackedAddresses.toHasNulls || progress.perCurrencyTrackedAddresses.toHasNulls) {
-            // Some of tracked_addresses (or currency/tracked address M2Ms) have never been synced.
-            // Find the earliest of them and sync.
-            logger.debug(s"Progress is: $progress")
+              pgStorage.progress.getFirstBlockResolvingSomeUnsyncedPCTAddress match {
+                case None => logger.error(s"Progress is $progress and some tracked addresses are untouched, but could not find them")
+                case Some(blockToSync) => {
+                  pgStorage.state.setSyncState(s"Resyncing untouched addresses: block $blockToSync")
 
-            pgStorage.progress.getFirstBlockResolvingSomeUnsyncedPCTAddress match {
-              case None => logger.error(s"Progress is $progress and some tracked addresses are untouched, but could not find them")
-              case Some(blockToSync) => {
-                pgStorage.state.setSyncState(s"Resyncing untouched addresses: block $blockToSync")
+                  val trackedAddresses: Set[String] = pgStorage.trackedAddresses.getJustAddresses
+                  val currencies: Set[Asset] = pgStorage.currencies.getCurrencies.map(_.asAsset).toSet
 
-                val trackedAddresses: Set[String] = pgStorage.trackedAddresses.getJustAddresses
-                val currencies: Set[Asset] = pgStorage.currencies.getCurrencies.map(_.asAsset).toSet
+                  logger.debug(s"processing block $blockToSync " +
+                    s"with tracked addresses $trackedAddresses, " +
+                    s"currencies $currencies")
 
-                logger.debug(s"processing block $blockToSync " +
-                  s"with tracked addresses $trackedAddresses, " +
-                  s"currencies $currencies")
-
-                ethereumConnector.readBlock(blockToSync, trackedAddresses, currencies) match {
-                  case None => logger.error(s"Cannot read block $blockToSync")
-                  case Some(readBlock) => {
-                    logger.debug(s"Reading block $readBlock")
+                  ethereumConnector.readBlock(blockToSync, trackedAddresses, currencies) match {
+                    case None => logger.error(s"Cannot read block $blockToSync")
+                    case Some(readBlock) => {
+                      logger.debug(s"Reading block $readBlock")
+                    }
                   }
                 }
               }
             }
           }
-        }
-
+        } // DB localTx
       }
     }
   }
@@ -156,7 +157,7 @@ object CherryPicker extends LazyLogging {
         // but 5 seconds after a previous iteration *completed*.
         // The latter though can be resolved by scheduleWithFixedDelay.
         logger.error("Running first iteration of CherryPicker...")
-         context.self ! Iterate() // TODO: enable to start iterations
+        context.self ! Iterate() // TODO: enable to start iterations
 
         Behaviors.receiveMessage {
           case Iterate() => {
@@ -199,7 +200,7 @@ object CherryPicker extends LazyLogging {
 
             // Here goes the list of all added addresses
             // (as Options; with Option.empty instead of any address that failed to add)
-            val addressesMaybeAdded: List[Option[String]] =
+            val addressesMaybeAdded: List[Option[String]] = (
               for (addr: AddTrackedAddresses.AddressDataToTrack <- payload.addressesToTrack.asScala.toList)
                 yield {
                   if (pgStorage.trackedAddresses.addTrackedAddress(
@@ -213,6 +214,7 @@ object CherryPicker extends LazyLogging {
                     Option.empty[String]
                   }
                 }
+              )
 
             // Flatten it to just the added elements
             val addressesActuallyAdded: Set[String] = addressesMaybeAdded.flatten.toSet
