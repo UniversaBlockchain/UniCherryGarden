@@ -1,13 +1,14 @@
-CREATE OR REPLACE FUNCTION ucg_erc20_transfer_event_get_display_value(_data BYTEA, _decimals SMALLINT)
+-- Initial implementation only; for latest up-to-date implementation, see the repeatable migration
+CREATE OR REPLACE FUNCTION ucg_uint256_to_numeric(_uint256 BYTEA, _decimals SMALLINT)
     RETURNS NUMERIC
     LANGUAGE PLPGSQL
     IMMUTABLE STRICT
 AS
 $$
 BEGIN
-    IF length(_data) != 32
+    IF length(_uint256) != 32
     THEN
-        RAISE EXCEPTION 'Not a valid topics list for ERC20 Transfer event: %!', _data;
+        RAISE EXCEPTION 'Not a valid topics list for ERC20 Transfer event: %!', _uint256;
     END IF;
 
     IF NOT (0 <= _decimals AND _decimals <= 79)
@@ -23,14 +24,9 @@ BEGIN
     -- `precision` should be twice than, i.e. 158
 
     RETURN (
-            ucg_uint256_to_numeric(_data)::numeric(158, 79)
+            ucg_uint256_to_numeric(_uint256)::numeric(158, 79)
             /
             10::numeric ^ _decimals::numeric
         );
 END;
 $$;
-
-COMMENT ON FUNCTION ucg_erc20_transfer_event_get_display_value(_data BYTEA, _decimals SMALLINT) IS
-    'From the `data` field in a ERC20 token log, get the value of the `_value` ERC20 argument, '
-        'in a display-ready (decimals-converted) form. '
-        'Will fail if it is not a ERC20 Transfer event, or in case of any other error.';
