@@ -17,6 +17,7 @@ import scalikejdbc.DB
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
+import scala.util.control.NonFatal
 
 
 /** The main actor “cherry-picking” the data from the Ethereum blockchain into the DB. */
@@ -118,7 +119,7 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
     try {
       insideEachIteration()
     } catch {
-      case e: Throwable => logger.error("On iteration, got a error", e)
+      case NonFatal(e) => logger.error("On iteration, got a error", e)
     }
 
     pgStorage.state.setLastHeartbeatAt

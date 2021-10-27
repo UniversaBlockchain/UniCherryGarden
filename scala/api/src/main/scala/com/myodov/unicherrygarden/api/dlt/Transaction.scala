@@ -1,14 +1,16 @@
 package com.myodov.unicherrygarden.api.dlt
 
-import java.time.Instant
-
 import com.myodov.unicherrygarden.ethereum.EthUtils
 
-/** This is a single transaction in blockchain, containing one or more transfers. */
+/** This is a single transaction in blockchain, containing one or more transfers.
+ *
+ * It may or may not have been mined; so it typically contains the data available
+ * from `eth.getTransaction()` call.
+ */
 trait Transaction {
   /** Transaction hash. */
-  val hash: String
-  require(hash != null && EthUtils.Hashes.isValidTransactionHash(hash), hash)
+  val txhash: String
+  require(txhash != null && EthUtils.Hashes.isValidTransactionHash(txhash), txhash)
 
   /** Sender of the transaction (address). */
   val from: String
@@ -18,58 +20,151 @@ trait Transaction {
   val to: Option[String]
   require(to.isEmpty || EthUtils.Addresses.isValidLowercasedAddress(to.get), to)
 
-  //  val transactionFee: BigDecimal
-  //  require(transactionFee != null && transactionFee >= 0)
+  /** Gas (in gas units).
+   *
+   * From `eth.getTransaction()`.
+   */
+  val gas: BigInt
+  require(gas != null && gas >= 0, gas)
 
-  val gasPrice: BigDecimal
+  /** Gas price (in wei).
+   *
+   * From `eth.getTransaction()`.
+   */
+  val gasPrice: BigInt
   require(gasPrice != null && gasPrice >= 0, gasPrice)
 
-  val gasLimit: BigInt
-  require(gasLimit != null && gasLimit >= 0, gasLimit)
+  /** Gas price (in ETH). */
+  def gasPriceInEth: BigDecimal = EthUtils.Wei.valueFromWeis(gasPrice.bigInteger)
 
-  val gasUsed: BigInt
-  require(gasUsed != null && gasUsed >= 0, gasUsed)
+  /** Nonce value.
+   *
+   * From `eth.getTransaction()`.
+   */
+  val nonce: Int
+  require(nonce >= 0, nonce)
+
+  /** Transaction value (in wei). */
+  val value: BigInt
+  require(value != null && value >= 0, value)
+
+  /** Transaction value (in ETH). */
+  def valueInEth: BigDecimal = EthUtils.Wei.valueFromWeis(value.bigInteger)
 }
 
-/** This is a transaction in blockchain, which has been mined and present in some block. */
-//trait MinedTransaction extends Transaction {
-//  val blockNumber: BigInt
-//  require(blockNumber != null && blockNumber >= 0)
-//}
+/** This is a transaction in blockchain, which has been mined and present in some block.
+ *
+ * Comparing to [[Transaction]] (and extending it), it contains the extra data available
+ * from `eth.getTransactionReceipt()` call.
+ */
+trait MinedTransaction extends Transaction {
+  /** Status of the transaction.
+   *
+   * From `eth.getTransactionReceipt()`.
+   */
+  val status: Int
 
+  /** Whether the status of transaction means it is valid. */
+  def isStatusOk: Boolean = (status == 0)
 
-///** This is a single block in blockchain, containing one or more transfers. */
-//trait Block {
-//  /** Return the block number, typically sequentially increasing. */
-//  val number: BigInt
-//  require(number != null)
-//
-//  /** Block hash. */
-//  val hash: String
-//  require(hash != null && EthUtils.isValidBlockHash(hash))
-//
-//  /** Parent block hash. Note: we may don't know or don't have it. */
-//  val parentHash: Option[String]
-//  require(parentHash != null && (parentHash.isEmpty || EthUtils.isValidBlockHash(parentHash.get)))
-//
-//  /** Timestamp of the block. */
-//  val timestamp: Instant
-//  require(timestamp != null)
-//
-//  //  /** Return the (transfer or creation) operations contained in this block. */
-//  //  def ops: Seq[Operation]
-//}
-//
+  /** The block in which the transaction is mined.
+   *
+   * From `eth.getTransaction()`, though will be non-null only if the transaction is mined already.
+   */
+  val blockNumber: BigInt
+  require(blockNumber != null && blockNumber >= 0)
+
+  /** The index of transaction in the block.
+   *
+   * From `eth.getTransaction()`, though will be non-null only if the transaction is mined already.
+   */
+  val transactionIndex: Int
+  require(transactionIndex >= 0, transactionIndex)
+
+  /** Gas used (in gas units).
+   *
+   * From `eth.getTransactionReceipt()`.
+   */
+  val gasUsed: BigInt
+  require(gasUsed != null && gasUsed >= 0, gasUsed)
+
+  /** Effective gas price (in wei).
+   *
+   * From `eth.getTransactionReceipt()`.
+   */
+  val effectiveGasPrice: BigInt
+  require(effectiveGasPrice >= 0, effectiveGasPrice)
+
+  /** Effective gas price (in ETH). */
+  def effectiveGasPriceInEth: BigDecimal = EthUtils.Wei.valueFromWeis(effectiveGasPrice.bigInteger)
+
+  /** Cumulative gas used (in gas units).
+   *
+   * From `eth.getTransactionReceipt()`.
+   */
+  val cumulativeGasUsed: BigInt
+  require(cumulativeGasUsed >= 0, cumulativeGasUsed)
+}
+
 /** Standard implementation of [[Transaction]] trait. */
-//case class EthereumTransaction() extends Transaction
+class EthereumTransaction(
+                           val txhash: String,
+                           val from: String,
+                           val to: Option[String],
+                           val gas: BigInt,
+                           val gasPrice: BigInt,
+                           val nonce: Int,
+                           val value: BigInt
+                         ) extends Transaction
 
-/** Standard implementation of [[Transaction]] trait. */
-case class EthereumTransaction(hash: String,
-                               blockNumber: BigInt,
-                               timestamp: Instant,
-                               from: String,
-                               to: Option[String],
-                               gasPrice: BigDecimal,
-                               gasLimit: BigInt,
-                               gasUsed: BigInt,
-                              ) extends Transaction
+/** Standard implementation of [[MinedTransaction]] trait. */
+class EthereumMinedTransaction( // Transaction-specific
+                                override val txhash: String,
+                                override val from: String,
+                                override val to: Option[String],
+                                override val gas: BigInt,
+                                override val gasPrice: BigInt,
+                                override val nonce: Int,
+                                override val value: BigInt,
+                                // MinedTransaction-specific
+                                val status: Int,
+                                val blockNumber: BigInt,
+                                val transactionIndex: Int,
+                                val gasUsed: BigInt,
+                                val effectiveGasPrice: BigInt,
+                                val cumulativeGasUsed: BigInt,
+//                                txLogs: Seq[TxLog]
+                              ) extends MinedTransaction()
+
+object EthereumMinedTransaction {
+  @inline def apply( // Transaction-specific
+                     txhash: String,
+                     from: String,
+                     to: Option[String],
+                     gas: BigInt,
+                     gasPrice: BigInt,
+                     nonce: Int,
+                     value: BigInt,
+                     // MinedTransaction-specific
+                     status: Int,
+                     blockNumber: BigInt,
+                     transactionIndex: Int,
+                     gasUsed: BigInt,
+                     effectiveGasPrice: BigInt,
+                     cumulativeGasUsed: BigInt): EthereumMinedTransaction =
+    new EthereumMinedTransaction(
+      txhash,
+      from,
+      to,
+      gas,
+      gasPrice,
+      nonce,
+      value,
+      status,
+      blockNumber,
+      transactionIndex,
+      gasUsed,
+      effectiveGasPrice,
+      cumulativeGasUsed
+    )
+}

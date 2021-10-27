@@ -28,7 +28,7 @@ object Erc20TransferEvent {
   /** The Transfer event signature usable to match the logs. */
   val signature: String = EventEncoder.encode(transferEvent)
 
-  case class TopicParseResult(from: String, to: String)
+  final case class TopicParseResult(from: String, to: String)
 
   /** Analyze the `topics` of the Ethereum log; if they are for ERC20 “Transfer” */
   private[connectors] def parseTopics(topics: List[String]): Option[TopicParseResult] = {

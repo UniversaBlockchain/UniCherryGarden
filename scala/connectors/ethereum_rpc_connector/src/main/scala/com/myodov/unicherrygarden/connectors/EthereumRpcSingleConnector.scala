@@ -20,6 +20,7 @@ import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters._
 import scala.jdk.FutureConverters._
 import scala.jdk.OptionConverters._
+import scala.util.control.NonFatal
 
 /** Connector that handles a connection to single Ethereum node via RPC, and communicates with it.
  */
@@ -38,7 +39,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
   }
 
 
-  private[this] case class SyncingStatusData(currentBlock: Int = 0, highestBlock: Int = 0) {
+  private[this] final case class SyncingStatusData(currentBlock: Int = 0, highestBlock: Int = 0) {
     assert(currentBlock >= 0)
     assert(highestBlock >= 0)
   }
@@ -99,7 +100,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
           decodeQuantity(highestBlockStr).intValueExact()))
       }
     } catch {
-      case e: Throwable => {
+      case NonFatal(e) => {
         logger.error("Cannot call eth.syncing!", e)
         None
       }
@@ -116,7 +117,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
     try {
       Some(web3j.ethBlockNumber.send.getBlockNumber)
     } catch {
-      case e: Throwable => {
+      case NonFatal(e) => {
         logger.error("Cannot call eth.blockNumber!", e)
         None
       }
@@ -307,22 +308,30 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
           yield tr
 
       val addressFilteredEthTransactions: List[dlt.Transaction] = addressFromToFilteredW3jEthTransactions.map(trw3j => {
-        dlt.EthereumTransaction(
-          hash = trw3j.getHash,
-          blockNumber = trw3j.getBlockNumber,
-          timestamp = blockTime,
+        val trReceipt: TransactionReceipt = receiptsByTrHash(trw3j.getHash)
+        dlt.EthereumMinedTransaction(
+          // Before-mined transaction
+          txhash = trw3j.getHash,
           from = trw3j.getFrom,
           to = Option(trw3j.getTo),
-          gasPrice = EthUtils.Wei.valueFromWeis(trw3j.getGasPrice),
-          gasLimit = trw3j.getGas,
-          gasUsed = receiptsByTrHash(trw3j.getHash).getGasUsed
+          gas = trw3j.getGas,
+          gasPrice = trw3j.getGasPrice,
+          nonce = trw3j.getNonce.intValueExact,
+          value = trw3j.getValue,
+          // Mined transaction
+          status = decodeQuantity(trReceipt.getStatus).intValueExact,
+          blockNumber = trw3j.getBlockNumber,
+          transactionIndex = trReceipt.getTransactionIndex.intValueExact,
+          gasUsed = trReceipt.getGasUsed,
+          effectiveGasPrice = decodeQuantity(trReceipt.getEffectiveGasPrice),
+          cumulativeGasUsed = trReceipt.getCumulativeGasUsed
         )
       }
       )
       println(s"Filtered ETH! $addressFilteredEthTransactions")
 
       val addressFilteredEthTransactionsByHash: Map[String, dlt.Transaction] =
-        addressFilteredEthTransactions.iterator.map(tr => tr.hash -> tr).toMap
+        addressFilteredEthTransactions.iterator.map(tr => tr.txhash -> tr).toMap
 
       val addressFilteredEthTransfers = {
         val addressFilteredEthTransfersDirect = addressFromToFilteredW3jEthTransactions.map(trw3j =>
@@ -415,7 +424,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
         List()
       ))
     } catch {
-      case e: Throwable => {
+      case NonFatal(e) => {
         logger.error(s"Cannot run readBlock($blockNumber)!", e)
         None
       }

@@ -8,7 +8,7 @@ import com.myodov.unicherrygarden.ethereum.EthUtils
 trait Block {
   /** Return the block number, typically sequentially increasing.
    *
-   * @note `Integer` type instead of BigInt` saves space but must be fixed in 1657 years.
+   * @note [[Integer]] type instead of [[BigInt]] saves space but must be fixed in 1657 years.
    */
   val number: Int
   require(number >= 0, number)
@@ -25,9 +25,6 @@ trait Block {
   val timestamp: Instant
   require(timestamp != null, timestamp)
 
-  //  /** Return the (transfer or creation) operations contained in this block. */
-  //  def ops: Seq[Operation]
-
 
   override def toString = s"Block($number, $hash, $parentHash, $timestamp)"
 }
@@ -38,8 +35,8 @@ class EthereumBlock(val number: Int,
                     val parentHash: Option[String],
                     val timestamp: Instant
                    ) extends Block {
-  require(EthUtils.Hashes.isValidBlockHash(hash), hash)
-  require(parentHash.isEmpty || EthUtils.Hashes.isValidBlockHash(parentHash.get), parentHash)
+  require(hash != null && EthUtils.Hashes.isValidBlockHash(hash), hash)
+  require(parentHash.isEmpty || (parentHash.get != null && EthUtils.Hashes.isValidBlockHash(parentHash.get)), parentHash)
 
   /** Return a copy of this Ethereum block, but having [[EthereumBlock#parentHash]] disabled
    * (e.g. to store it as a first block in the DB).
@@ -48,6 +45,9 @@ class EthereumBlock(val number: Int,
 }
 
 object EthereumBlock {
-  @inline def apply(number: Int, hash: String, parentHash: String, timestamp: Instant): EthereumBlock =
+  @inline def apply(number: Int, hash: String, parentHash: String, timestamp: Instant): EthereumBlock = {
+    require(hash != null, hash)
+    require(parentHash != null, parentHash)
     new EthereumBlock(number, hash, Option(parentHash), timestamp)
+  }
 }

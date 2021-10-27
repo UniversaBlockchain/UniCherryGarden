@@ -19,5 +19,9 @@ COMMENT ON COLUMN ucg_transaction.value IS
 COMMENT ON COLUMN ucg_transaction.nonce IS
     'Value of nonce; from eth.getTransaction().';
 
+COMMENT ON COLUMN ucg_transaction.block_number IS
+    'In what transaction the block has been mined; '
+        'from eth.getTransaction(), though will be non-null only if the transaction is mined already.';
 COMMENT ON COLUMN ucg_transaction.transaction_index IS
-    'Index of the transaction in the block; from eth.getTransactionReceipt().';
+    'Index of the transaction in the block; '
+        'from eth.getTransaction(), though will be non-null only if the transaction is mined already.';

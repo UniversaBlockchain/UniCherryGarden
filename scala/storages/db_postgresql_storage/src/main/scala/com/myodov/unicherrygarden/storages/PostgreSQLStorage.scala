@@ -1,10 +1,8 @@
 package com.myodov.unicherrygarden.storages
 
 import java.sql.SQLException
-import java.time.Instant
 
 import com.myodov.unicherrygarden.api.dlt
-import com.myodov.unicherrygarden.api.dlt.Block
 import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
@@ -12,6 +10,8 @@ import com.typesafe.scalalogging.LazyLogging
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.{CleanResult, MigrateResult}
 import scalikejdbc._
+
+import scala.util.control.NonFatal
 
 /** Stores the blockchain information in PostgreSQL database. */
 class PostgreSQLStorage(jdbcUrl: String,
@@ -55,21 +55,21 @@ class PostgreSQLStorage(jdbcUrl: String,
      * @param from : UniCherrypicker in general has been synced from this block (may be missing).
      * @param to   : UniCherrypicker in general has been synced to this block (may be missing).
      */
-    case class OverallSyncStatus(from: Option[Int], to: Option[Int])
+    final case class OverallSyncStatus(from: Option[Int], to: Option[Int])
 
     /** Sync status of `ucg_currency` table.
      *
      * @param minSyncFrom : minimum `sync_from_block_number` value among all supported currencies (may be missing).
      * @param maxSyncFrom : maximum `sync_from_block_number` value among all supported currencies (may be missing).
      */
-    case class CurrenciesSyncStatus(minSyncFrom: Option[Int], maxSyncFrom: Option[Int])
+    final case class CurrenciesSyncStatus(minSyncFrom: Option[Int], maxSyncFrom: Option[Int])
 
     /** Sync status of `ucg_block` table
      *
      * @param from : minimum block number in `ucg_block` table (may be missing).
      * @param to   : maximum block number in `ucg_block` tble (may be missing).
      */
-    case class BlocksSyncStatus(from: Option[Int], to: Option[Int])
+    final case class BlocksSyncStatus(from: Option[Int], to: Option[Int])
 
     /** Sync status of `ucg_tracked_address` table.
      *
@@ -80,9 +80,9 @@ class PostgreSQLStorage(jdbcUrl: String,
      * @param toHasNulls : whether `synced_to_block_number` has nulls;
      *                   i.e., for some tracked addresses, the synced_to value is missing.
      */
-    case class TrackedAddressesSyncStatus(minFrom: Int, maxFrom: Int,
-                                          minTo: Option[Int], maxTo: Option[Int],
-                                          toHasNulls: Boolean)
+    final case class TrackedAddressesSyncStatus(minFrom: Int, maxFrom: Int,
+                                                minTo: Option[Int], maxTo: Option[Int],
+                                                toHasNulls: Boolean)
 
     /** Sync status of `ucg_currency_tracked_address_progress` table.
      *
@@ -93,9 +93,9 @@ class PostgreSQLStorage(jdbcUrl: String,
      * @param toHasNulls : whether `synced_to_block_number` has nulls;
      *                   i.e., for some currency/tracked-address pairs, the synced_to value is missing.
      */
-    case class PerCurrencyTrackedAddressesSyncStatus(minFrom: Int, maxFrom: Int,
-                                                     minTo: Option[Int], maxTo: Option[Int],
-                                                     toHasNulls: Boolean)
+    final case class PerCurrencyTrackedAddressesSyncStatus(minFrom: Int, maxFrom: Int,
+                                                           minTo: Option[Int], maxTo: Option[Int],
+                                                           toHasNulls: Boolean)
 
     /** Whole-system syncing progress.
      *
@@ -105,11 +105,11 @@ class PostgreSQLStorage(jdbcUrl: String,
      * @param trackedAddresses            : progress of syncing as per `ucg_tracked_address` table.
      * @param perCurrencyTrackedAddresses : progress of syncing as per `ucg_currency_tracked_address_progress` tble.
      */
-    case class Progress(overall: OverallSyncStatus,
-                        currencies: CurrenciesSyncStatus,
-                        blocks: BlocksSyncStatus,
-                        trackedAddresses: TrackedAddressesSyncStatus,
-                        perCurrencyTrackedAddresses: PerCurrencyTrackedAddressesSyncStatus)
+    final case class Progress(overall: OverallSyncStatus,
+                              currencies: CurrenciesSyncStatus,
+                              blocks: BlocksSyncStatus,
+                              trackedAddresses: TrackedAddressesSyncStatus,
+                              perCurrencyTrackedAddresses: PerCurrencyTrackedAddressesSyncStatus)
 
     /** Get the overall syncing progress. */
     def getProgress(implicit session: DBSession = ReadOnlyAutoSession): Option[Progress] = {
@@ -253,12 +253,12 @@ class PostgreSQLStorage(jdbcUrl: String,
 
 
     /** Single instance of currency/token/asset. */
-    case class DBCurrency(currencyType: CurrencyTypes.DBCurrencyType,
-                          dAppAddress: Option[String],
-                          name: Option[String],
-                          symbol: Option[String],
-                          ucgComment: Option[String]
-                         ) {
+    final case class DBCurrency(currencyType: CurrencyTypes.DBCurrencyType,
+                                dAppAddress: Option[String],
+                                name: Option[String],
+                                symbol: Option[String],
+                                ucgComment: Option[String]
+                               ) {
       require((currencyType == CurrencyTypes.Eth) == dAppAddress.isEmpty, (currencyType, dAppAddress))
       require(dAppAddress.isEmpty || EthUtils.Addresses.isValidLowercasedAddress(dAppAddress.get), dAppAddress)
 
@@ -295,11 +295,11 @@ class PostgreSQLStorage(jdbcUrl: String,
      * Note that the [[Option]] arguments being [[Option.empty]] don’t necessary mean the data really has NULL here:
      * they may be empty if the result has been requested without this piece of data.
      */
-    case class TrackedAddress(address: String,
-                              comment: Option[String],
-                              syncedFrom: Option[Int],
-                              syncedTo: Option[Int]
-                             )
+    final case class TrackedAddress(address: String,
+                                    comment: Option[String],
+                                    syncedFrom: Option[Int],
+                                    syncedTo: Option[Int]
+                                   )
 
     /** Get the list of all tracked addresses;
      * optionally containing (or not containing) various extra information about each address.
@@ -373,8 +373,8 @@ class PostgreSQLStorage(jdbcUrl: String,
           logger.warn(s"Reinserting prevented: $address, $comment, $mode")
           false
         }
-        case ex: Throwable => {
-          logger.error(s"Unexpected error: $ex")
+        case NonFatal(e) => {
+          logger.error(s"Unexpected error", e)
           false
         }
       }
@@ -387,11 +387,10 @@ class PostgreSQLStorage(jdbcUrl: String,
   /** Access `ucg_block` table. */
   class Blocks {
 
-    def addBlock(block: Block
+    def addBlock(block: dlt.Block
                 )(implicit
                   session: DBSession = AutoSession
                 ) = {
-      block.number
       sql"""
       INSERT INTO ucg_block(number, hash, parent_hash, timestamp)
       VALUES (${block.number}, ${block.hash}, ${block.parentHash}, ${block.timestamp})
@@ -405,50 +404,13 @@ class PostgreSQLStorage(jdbcUrl: String,
   /** Access `ucg_transaction` table. */
   class Transactions {
 
-    /** Information for any transaction in Ethereum blockchain; stored in `ucg_transaction` table.
-     *
-     * Includes data from both the transaction (`eth.getTransaction()`)
-     * and transaction receipt (`eth.getTransactionReceipt()`).
-     */
-    case class Transaction(txhash: String,
-                           timestamp: Instant,
-                           from_hash: String,
-                           to_hash: String,
-                           status: Int,
-                           isStatusOk: Boolean,
-                           isInternal: Boolean,
-                           comment: Option[String],
-                           gasPrice: BigInt,
-                           gasLimit: BigInt,
-                           gasUsed: BigInt,
-                           nonce: Int,
-                           transactionIndex: Int,
-                           gas: BigInt,
-                           value: BigInt,
-                           effectiveGasPrice: BigInt,
-                           cumulativeGasUsed: BigInt
-                          ) {
-      require(EthUtils.Hashes.isValidTransactionHash(txhash), txhash)
-      require(EthUtils.Addresses.isValidAddress(from_hash), from_hash)
-      require(EthUtils.Addresses.isValidAddress(to_hash), to_hash)
-      require(gasPrice >= 0, gasPrice)
-      require(gasLimit >= 0, gasLimit)
-      require(gasUsed >= 0, gasUsed)
-      require(nonce >= 0, nonce)
-      require(transactionIndex >= 0, transactionIndex)
-      require(gas >= 0, gas)
-      require(value >= 0, value)
-      require(effectiveGasPrice >= 0, effectiveGasPrice)
-      require(cumulativeGasUsed >= 0, cumulativeGasUsed)
-    }
-
-    def addTransaction(blockNumber: Int,
-                       blockHash: String, // to ensure that the the block hasn’t been reorganized
-                       transaction: Transaction
+    def addTransaction(transaction: dlt.Transaction,
+                       // The transaction already has the block number, but, passing the block hash,
+                       // we ensure that the block hasn’t been reorganized
+                       blockHash: String,
                       )(implicit
                         session: DBSession = AutoSession
                       ): Boolean = {
-      require(blockNumber >= 0, blockNumber)
       require(EthUtils.Hashes.isValidBlockHash(blockHash), blockHash)
       false
     }
@@ -462,10 +424,10 @@ class PostgreSQLStorage(jdbcUrl: String,
     /** Information for any transaction log (in a transaction) in Ethereum blockchain;
      * stored in `ucg_tx_log` table.
      */
-    case class TxLog(logIndex: Int,
-                     topics: Array[String],
-                     data: String
-                    ) {
+    final case class TxLog(logIndex: Int,
+                           topics: Array[String],
+                           data: String
+                          ) {
       require(logIndex >= 0, logIndex)
       require(topics.forall(topic => EthUtils.isValidHash(topic, 66)), topics)
       require(EthUtils.isValidHexString(data), data)

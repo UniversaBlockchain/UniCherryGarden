@@ -26,7 +26,7 @@ public class EthUtils {
     public static final boolean isValidHash(@NonNull String str, @NonNull int length) {
         assert str != null;
         assert length > 2 : length;
-        return (str.length() == length) && isValidHexString(str);
+        return (str != null) && (str.length() == length) && isValidHexString(str);
     }
 
     /**

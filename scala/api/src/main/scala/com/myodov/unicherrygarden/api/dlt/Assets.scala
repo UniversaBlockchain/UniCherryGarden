@@ -33,7 +33,7 @@ trait Token extends Asset {
 //class DummyToken(val uid: String, name: String, network: Network)
 //  extends DummyAsset(name, network, true) with Token
 
-//case class Ether() extends NamedAsset {
+//final case class Ether() extends NamedAsset {
 //  override val name = "Ether"
 //  override val symbol = "ETH"
 //  override val isToken = false
@@ -49,7 +49,7 @@ object Ether extends NamedAsset {
   override val isToken = false
 }
 
-case class ERC20Token(uid: String) extends Token {
+final case class ERC20Token(uid: String) extends Token {
   require(uid != null && EthUtils.Addresses.isValidLowercasedAddress(uid), uid)
 
   override val isToken = true

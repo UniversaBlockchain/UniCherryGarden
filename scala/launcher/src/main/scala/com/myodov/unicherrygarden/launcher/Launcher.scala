@@ -25,7 +25,7 @@ object LauncherApp extends App with LazyLogging {
   lazy val config = ConfigFactory.load()
 
   /** Command line arguments. */
-  case class CLIConfig(mode: CLIMode.CLIMode = null)
+  final case class CLIConfig(mode: CLIMode.CLIMode = null)
 
   def handleCLI(args: Array[String]): Option[CLIConfig] = {
     val builder = OParser.builder[CLIConfig]
