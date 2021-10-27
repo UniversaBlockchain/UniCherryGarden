@@ -50,6 +50,9 @@ trait Transaction {
 
   /** Transaction value (in ETH). */
   def valueInEth: BigDecimal = EthUtils.Wei.valueFromWeis(value.bigInteger)
+
+
+  override def toString = s"Transaction(txhash=$txhash, from=$from, to=$to, nonce=$nonce, value=$value)"
 }
 
 /** This is a transaction in blockchain, which has been mined and present in some block.
@@ -104,6 +107,11 @@ trait MinedTransaction extends Transaction {
    */
   val cumulativeGasUsed: BigInt
   require(cumulativeGasUsed >= 0, cumulativeGasUsed)
+
+
+  override def toString = s"MinedTransaction(" +
+    s"txhash=$txhash, from=$from, to=$to, nonce=$nonce, value=$value; " +
+    s"status=$status, blockNumber=$blockNumber)"
 }
 
 /** Standard implementation of [[Transaction]] trait. */
@@ -133,7 +141,7 @@ class EthereumMinedTransaction( // Transaction-specific
                                 val gasUsed: BigInt,
                                 val effectiveGasPrice: BigInt,
                                 val cumulativeGasUsed: BigInt,
-//                                txLogs: Seq[TxLog]
+                                val txLogs: Seq[TxLog]
                               ) extends MinedTransaction()
 
 object EthereumMinedTransaction {
@@ -149,9 +157,15 @@ object EthereumMinedTransaction {
                      status: Int,
                      blockNumber: BigInt,
                      transactionIndex: Int,
-                     gasUsed: BigInt,
-                     effectiveGasPrice: BigInt,
-                     cumulativeGasUsed: BigInt): EthereumMinedTransaction =
+                     gasUsed: BigInt = 0,
+                     effectiveGasPrice: BigInt = 0,
+                     cumulativeGasUsed: BigInt = 0,
+                     txLogs: Seq[TxLog] = Seq()
+                   ): EthereumMinedTransaction = {
+    require(txhash != null, txhash)
+    require(from != null, from)
+    require(to.getOrElse("") != null, to)
+
     new EthereumMinedTransaction(
       txhash,
       from,
@@ -165,6 +179,8 @@ object EthereumMinedTransaction {
       transactionIndex,
       gasUsed,
       effectiveGasPrice,
-      cumulativeGasUsed
+      cumulativeGasUsed,
+      txLogs
     )
+  }
 }

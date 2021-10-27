@@ -3,6 +3,7 @@ package com.myodov.unicherrygarden.storages
 import java.sql.SQLException
 
 import com.myodov.unicherrygarden.api.dlt
+import com.myodov.unicherrygarden.api.dlt.TxLog
 import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
@@ -420,18 +421,6 @@ class PostgreSQLStorage(jdbcUrl: String,
 
   /** Access `ucg_tx_log` table. */
   class TxLogs {
-
-    /** Information for any transaction log (in a transaction) in Ethereum blockchain;
-     * stored in `ucg_tx_log` table.
-     */
-    final case class TxLog(logIndex: Int,
-                           topics: Array[String],
-                           data: String
-                          ) {
-      require(logIndex >= 0, logIndex)
-      require(topics.forall(topic => EthUtils.isValidHash(topic, 66)), topics)
-      require(EthUtils.isValidHexString(data), data)
-    }
 
     def addTxLogs(
                    blockNumber: Int,

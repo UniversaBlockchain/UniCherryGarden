@@ -45,7 +45,11 @@ class EthereumBlock(val number: Int,
 }
 
 object EthereumBlock {
-  @inline def apply(number: Int, hash: String, parentHash: String, timestamp: Instant): EthereumBlock = {
+  @inline def apply(number: Int,
+                    hash: String,
+                    parentHash: String,
+                    timestamp: Instant
+                   ): EthereumBlock = {
     require(hash != null, hash)
     require(parentHash != null, parentHash)
     new EthereumBlock(number, hash, Option(parentHash), timestamp)

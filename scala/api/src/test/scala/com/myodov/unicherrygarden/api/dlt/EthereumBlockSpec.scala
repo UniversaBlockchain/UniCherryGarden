@@ -33,7 +33,7 @@ class EthereumBlockSpec extends AnyFlatSpec {
         hash = null,
         parentHash = "0x7a5412e1e68f2627ac671e33a0b8f1e0aad47231b78333328dabdaf5e1b692d9",
         Instant.parse("2021-02-22T10:50:22Z")
-      ).isInstanceOf[EthereumBlock],
+      ),
       "Fail with null hash"
     )
     assertThrows[IllegalArgumentException](
@@ -42,7 +42,7 @@ class EthereumBlockSpec extends AnyFlatSpec {
         "0x71313d0f8edb2146c071d088a7ea4f91dd6f108ee42a7b7041c95a6154ed94e8",
         null,
         Instant.parse("2021-02-22T10:50:22Z")
-      ).isInstanceOf[EthereumBlock],
+      ),
       "Fail with null parentHash"
     )
     assertThrows[IllegalArgumentException](
@@ -51,7 +51,7 @@ class EthereumBlockSpec extends AnyFlatSpec {
         hash = "0x71313d0f8edb2146c071d088a7ea4f91dd6f108ee42a7b7041c95a6154ed94e8",
         parentHash = "0x7a5412e1e68f2627ac671e33a0b8f1e0aad47231b78333328dabdaf5e1b692d9",
         null
-      ).isInstanceOf[EthereumBlock],
+      ),
       "Fail with null timestamp"
     )
   }
