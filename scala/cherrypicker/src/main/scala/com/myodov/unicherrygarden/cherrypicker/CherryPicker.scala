@@ -90,7 +90,7 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
                   pgStorage.state.setSyncState(s"Resyncing untouched addresses: block $blockToSync")
 
                   val trackedAddresses: Set[String] = pgStorage.trackedAddresses.getJustAddresses
-                  val currencies: Set[Asset] = pgStorage.currencies.getCurrencies.map(_.asAsset).toSet
+                  val currencies: Set[Asset] = pgStorage.currencies.getCurrencies(true, false).map(_.asAsset).toSet
 
                   logger.debug(s"processing block $blockToSync " +
                     s"with tracked addresses $trackedAddresses, " +

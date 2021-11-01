@@ -3,10 +3,13 @@ package com.myodov.unicherrygarden.connector.impl.actors.messages;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
+import akka.japi.function.Function;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommandImpl;
+import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import org.checkerframework.checker.nullness.qual.NonNull;
+
 
 /**
  * Akka API command to “get currencies” (which are supported by the system).
@@ -71,13 +74,17 @@ public class GetCurrenciesCommand
 
     /**
      * Simplified constructor with payload details.
+     *
+     * @return a function (in Akka style, not just the pure Java Functional interface)
+     * that turns the incoming `replyTo` ActorRef into a Command handling this `replyTo` with the payload
+     * containing the incoming arguments.
      */
-    public static GetCurrenciesCommand create(@NonNull ActorRef<Result> replyTo,
-                                              boolean getVerified,
-                                              boolean getUnverified) {
+    public static Function<ActorRef<Result>, ConnectorActorMessage> createReplier(
+            boolean getVerified,
+            boolean getUnverified) {
         assert (getVerified || getUnverified) : String.format("%s/%s", getVerified, getUnverified);
 
-        return new GetCurrenciesCommand(
+        return (replyTo) -> new GetCurrenciesCommand(
                 replyTo,
                 new GetCurrencies.GCRequestPayload(getVerified, getUnverified));
     }

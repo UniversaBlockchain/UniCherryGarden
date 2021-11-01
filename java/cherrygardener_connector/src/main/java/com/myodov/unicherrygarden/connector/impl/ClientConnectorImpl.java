@@ -9,15 +9,15 @@ import akka.cluster.typed.Cluster;
 import akka.cluster.typed.ClusterCommand;
 import akka.cluster.typed.JoinSeedNodes;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
-import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
-import com.myodov.unicherrygarden.ethereum.Ethereum;
 import com.myodov.unicherrygarden.connector.api.AddressOwnershipConfirmator;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.connector.api.Keygen;
 import com.myodov.unicherrygarden.connector.api.Observer;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActor;
+import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.GetCurrenciesCommand;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.WaitForBootCommand;
+import com.myodov.unicherrygarden.ethereum.Ethereum;
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -171,7 +171,7 @@ public class ClientConnectorImpl implements ClientConnector {
             final CompletionStage<GetCurrenciesCommand.Result> stage =
                     AskPattern.ask(
                             actorSystem,
-                            (replyTo) -> GetCurrenciesCommand.create(replyTo, getVerified, getUnverified),
+                            GetCurrenciesCommand.createReplier(getVerified, getUnverified),
                             ConnectorActor.DEFAULT_CALL_TIMEOUT,
                             actorSystem.scheduler());
 

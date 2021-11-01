@@ -21,8 +21,8 @@ class CherryGardener(private val pgStorage: PostgreSQLStorage,
   /**
    * Reply to [[GetCurrencies]] request.
    */
-  def getCurrencies(): GetCurrencies.Response = {
-    val result: List[Currency] = pgStorage.currencies.getCurrencies().map(
+  def getCurrencies(getVerified: Boolean, getUnverified: Boolean): GetCurrencies.Response = {
+    val result: List[Currency] = pgStorage.currencies.getCurrencies(getVerified, getUnverified).map(
       c => new Currency(
         pgStorage.currencies.CurrencyTypes.toInteropType(c.currencyType),
         c.dAppAddress.orNull,
@@ -64,7 +64,7 @@ object CherryGardener extends LazyLogging {
         case message: GetCurrencies.Request => {
           logger.debug(s"Received GetCurrencies($message) command")
 
-          val response = gardener.getCurrencies()
+          val response = gardener.getCurrencies(message.payload.getVerified, message.payload.getUnverified)
           logger.debug(s"Replying with $response")
           message.replyTo ! response
           Behaviors.same

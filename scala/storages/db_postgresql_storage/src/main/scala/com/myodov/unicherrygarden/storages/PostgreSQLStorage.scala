@@ -276,9 +276,24 @@ class PostgreSQLStorage(jdbcUrl: String,
       }
     }
 
-    def getCurrencies(implicit session: DBSession = ReadOnlyAutoSession): List[DBCurrency] = {
+    def getCurrencies(
+                       getVerified: Boolean,
+                       getUnverified: Boolean
+                     )
+                     (
+                       implicit session: DBSession = ReadOnlyAutoSession
+                     ): List[DBCurrency] = {
+      // What values are allowed for `verified` field in a query we’ll run?
+      val verifiedValues = (
+        (if (getVerified) Seq(true) else Seq())
+          ++
+          (if (getUnverified) Seq(false) else Seq())
+        )
+
       sql"""
-      SELECT * FROM ucg_currency;
+      SELECT *
+      FROM ucg_currency
+      WHERE verified IN $verifiedValues;
       """.map(rs => DBCurrency(
         CurrencyTypes.fromString(rs.string("type")),
         rs.stringOpt("dapp_address"),

@@ -3,7 +3,9 @@ package com.myodov.unicherrygarden.connector.impl.actors.messages;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
+import akka.japi.function.Function;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommandImpl;
+import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -57,12 +59,16 @@ public class AddTrackedAddressesCommand
 
     /**
      * Simplified constructor with payload details.
+     *
+     * @return a function (in Akka style, not just the pure Java Functional interface)
+     * that turns the incoming `replyTo` ActorRef into a Command handling this `replyTo` with the payload
+     * containing the incoming arguments.
      */
-    public static AddTrackedAddressesCommand create(@NonNull ActorRef<Result> replyTo,
-                                                    AddTrackedAddresses.@NonNull StartTrackingAddressMode trackingMode,
-                                                    @NonNull List<AddTrackedAddresses.AddressDataToTrack> addressesToTrack,
-                                                    @Nullable Integer fromBlock) {
-        return new AddTrackedAddressesCommand(
+    public static Function<ActorRef<Result>, ConnectorActorMessage> createReplier(
+            AddTrackedAddresses.@NonNull StartTrackingAddressMode trackingMode,
+            @NonNull List<AddTrackedAddresses.AddressDataToTrack> addressesToTrack,
+            @Nullable Integer fromBlock) {
+        return (replyTo) -> new AddTrackedAddressesCommand(
                 replyTo,
                 new AddTrackedAddresses.ATARequestPayload(trackingMode, addressesToTrack, fromBlock));
     }

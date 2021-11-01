@@ -64,8 +64,7 @@ public class ObserverImpl implements Observer {
         final CompletionStage<AddTrackedAddressesCommand.Result> stage =
                 AskPattern.ask(
                         actorSystem,
-                        (replyTo) -> AddTrackedAddressesCommand.create(
-                                replyTo,
+                        AddTrackedAddressesCommand.createReplier(
                                 mode,
                                 new ArrayList<AddTrackedAddresses.AddressDataToTrack>() {{
                                     add(new AddTrackedAddresses.AddressDataToTrack(address, comment));
@@ -100,8 +99,7 @@ public class ObserverImpl implements Observer {
         final CompletionStage<GetTrackedAddressesCommand.Result> stage =
                 AskPattern.ask(
                         actorSystem,
-                        (replyTo) -> GetTrackedAddressesCommand.create(
-                                replyTo,
+                        GetTrackedAddressesCommand.createReplier(
                                 false,
                                 false,
                                 false
@@ -139,8 +137,7 @@ public class ObserverImpl implements Observer {
         final CompletionStage<GetBalancesCommand.Result> stage =
                 AskPattern.ask(
                         actorSystem,
-                        (replyTo) -> GetBalancesCommand.create(
-                                replyTo,
+                        GetBalancesCommand.createReplier(
                                 confirmations,
                                 filterCurrencyKeys),
                         ConnectorActor.DEFAULT_CALL_TIMEOUT,

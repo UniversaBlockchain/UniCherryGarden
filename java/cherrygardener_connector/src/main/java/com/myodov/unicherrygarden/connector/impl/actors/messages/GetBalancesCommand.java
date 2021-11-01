@@ -3,7 +3,9 @@ package com.myodov.unicherrygarden.connector.impl.actors.messages;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
+import akka.japi.function.Function;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommandImpl;
+import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -57,11 +59,15 @@ public class GetBalancesCommand
 
     /**
      * Simplified constructor with payload details.
+     *
+     * @return a function (in Akka style, not just the pure Java Functional interface)
+     * that turns the incoming `replyTo` ActorRef into a Command handling this `replyTo` with the payload
+     * containing the incoming arguments.
      */
-    public static GetBalancesCommand create(@NonNull ActorRef<Result> replyTo,
-                                            int confirmations,
-                                            @Nullable Set<String> filterCurrencyKeys) {
-        return new GetBalancesCommand(
+    public static Function<ActorRef<Result>, ConnectorActorMessage> createReplier(
+            int confirmations,
+            @Nullable Set<String> filterCurrencyKeys) {
+        return (replyTo) -> new GetBalancesCommand(
                 replyTo,
                 new GetBalances.GBRequestPayload(confirmations, filterCurrencyKeys));
     }

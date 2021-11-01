@@ -3,7 +3,9 @@ package com.myodov.unicherrygarden.connector.impl.actors.messages;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
+import akka.japi.function.Function;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommandImpl;
+import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
@@ -54,12 +56,16 @@ public class GetTrackedAddressesCommand
 
     /**
      * Simplified constructor with payload details.
+     *
+     * @return a function (in Akka style, not just the pure Java Functional interface)
+     * that turns the incoming `replyTo` ActorRef into a Command handling this `replyTo` with the payload
+     * containing the incoming arguments.
      */
-    public static GetTrackedAddressesCommand create(@NonNull ActorRef<Result> replyTo,
-                                                    boolean includeComment,
-                                                    boolean includeSyncedFrom,
-                                                    boolean includeSyncedTo) {
-        return new GetTrackedAddressesCommand(
+    public static Function<ActorRef<Result>, ConnectorActorMessage> createReplier(
+            boolean includeComment,
+            boolean includeSyncedFrom,
+            boolean includeSyncedTo) {
+        return (replyTo) -> new GetTrackedAddressesCommand(
                 replyTo,
                 new GetTrackedAddresses.GTARequestPayload(
                         includeComment,
