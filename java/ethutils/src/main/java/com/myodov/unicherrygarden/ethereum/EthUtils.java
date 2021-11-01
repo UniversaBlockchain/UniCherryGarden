@@ -102,6 +102,8 @@ public class EthUtils {
         /**
          * Convert the value stored in Ethereum-style `Uint256` string
          * to a regular address string.
+         *
+         * @return A lowercased hex address string (like "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24").
          */
         @NonNull
         public static final String toAddress(@NonNull String uint256Str) {
@@ -115,6 +117,21 @@ public class EthUtils {
             } else {
                 return "0x" + contentsPart;
             }
+        }
+
+        /**
+         * Convert the regular address string to a Ethereum-style `Uint256` string.
+         *
+         * @param addr Hex address string, e.g. "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24".
+         *             Must be lowercased and strictly 42 symbols long.
+         */
+        @NonNull
+        public static final String fromAddress(@NonNull String addr) {
+            if (!Addresses.isValidLowercasedAddress(addr)) {
+                throw new IllegalArgumentException(String.format("%s is not a valid Ethereum address!", addr));
+            }
+            final String contentsPart = addr.substring(2);
+            return "0x000000000000000000000000" + contentsPart;
         }
 
         /**
