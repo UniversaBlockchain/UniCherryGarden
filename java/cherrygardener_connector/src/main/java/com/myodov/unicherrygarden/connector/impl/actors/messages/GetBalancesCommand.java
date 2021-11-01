@@ -3,9 +3,12 @@ package com.myodov.unicherrygarden.connector.impl.actors.messages;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommandImpl;
+import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+
+import java.util.Set;
 
 /**
  * Akka API command to “get balances”.
@@ -50,6 +53,17 @@ public class GetBalancesCommand
     public GetBalancesCommand(@NonNull ActorRef<Result> replyTo,
                               GetBalances.@NonNull GBRequestPayload payload) {
         super(replyTo, payload);
+    }
+
+    /**
+     * Simplified constructor with payload details.
+     */
+    public static GetBalancesCommand create(@NonNull ActorRef<Result> replyTo,
+                                            int confirmations,
+                                            @Nullable Set<String> filterCurrencyKeys) {
+        return new GetBalancesCommand(
+                replyTo,
+                new GetBalances.GBRequestPayload(confirmations, filterCurrencyKeys));
     }
 
     @NonNull

@@ -17,14 +17,29 @@ public interface ClientConnector {
     void shutdown();
 
     /**
-     * Get all the supported currencies.
+     * Get all the supported currencies. Depending on the settings, may include verified, unverified currencies,
+     * or both.
+     *
+     * @return <code>null</code> if any error occurred during getting the data
+     * (in particular, if the client is in “offline mode”).
+     * or the list of all supported currencies.
+     *
+     * @throws IllegalArgumentException if neither `getVerified` nor `getUnverified` are defined.
+     */
+    @Nullable
+    List<Currency> getCurrencies(boolean getVerified, boolean getUnverified);
+
+    /**
+     * Get all the supported currencies. Only the currencies pre-validated (“verified”) are returned.
      *
      * @return <code>null</code> if any error occurred during getting the data
      * (in particular, if the client is in “offline mode”).
      * or the list of all supported currencies.
      */
     @Nullable
-    List<Currency> getCurrencies();
+    default List<Currency> getCurrencies() {
+        return getCurrencies(true, false);
+    };
 
 
     /**

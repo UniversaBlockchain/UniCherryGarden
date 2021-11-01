@@ -28,7 +28,9 @@ class CherryGardener(private val pgStorage: PostgreSQLStorage,
         c.dAppAddress.orNull,
         c.name.orNull,
         c.symbol.orNull,
-        c.ucgComment.orNull
+        c.ucgComment.orNull,
+        c.verified,
+        c.decimals.map(new Integer(_)).orNull
       )
     )
     new GetCurrencies.Response(result.asJava)

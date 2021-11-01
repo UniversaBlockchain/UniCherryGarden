@@ -164,14 +164,14 @@ public class ClientConnectorImpl implements ClientConnector {
 
     @Override
     @Nullable
-    public List<Currency> getCurrencies() {
+    public List<Currency> getCurrencies(boolean getVerified, boolean getUnverified) {
         if (offlineMode) {
             return null;
         } else {
             final CompletionStage<GetCurrenciesCommand.Result> stage =
                     AskPattern.ask(
                             actorSystem,
-                            GetCurrenciesCommand::new,
+                            (replyTo) -> GetCurrenciesCommand.create(replyTo, getVerified, getUnverified),
                             ConnectorActor.DEFAULT_CALL_TIMEOUT,
                             actorSystem.scheduler());
 

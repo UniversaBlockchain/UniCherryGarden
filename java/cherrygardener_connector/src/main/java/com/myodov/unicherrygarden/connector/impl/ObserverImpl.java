@@ -64,15 +64,14 @@ public class ObserverImpl implements Observer {
         final CompletionStage<AddTrackedAddressesCommand.Result> stage =
                 AskPattern.ask(
                         actorSystem,
-                        (replyTo) -> new AddTrackedAddressesCommand(
+                        (replyTo) -> AddTrackedAddressesCommand.create(
                                 replyTo,
-                                new AddTrackedAddresses.ATARequestPayload(
-                                        mode,
-                                        new ArrayList<AddTrackedAddresses.AddressDataToTrack>() {{
-                                            add(new AddTrackedAddresses.AddressDataToTrack(address, comment));
-                                        }},
-                                        blockNumber
-                                )),
+                                mode,
+                                new ArrayList<AddTrackedAddresses.AddressDataToTrack>() {{
+                                    add(new AddTrackedAddresses.AddressDataToTrack(address, comment));
+                                }},
+                                blockNumber
+                        ),
                         ConnectorActor.DEFAULT_CALL_TIMEOUT,
                         actorSystem.scheduler());
 
@@ -101,13 +100,12 @@ public class ObserverImpl implements Observer {
         final CompletionStage<GetTrackedAddressesCommand.Result> stage =
                 AskPattern.ask(
                         actorSystem,
-                        (replyTo) -> new GetTrackedAddressesCommand(
+                        (replyTo) -> GetTrackedAddressesCommand.create(
                                 replyTo,
-                                new GetTrackedAddresses.GTARequestPayload(
-                                        false,
-                                        false,
-                                        false
-                                )),
+                                false,
+                                false,
+                                false
+                        ),
                         ConnectorActor.DEFAULT_CALL_TIMEOUT,
                         actorSystem.scheduler());
 
@@ -141,11 +139,10 @@ public class ObserverImpl implements Observer {
         final CompletionStage<GetBalancesCommand.Result> stage =
                 AskPattern.ask(
                         actorSystem,
-                        (replyTo) -> new GetBalancesCommand(
+                        (replyTo) -> GetBalancesCommand.create(
                                 replyTo,
-                                new GetBalances.GBRequestPayload(
-                                        confirmations,
-                                        filterCurrencyKeys)),
+                                confirmations,
+                                filterCurrencyKeys),
                         ConnectorActor.DEFAULT_CALL_TIMEOUT,
                         actorSystem.scheduler());
 

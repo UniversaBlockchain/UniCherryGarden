@@ -37,6 +37,11 @@ public class Currency implements Serializable {
     @Nullable
     protected final String comment;
 
+    protected final boolean verified;
+
+    @Nullable
+    protected final Integer decimals;
+
     /**
      * Standard constructor.
      *
@@ -48,11 +53,13 @@ public class Currency implements Serializable {
             @Nullable String dAppAddress,
             @Nullable String name,
             @Nullable String symbol,
-            @Nullable String comment
+            @Nullable String comment,
+            boolean verified,
+            @Nullable Integer decimals
     ) {
         // Validate dAppAddress
         switch (type) {
-            // For Ethereum, dAppAddress should be empty
+            // For Ether, dAppAddress should be empty
             case ETH:
                 assert dAppAddress == null : dAppAddress;
                 break;
@@ -70,11 +77,28 @@ public class Currency implements Serializable {
             assert symbol.equals("ETH") : symbol;
         }
 
+        // Validate `verified` and `decimals`.
+        switch (type) {
+            // For Ether, decimals is undefined
+            case ETH:
+                assert decimals == null : decimals;
+                break;
+            // For ERC20 tokens, decimals should be defined (and between 0 and 79 inclusive)
+            // if the token is verified
+            case ERC20:
+                assert !(verified && decimals == null) : String.format("%s/%s", verified, decimals);
+                break;
+            default:
+                assert false : type;
+        }
+
         this.type = type;
         this.dAppAddress = dAppAddress;
         this.name = name;
         this.symbol = symbol;
         this.comment = comment;
+        this.verified = verified;
+        this.decimals = decimals;
     }
 
     /**
@@ -86,6 +110,8 @@ public class Currency implements Serializable {
                 null,
                 "Ether",
                 "ETH",
+                null,
+                true,
                 null);
     }
 
@@ -96,17 +122,19 @@ public class Currency implements Serializable {
             @NonNull String dAppAddress,
             @Nullable String name,
             @Nullable String symbol,
-            @Nullable String comment
+            @Nullable String comment,
+            boolean verified,
+            @Nullable Integer decimals
     ) {
         assert dAppAddress != null && EthUtils.Addresses.isValidLowercasedAddress(dAppAddress) : dAppAddress;
 
-        return new Currency(CurrencyType.ERC20, dAppAddress, name, symbol, comment);
+        return new Currency(CurrencyType.ERC20, dAppAddress, name, symbol, comment, verified, decimals);
     }
 
     @Override
     public String toString() {
-        return String.format("CurrencyImpl(%s, %s, %s, %s)",
-                type, symbol, name, dAppAddress);
+        return String.format("CurrencyImpl(%s, %s, %s, %s, verified=%s, decimals=%s)",
+                type, symbol, name, dAppAddress, verified, decimals);
     }
 
     @Override
@@ -117,7 +145,7 @@ public class Currency implements Serializable {
             return false;
         } else {
             final Currency other = (Currency) o;
-            return (this.type == other.type) && (this.dAppAddress == other.dAppAddress);
+            return (this.type == other.type) && (Objects.equals(this.dAppAddress, other.dAppAddress));
         }
     }
 

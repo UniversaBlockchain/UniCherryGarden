@@ -258,7 +258,9 @@ class PostgreSQLStorage(jdbcUrl: String,
                                 dAppAddress: Option[String],
                                 name: Option[String],
                                 symbol: Option[String],
-                                ucgComment: Option[String]
+                                ucgComment: Option[String],
+                                verified: Boolean,
+                                decimals: Option[Int]
                                ) {
       require((currencyType == CurrencyTypes.Eth) == dAppAddress.isEmpty, (currencyType, dAppAddress))
       require(dAppAddress.isEmpty || EthUtils.Addresses.isValidLowercasedAddress(dAppAddress.get), dAppAddress)
@@ -283,6 +285,8 @@ class PostgreSQLStorage(jdbcUrl: String,
         rs.stringOpt("name"),
         rs.stringOpt("symbol"),
         rs.stringOpt("ucg_comment"),
+        rs.boolean("verified"),
+        rs.intOpt("decimals")
       )).list.apply()
     }
   }

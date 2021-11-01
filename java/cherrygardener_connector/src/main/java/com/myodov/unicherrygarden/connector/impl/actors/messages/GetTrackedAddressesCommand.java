@@ -3,8 +3,8 @@ package com.myodov.unicherrygarden.connector.impl.actors.messages;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommandImpl;
+import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**
@@ -50,6 +50,22 @@ public class GetTrackedAddressesCommand
     public GetTrackedAddressesCommand(@NonNull ActorRef<Result> replyTo,
                                       GetTrackedAddresses.@NonNull GTARequestPayload payload) {
         super(replyTo, payload);
+    }
+
+    /**
+     * Simplified constructor with payload details.
+     */
+    public static GetTrackedAddressesCommand create(@NonNull ActorRef<Result> replyTo,
+                                                    boolean includeComment,
+                                                    boolean includeSyncedFrom,
+                                                    boolean includeSyncedTo) {
+        return new GetTrackedAddressesCommand(
+                replyTo,
+                new GetTrackedAddresses.GTARequestPayload(
+                        includeComment,
+                        includeSyncedFrom,
+                        includeSyncedTo
+                ));
     }
 
     @Override

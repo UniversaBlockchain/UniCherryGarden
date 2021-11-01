@@ -11,7 +11,9 @@ public class CurrencyTest {
             "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
             "Universa Token",
             "UTNP",
-            "UTNP comment"
+            "UTNP comment",
+            false,
+            null
     );
 
     @Test

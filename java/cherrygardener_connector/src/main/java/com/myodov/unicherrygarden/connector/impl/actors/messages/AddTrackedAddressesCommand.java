@@ -6,6 +6,9 @@ import akka.actor.typed.receptionist.ServiceKey;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommandImpl;
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+
+import java.util.List;
 
 /**
  * Akka API command to “add tracked addresses”.
@@ -50,6 +53,18 @@ public class AddTrackedAddressesCommand
     public AddTrackedAddressesCommand(@NonNull ActorRef<Result> replyTo,
                                       AddTrackedAddresses.@NonNull ATARequestPayload payload) {
         super(replyTo, payload);
+    }
+
+    /**
+     * Simplified constructor with payload details.
+     */
+    public static AddTrackedAddressesCommand create(@NonNull ActorRef<Result> replyTo,
+                                                    AddTrackedAddresses.@NonNull StartTrackingAddressMode trackingMode,
+                                                    @NonNull List<AddTrackedAddresses.AddressDataToTrack> addressesToTrack,
+                                                    @Nullable Integer fromBlock) {
+        return new AddTrackedAddressesCommand(
+                replyTo,
+                new AddTrackedAddresses.ATARequestPayload(trackingMode, addressesToTrack, fromBlock));
     }
 
     @NonNull

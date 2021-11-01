@@ -27,8 +27,30 @@ public class GetCurrencies {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     public static final class GCRequestPayload
             implements RequestPayload {
+
+        /**
+         * Do we want the verified currencies?
+         */
+        public final boolean getVerified;
+
+        /**
+         * Do we want the unverified currencies?
+         */
+        public final boolean getUnverified;
+
         @JsonCreator
-        public GCRequestPayload() {
+        public GCRequestPayload(boolean getVerified,
+                                boolean getUnverified) {
+            // At least one of the two should be defined
+            assert getVerified || getUnverified : String.format("%s/%s", getVerified, getUnverified);
+            this.getVerified = getVerified;
+            this.getUnverified = getUnverified;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("GetCurrencies.GCRequestPayload(%s, %s)",
+                    getVerified, getUnverified);
         }
     }
 

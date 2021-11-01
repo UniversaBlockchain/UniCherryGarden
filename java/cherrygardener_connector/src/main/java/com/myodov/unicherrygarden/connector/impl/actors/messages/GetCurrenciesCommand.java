@@ -4,8 +4,8 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommandImpl;
+import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**
@@ -70,10 +70,16 @@ public class GetCurrenciesCommand
     }
 
     /**
-     * Simplified constructor, with empty payload.
+     * Simplified constructor with payload details.
      */
-    public GetCurrenciesCommand(@NonNull ActorRef<Result> replyTo) {
-        this(replyTo, new GetCurrencies.GCRequestPayload());
+    public static GetCurrenciesCommand create(@NonNull ActorRef<Result> replyTo,
+                                              boolean getVerified,
+                                              boolean getUnverified) {
+        assert (getVerified || getUnverified) : String.format("%s/%s", getVerified, getUnverified);
+
+        return new GetCurrenciesCommand(
+                replyTo,
+                new GetCurrencies.GCRequestPayload(getVerified, getUnverified));
     }
 
     @NonNull
