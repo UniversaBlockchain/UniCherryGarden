@@ -63,12 +63,12 @@ trait Transaction {
 trait MinedTransaction extends Transaction {
   /** Status of the transaction.
    *
-   * From `eth.getTransactionReceipt()`.
+   * From `eth.getTransactionReceipt()`. EIP 658, available since Byzantium fork, since block 4,370,000.
    */
-  val status: Int
+  val status: Option[Int]
 
   /** Whether the status of transaction means it is valid. */
-  def isStatusOk: Boolean = (status == 0)
+  def isStatusOk: Boolean = status.getOrElse(1) == 1
 
   /** The block in which the transaction is mined.
    *
@@ -135,7 +135,7 @@ class EthereumMinedTransaction( // Transaction-specific
                                 override val nonce: Int,
                                 override val value: BigInt,
                                 // MinedTransaction-specific
-                                val status: Int,
+                                val status: Option[Int],
                                 val blockNumber: BigInt,
                                 val transactionIndex: Int,
                                 val gasUsed: BigInt,
@@ -154,7 +154,7 @@ object EthereumMinedTransaction {
                      nonce: Int,
                      value: BigInt,
                      // MinedTransaction-specific
-                     status: Int,
+                     status: Option[Int],
                      blockNumber: BigInt,
                      transactionIndex: Int,
                      gasUsed: BigInt = 0,

@@ -310,7 +310,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
         logger.debug(s"Found logs for ETH transaction: $logs")
 
         dlt.EthereumMinedTransaction(
-          // Before-mined transaction
+          // *** Before-mined transaction ***
           txhash = trw3j.getHash,
           from = trw3j.getFrom,
           to = Option(trw3j.getTo),
@@ -318,8 +318,9 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
           gasPrice = trw3j.getGasPrice,
           nonce = trw3j.getNonce.intValueExact,
           value = trw3j.getValue,
-          // Mined transaction
-          status = decodeQuantity(trReceipt.getStatus).intValueExact,
+          // *** Mined transaction ***
+          // "status" – EIP 658, since Byzantium fork
+          status = Option(trReceipt.getStatus).map(decodeQuantity(_).intValueExact),
           blockNumber = trw3j.getBlockNumber,
           transactionIndex = trReceipt.getTransactionIndex.intValueExact,
           gasUsed = trReceipt.getGasUsed,

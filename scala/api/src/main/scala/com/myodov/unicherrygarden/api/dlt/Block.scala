@@ -42,6 +42,20 @@ class EthereumBlock(val number: Int,
    * (e.g. to store it as a first block in the DB).
    */
   def withoutParentHash = new EthereumBlock(number, hash, Option.empty, timestamp)
+
+  def canEqual(a: Any) = a.isInstanceOf[EthereumBlock]
+
+  override def equals(that: Any): Boolean =
+    that match {
+      case that: EthereumBlock => {
+        that.canEqual(this) &&
+          this.number == that.number &&
+          this.hash == that.hash &&
+          this.parentHash == that.parentHash &&
+          this.timestamp == that.timestamp
+      }
+      case _ => false
+    }
 }
 
 object EthereumBlock {
