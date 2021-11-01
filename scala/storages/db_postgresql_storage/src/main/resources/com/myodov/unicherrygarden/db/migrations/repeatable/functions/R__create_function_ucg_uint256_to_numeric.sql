@@ -64,7 +64,7 @@ BEGIN
         RAISE EXCEPTION 'Not a valid topics list for ERC20 Transfer event: %!', _uint256;
     END IF;
 
-    IF NOT (0 <= _decimals AND _decimals <= 79)
+    IF _decimals NOT BETWEEN 0 AND 79
     THEN
         RAISE EXCEPTION 'Decimals (%) must be between 0 and 79 inclusive!', _decimals;
     END IF;

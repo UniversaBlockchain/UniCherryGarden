@@ -4,7 +4,6 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 import com.myodov.unicherrygarden.api.dlt
-import com.myodov.unicherrygarden.api.dlt.EthereumBlock
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.typesafe.scalalogging.LazyLogging
 import org.web3j.protocol.Web3j
@@ -133,12 +132,12 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
   def readBlock(blockNumber: BigInt,
                 filterAddresses: Set[String] = Set.empty,
                 filterCurrencies: Set[dlt.Asset] = Set.empty
-               ): Option[(EthereumBlock, List[dlt.Transaction], List[dlt.Transfer])] = {
+               ): Option[(dlt.EthereumBlock, List[dlt.Transaction], List[dlt.Transfer])] = {
     val startTime = System.nanoTime
 
     try {
       val block: EthBlock.Block = web3j.ethGetBlockByNumber(new DefaultBlockParameterNumber(blockNumber.bigInteger), true).send.getBlock
-      assert(blockNumber.bigInteger == block.getNumber)
+      require(blockNumber.bigInteger == block.getNumber, (blockNumber, block.getNumber))
 
       val blockTime = Instant.ofEpochSecond(block.getTimestamp.longValueExact)
 
@@ -258,8 +257,6 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
           web3j.ethGetTransactionReceipt(tr.getHash).sendAsync.asScala
         })
 
-        //      Future.sequence
-
         val batchSize = 64
         val receiptFuturesBatched: LazyList[LazyList[Future[EthGetTransactionReceipt]]] = receiptFutures.sliding(batchSize, batchSize).to(LazyList)
         //      println(s"Futures batched: $receiptFuturesBatched, ${receiptFuturesBatched.length}")
@@ -281,7 +278,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
       logger.debug(s"Valid receipts: ${validReceipts.length}")
 
       val receiptsByTrHash: Map[String, TransactionReceipt] = validReceipts.iterator.map(v => v.getTransactionHash -> v).toMap
-      assert(receiptsByTrHash.size == validReceipts.size)
+      require(receiptsByTrHash.size == validReceipts.size, (receiptsByTrHash.size, validReceipts.size))
 
       println("\nTransactions:")
       for (tr <- transactions) {
@@ -309,6 +306,9 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
 
       val addressFilteredEthTransactions: List[dlt.Transaction] = addressFromToFilteredW3jEthTransactions.map(trw3j => {
         val trReceipt: TransactionReceipt = receiptsByTrHash(trw3j.getHash)
+        val logs = EthereumRpcSingleConnector.getLogsFromTransactionReceipt(trReceipt)
+        logger.debug(s"Found logs for ETH transaction: $logs")
+
         dlt.EthereumMinedTransaction(
           // Before-mined transaction
           txhash = trw3j.getHash,
@@ -324,10 +324,10 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
           transactionIndex = trReceipt.getTransactionIndex.intValueExact,
           gasUsed = trReceipt.getGasUsed,
           effectiveGasPrice = decodeQuantity(trReceipt.getEffectiveGasPrice),
-          cumulativeGasUsed = trReceipt.getCumulativeGasUsed
+          cumulativeGasUsed = trReceipt.getCumulativeGasUsed,
+          txLogs = logs
         )
-      }
-      )
+      })
       println(s"Filtered ETH! $addressFilteredEthTransactions")
 
       val addressFilteredEthTransactionsByHash: Map[String, dlt.Transaction] =
@@ -436,4 +436,14 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
 /** Connector that handles a connection to single Ethereum node via RPC, and communicates with it. */
 object EthereumRpcSingleConnector {
   @inline def apply(nodeUrl: String): EthereumRpcSingleConnector = new EthereumRpcSingleConnector(nodeUrl)
+
+  /** Convert the web3j-provided [[TransactionReceipt]] to the [[Seq]] of [[dlt.TxLog]]. */
+  def getLogsFromTransactionReceipt(trReceipt: TransactionReceipt): Seq[dlt.TxLog] = trReceipt
+    .getLogs
+    .asScala
+    .map((l: Log) => dlt.EthereumTxLog(
+      l.getLogIndex.intValueExact,
+      l.getTopics.asScala.toList,
+      l.getData
+    )).toList
 }

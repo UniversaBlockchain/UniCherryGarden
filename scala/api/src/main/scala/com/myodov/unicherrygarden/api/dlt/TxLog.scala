@@ -11,7 +11,7 @@ trait TxLog {
   val logIndex: Int
   require(logIndex >= 0, logIndex)
 
-  val topics: Array[String]
+  val topics: Seq[String]
   require(topics != null && topics.forall(topic => EthUtils.isValidHexString(topic, 66)), topics)
 
   val data: String
@@ -20,7 +20,7 @@ trait TxLog {
   /** Checks if the logs are for ERC20 Transfer event; returns the parsed details if yes. */
   lazy val isErc20Transfer: Option[ERC20TransferEvent] = {
     topics match {
-      case Array(Ethereum.ERC20.TRANSFER_EVENT_SIGNATURE, fromStr: String, toStr: String) =>
+      case Seq(Ethereum.ERC20.TRANSFER_EVENT_SIGNATURE, fromStr: String, toStr: String) =>
         Option(ERC20TransferEvent(
           EthUtils.Uint256Str.toAddress(fromStr),
           EthUtils.Uint256Str.toAddress(toStr),
@@ -35,12 +35,12 @@ trait TxLog {
 
 /** Standard implementation of [[TxLog]] trait. */
 class EthereumTxLog(val logIndex: Int,
-                    val topics: Array[String],
+                    val topics: Seq[String],
                     val data: String
                    ) extends TxLog
 
 object EthereumTxLog {
   @inline def apply(logIndex: Int,
-                    topics: Array[String],
+                    topics: Seq[String],
                     data: String): EthereumTxLog = new EthereumTxLog(logIndex, topics, data)
 }

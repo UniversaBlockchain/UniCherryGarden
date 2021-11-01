@@ -14,14 +14,14 @@ class TxLogSpec extends AnyFlatSpec {
     assertThrows[IllegalArgumentException](
       EthereumTxLog(
         0,
-        Array(null),
+        List(null),
         ""),
       "Topics cannot contain null"
     )
     assertThrows[IllegalArgumentException](
       EthereumTxLog(
         0,
-        Array(),
+        List(),
         null),
       "Data cannot be null"
     )
@@ -30,14 +30,14 @@ class TxLogSpec extends AnyFlatSpec {
     assertThrows[IllegalArgumentException](
       EthereumTxLog(
         0,
-        Array("0x1234"),
+        List("0x1234"),
         ""),
       "Logs should be 66 symbols long"
     )
     assertThrows[IllegalArgumentException](
       EthereumTxLog(
         0,
-        Array("001234567890123456789012345678901234567890123456789012345678901234"),
+        List("001234567890123456789012345678901234567890123456789012345678901234"),
         ""),
       "Logs should be 66 symbols long proper hexadecimal"
     )
@@ -47,7 +47,7 @@ class TxLogSpec extends AnyFlatSpec {
       null !=
         EthereumTxLog(
           0,
-          Array(),
+          List(),
           ""),
       "Minimal empty log is okay"
     )
@@ -55,7 +55,7 @@ class TxLogSpec extends AnyFlatSpec {
       null !=
         EthereumTxLog(
           0,
-          Array(),
+          List(),
           "0x1234"),
       "Some data is okay"
     )
@@ -63,7 +63,7 @@ class TxLogSpec extends AnyFlatSpec {
       null !=
         EthereumTxLog(
           0,
-          Array("0x0000000000000000000000001df163ef8699c9b9c16236e6ff016c7834206304"),
+          List("0x0000000000000000000000001df163ef8699c9b9c16236e6ff016c7834206304"),
           ""),
       "Some topics is okay"
     )
@@ -71,7 +71,7 @@ class TxLogSpec extends AnyFlatSpec {
       null !=
         EthereumTxLog(
           0,
-          Array("0x0000000000000000000000001df163ef8699c9b9c16236e6ff016c7834206304"),
+          List("0x0000000000000000000000001df163ef8699c9b9c16236e6ff016c7834206304"),
           "0x1234"),
       "Some topics and data altogether is okay"
     )
@@ -80,7 +80,7 @@ class TxLogSpec extends AnyFlatSpec {
     assert(
       EthereumTxLog(
         0,
-        Array(
+        List(
           "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
           "0x000000000000000000000000d701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
           "0x0000000000000000000000001df163ef8699c9b9c16236e6ff016c7834206304"),
@@ -96,7 +96,7 @@ class TxLogSpec extends AnyFlatSpec {
     assert(
       EthereumTxLog(
         0,
-        Array(
+        List(
           "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
           "0x0000000000000000000000004b35c092772f6187b1cd2a26c4f537292ce68b2c",
           "0x000000000000000000000000b5d85cbf7cb3ee0d56b3bb207d5fc4b82f43f511"),
@@ -114,7 +114,7 @@ class TxLogSpec extends AnyFlatSpec {
     assert(
       EthereumTxLog(
         0,
-        Array(
+        List(
           "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
           "0x000000000000000000000000cc46bd3ecd8e57edfe9019e2d0de835379424196",
           "0x000000000000000000000000e592427a0aece92de3edee1f18e0157c05861564"),
