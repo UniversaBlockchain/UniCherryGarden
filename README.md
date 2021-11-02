@@ -1,4 +1,4 @@
-# UniCherryGarden: universal “gardening” solution for Ethereum blockchain data.
+# UniCherryGarden: universal “gardening” solution for Ethereum blockchain data
 
 ## About
 
@@ -71,6 +71,69 @@ import com.myodov.unicherrygarden.connector.impl.ClientConnectorImpl;
 `ClientConnectorImpl` class constructor takes a list of URLs as the arguments; normally these are the URLs for CherryGardener and GardenWatcher instances (the order doesn’t matter). Most of the time, you want to launch at least a single instance of CherryGardener, and at least a single instance of GardenWatcher, and upgrade them in sequence (so at least one of them always up while the other is being upgraded), to maintain the cluster connectivity.
 
 You shouldn’t pass `null` instead of the list to the constructor; but you can pass an empty list, implying you don’t want the ClientConnector to connect to anything. It will try to work in “offline mode” then, having some of its functionality unavailable (which requires the connection to the CherryGardener) but still have some functionality available (which runs on the address space of the connector – such as, generation of private keys, or confirmation/validation of addresses through signing the messages).
+
+
+### API
+
+After creating the Connector instance, it will enable the interfaces available at [/unicherrygarden/connector/api](/java/cherrygardener_connector/src/main/java/com/myodov/unicherrygarden/connector/api).
+
+For example, the Connector itself has the following API: […/api/ClientConnector.java](/java/cherrygardener_connector/src/main/java/com/myodov/unicherrygarden/connector/api/ClientConnector.java).
+
+This API allows you to use whole-CherryGarden level operations, like 
+
+```java
+default List<Currency> getCurrencies();
+```
+
+But for some other operations, they are not available from the Connector directly, as they are not overall-UniCherryGarden-level. These operations are grouped by area of functionality (sub-APIs), and to access them, you get an instance of specific sub-API functionality executor:
+
+```java
+AddressOwnershipConfirmator getAddressOwnershipConfirmator();
+
+Keygen getKeygen();
+
+Observer getObserver();
+```
+
+These sub-APIs are overviewed below.
+
+After using the Connector, and when you are done with all its calls, you may want to explicitly shutdown the connector (and stop all the network activity):
+
+```java
+/**
+ * Stop whole connector to shut it down.
+ */
+void shutdown();
+```
+
+If you want more specific code examples of using the Connector, you may find the source code of `cherrygardener_connector_cli` amusing and useful: […/CherryGardenerCLI.java](/java/cherrygardener_connector_cli/src/main/java/com/myodov/unicherrygarden/cherrygardener/CherryGardenerCLI.java).
+
+
+Below is the overview of all sub-APIs available from the connector:
+
+#### AddressOwnershipConfirmator sub-API
+
+This API allows you to ask the user to confirm that they own a private key to some specific Ethereum address. To confirm it, the user signs some message you provide; and then you can verify this signature.
+
+See more at […/api/AddressOwnershipConfirmator.java](/java/cherrygardener_connector/src/main/java/com/myodov/unicherrygarden/connector/api/AddressOwnershipConfirmator.java).
+
+#### Keygen sub-API (WIP)
+
+This API allows you to generate the private key to use with Ethereum blockchain
+
+See more at […/api/Keygen.java](/java/cherrygardener_connector/src/main/java/com/myodov/unicherrygarden/connector/api/Keygen.java).
+
+#### Observer sub-API
+
+This API allows you to observe the collected information from Ethereum blockchain. In general, this is the interface to the “CherryPicker” component of UniCherryGarden.
+
+See more at […/api/Observer.java](/java/cherrygardener_connector/src/main/java/com/myodov/unicherrygarden/connector/api/Observer.java).
+
+#### Sender sub-API (WIP)
+
+This API allows you to generate and send the new transactions to the Ethereum blockchain. In general, this is the interface to the “CherryPlanter” component of UniCherryGarden.
+
+See more at […/api/Sender.java](/java/cherrygardener_connector/src/main/java/com/myodov/unicherrygarden/connector/api/Sender.java).
 
 
 ## Building
