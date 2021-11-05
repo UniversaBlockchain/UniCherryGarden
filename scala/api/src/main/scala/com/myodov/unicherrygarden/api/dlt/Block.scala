@@ -41,7 +41,7 @@ class EthereumBlock(val number: Int,
   /** Return a copy of this Ethereum block, but having [[EthereumBlock#parentHash]] disabled
    * (e.g. to store it as a first block in the DB).
    */
-  def withoutParentHash = new EthereumBlock(number, hash, Option.empty, timestamp)
+  def withoutParentHash = new EthereumBlock(number, hash, None, timestamp)
 
   def canEqual(a: Any) = a.isInstanceOf[EthereumBlock]
 
@@ -66,6 +66,6 @@ object EthereumBlock {
                    ): EthereumBlock = {
     require(hash != null, hash)
     require(parentHash != null, parentHash)
-    new EthereumBlock(number, hash, Option(parentHash), timestamp)
+    new EthereumBlock(number, hash, Some(parentHash), timestamp)
   }
 }

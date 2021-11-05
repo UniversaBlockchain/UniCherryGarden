@@ -90,16 +90,14 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
                   pgStorage.state.setSyncState(s"Resyncing untouched addresses: block $blockToSync")
 
                   val trackedAddresses: Set[String] = pgStorage.trackedAddresses.getJustAddresses
-                  val currencies: Set[Asset] = pgStorage.currencies.getCurrencies(true, false).map(_.asAsset).toSet
 
                   logger.debug(s"processing block $blockToSync " +
-                    s"with tracked addresses $trackedAddresses, " +
-                    s"currencies $currencies")
+                    s"with tracked addresses $trackedAddresses")
 
-                  ethereumConnector.readBlock(blockToSync, trackedAddresses, currencies) match {
+                  ethereumConnector.readBlock(blockToSync, trackedAddresses) match {
                     case None => logger.error(s"Cannot read block $blockToSync")
-                    case Some((block, transactions, transfers)) => {
-                      logger.debug(s"Reading block $block: txes $transactions, transfers $transfers")
+                    case Some((block, transactions)) => {
+                      logger.debug(s"Reading block $block: txes $transactions")
 
                       logger.debug(s"Storing block: $block")
                       pgStorage.blocks.addBlock(block.withoutParentHash)
@@ -203,19 +201,19 @@ object CherryPicker extends LazyLogging {
             val payload: AddTrackedAddresses.ATARequestPayload = message.payload
 
             // Here goes the list of all added addresses
-            // (as Options; with Option.empty instead of any address that failed to add)
+            // (as Options; with `None` instead of any address that failed to add)
             val addressesMaybeAdded: List[Option[String]] = (
               for (addr: AddTrackedAddresses.AddressDataToTrack <- payload.addressesToTrack.asScala.toList)
                 yield {
                   if (pgStorage.trackedAddresses.addTrackedAddress(
                     addr.address,
-                    Option(addr.comment),
+                    Some(addr.comment),
                     payload.trackingMode,
-                    Option(payload.fromBlock)
+                    Some(payload.fromBlock)
                   )) {
-                    Option(addr.address)
+                    Some(addr.address)
                   } else {
-                    Option.empty[String]
+                    None[String]
                   }
                 }
               )

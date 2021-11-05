@@ -312,7 +312,7 @@ class PostgreSQLStorage(jdbcUrl: String,
   class TrackedAddresses {
 
     /** Single instance of tracked address.
-     * Note that the [[Option]] arguments being [[Option.empty]] don’t necessary mean the data really has NULL here:
+     * Note that the [[Option]] arguments being [[None]] don’t necessary mean the data really has NULL here:
      * they may be empty if the result has been requested without this piece of data.
      */
     final case class TrackedAddress(address: String,

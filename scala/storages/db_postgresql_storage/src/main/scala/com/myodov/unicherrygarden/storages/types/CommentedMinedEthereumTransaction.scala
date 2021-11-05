@@ -15,7 +15,7 @@ final case class CommentedMinedEthereumTransaction(
                                                     override val nonce: Int,
                                                     override val value: BigInt,
                                                     // MinedTransaction-specific
-                                                    override val status: Int,
+                                                    override val status: Option[Int],
                                                     override val blockNumber: BigInt,
                                                     override val transactionIndex: Int,
                                                     override val gasUsed: BigInt = 0,
@@ -23,7 +23,7 @@ final case class CommentedMinedEthereumTransaction(
                                                     override val cumulativeGasUsed: BigInt = 0,
                                                     override val txLogs: Seq[TxLog] = Seq(),
                                                     // Commented
-                                                    comment: Option[String] = Option.empty
+                                                    comment: Option[String] = None
                                                   ) extends EthereumMinedTransaction(
   txhash,
   from,

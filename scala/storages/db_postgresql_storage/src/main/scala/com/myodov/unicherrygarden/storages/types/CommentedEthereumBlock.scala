@@ -10,5 +10,5 @@ final case class CommentedEthereumBlock(
                                    override val hash: String,
                                    override val parentHash: Option[String],
                                    override val timestamp: Instant,
-                                   comment: Option[String] = Option.empty
+                                   comment: Option[String] = None
                                  ) extends EthereumBlock(number, hash, parentHash, timestamp) with Commented

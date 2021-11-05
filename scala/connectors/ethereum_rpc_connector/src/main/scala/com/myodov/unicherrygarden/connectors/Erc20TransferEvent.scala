@@ -38,9 +38,9 @@ object Erc20TransferEvent {
         assert(indexedParameters.length == 2)
         val argFrom: Type[Address] = FunctionReturnDecoder.decodeIndexedValue(indexedParameters(0), eventIndexedParametersJava.get(0)).asInstanceOf[Type[Address]]
         val argTo: Type[Address] = FunctionReturnDecoder.decodeIndexedValue(indexedParameters(1), eventIndexedParametersJava.get(1)).asInstanceOf[Type[Address]]
-        Option(TopicParseResult(argFrom.toString, argTo.toString))
+        Some(TopicParseResult(argFrom.toString, argTo.toString))
       }
-      case _ => Option.empty
+      case _ => None
     }
   }
 
@@ -71,14 +71,14 @@ object Erc20TransferEvent {
 //        assert(resultList.length == 1)
 //
 //        val transferAmountBigInteger: BigInt = resultList(0).getValue.asInstanceOf[BigInteger]
-//        Option(Erc20TransferEvent(
+//        Some(Erc20TransferEvent(
 //          argFrom.toString,
 //          argTo.toString,
 //          log.getAddress,
 //          transferAmountBigInteger
 //        ))
 //      }
-//      case _ => Option.empty
+//      case _ => None
 //    }
   }
 

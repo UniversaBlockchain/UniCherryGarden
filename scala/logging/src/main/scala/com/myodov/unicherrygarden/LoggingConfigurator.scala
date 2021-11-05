@@ -36,8 +36,6 @@ object LoggingConfigurator {
 
     val logFilePath = Paths.get(System.getProperty("user.dir"), "logs/unicherrygarden-dump.log").toAbsolutePath.toString
 
-//    println(s"LOG FILE PATH! ${logFilePath}")
-
     //    val appender: SyslogAppender[ILoggingEvent] = new SyslogAppender()[ILoggingEvent]
     lazy val fileAppender = {
       val a = new FileAppender

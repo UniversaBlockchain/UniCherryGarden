@@ -108,6 +108,21 @@ trait MinedTransaction extends Transaction {
   val cumulativeGasUsed: BigInt
   require(cumulativeGasUsed >= 0, cumulativeGasUsed)
 
+  /** The transaction logs.
+   *
+   * From `eth.getTransactionReceipt()`.
+   */
+  val txLogs: Seq[TxLog]
+
+
+  /** Whether any of the logs contains any of the topics matching the `needle` (as in, “needle in haystack”),
+   * some data to be searched.
+   */
+  def anyTxLogContainsTopic(needle: String): Boolean = {
+    require(EthUtils.isValidHexString(needle, 66), needle)
+    txLogs.exists(_.topicsContain(needle))
+  }
+
 
   override def toString = s"MinedTransaction(" +
     s"txhash=$txhash, from=$from, to=$to, nonce=$nonce, value=$value; " +

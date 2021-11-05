@@ -33,14 +33,13 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
     )(
       sharedConnector.readBlock(
         blockNumber = 0,
-        filterAddresses = Set.empty,
-        filterCurrencies = Set.empty)
+        addressesOfInterest = Set.empty)
     )
   }
 
   "readBlock(1)" should "read and parse very first block" in {
     assertResult(
-      Option( // Option of Tuple
+      Some( // Option of Tuple
         (
           EthereumBlock(
             1,
@@ -55,14 +54,13 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
     )(
       sharedConnector.readBlock(
         blockNumber = 1,
-        filterAddresses = Set.empty,
-        filterCurrencies = Set.empty)
+        addressesOfInterest = Set.empty)
     )
   }
 
   "readBlock()" should "read and parse some block (empty filters)" in {
     assertResult(
-      Option( // Option of Tuple
+      Some( // Option of Tuple
         (
           EthereumBlock(
             11906373,
@@ -77,8 +75,7 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
     )(
       sharedConnector.readBlock(
         blockNumber = 11906373,
-        filterAddresses = Set.empty,
-        filterCurrencies = Set.empty)
+        addressesOfInterest = Set.empty)
     )
   }
 
@@ -87,7 +84,7 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
   // 60003 block has 4 transactions
   "readBlock(120522)" should "parse block and find some single ETH transfer from address" in {
     assertResult(
-      Option( // Option of Tuple
+      Some( // Option of Tuple
         (
           EthereumBlock(
             120522,
@@ -102,14 +99,13 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
     )(
       sharedConnector.readBlock(
         blockNumber = 120522,
-        filterAddresses = Set("0x90d331f19e4ef54c4dc2710087ebd8536084a85a"),
-        filterCurrencies = Set.empty)
+        addressesOfInterest = Set("0x90d331f19e4ef54c4dc2710087ebd8536084a85a"))
     )
   }
 
   it should "parse block and find some single ETH transfer to address" in {
     assertResult(
-      Option( // Option of Tuple
+      Some( // Option of Tuple
         (
           EthereumBlock(
             120522,
@@ -124,14 +120,13 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
     )(
       sharedConnector.readBlock(
         blockNumber = 120522,
-        filterAddresses = Set("0x8f22398f1567cddaba1b6bb1973e62b4992d5c9c"),
-        filterCurrencies = Set.empty)
+        addressesOfInterest = Set("0x8f22398f1567cddaba1b6bb1973e62b4992d5c9c"))
     )
   }
 
   it should "parse block and find some single ETH transfer when both `from` and `to` address are defined" in {
     assertResult(
-      Option( // Option of Tuple
+      Some( // Option of Tuple
         (
           EthereumBlock(
             120522,
@@ -146,8 +141,7 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
     )(
       sharedConnector.readBlock(
         blockNumber = 120522,
-        filterAddresses = Set("0x90d331f19e4ef54c4dc2710087ebd8536084a85a", "0x8f22398f1567cddaba1b6bb1973e62b4992d5c9c" ),
-        filterCurrencies = Set.empty)
+        addressesOfInterest = Set("0x90d331f19e4ef54c4dc2710087ebd8536084a85a", "0x8f22398f1567cddaba1b6bb1973e62b4992d5c9c" ))
     )
   }
 
@@ -155,7 +149,7 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
   // 60003 block has 4 transactions
   "readBlock(60003)" should "read and parse block (with some filters)" in {
     assertResult(
-      Option( // Option of Tuple
+      Some( // Option of Tuple
         (
           EthereumBlock(
             60003,
@@ -170,15 +164,14 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
     )(
       sharedConnector.readBlock(
         blockNumber = 60003,
-        filterAddresses = Set("0x28bacfa4fc8b8ed6f50cbd0eb1d58bc508eb8e15"),
-        filterCurrencies = Set.empty)
+        addressesOfInterest = Set("0x28bacfa4fc8b8ed6f50cbd0eb1d58bc508eb8e15"))
     )
   }
 
 
   it should "read and parse some heavily used block (with some filters)" in {
     assertResult(
-      Option( // Option of Tuple
+      Some( // Option of Tuple
         (
           EthereumBlock(
             11906373,
@@ -193,8 +186,7 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
     )(
       sharedConnector.readBlock(
         blockNumber = 11906373,
-        filterAddresses = Set("0x28bacfa4fc8b8ed6f50cbd0eb1d58bc508eb8e15"),
-        filterCurrencies = Set.empty)
+        addressesOfInterest = Set("0x28bacfa4fc8b8ed6f50cbd0eb1d58bc508eb8e15"))
     )
   }
 }
