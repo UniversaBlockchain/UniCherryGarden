@@ -7,6 +7,9 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 /**
  * The client connector part that is capable to confirm that somebody indeed owns (controls) some Ethereum address.
  * <p>
+ * <p>
+ * Each instance doesn’t require networking connectivity, and may be instanced as a class, directly.
+ * <p>
  * The typical procedure to validate the address is following:
  * <p>
  * <ol>

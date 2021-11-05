@@ -5,13 +5,15 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**
  * The client connector part that ensures sending of the Ethereum ETH/ERC20 payments.
+ * <p>
+ * Each instance doesn’t require networking connectivity, and may be instanced as a class, directly.
  */
 public interface Keygen {
     /**
      * Keygen to make a proper Ethereum-compatible private key.
-     *
-     * The implementation class will have a similarly-named static method; use it.
+     * <p>
+     * You may want to use it via try-with-resources approach.
      */
     @NonNull
-    PrivateKey _generatePrivateKey();
+    PrivateKey generatePrivateKey();
 }

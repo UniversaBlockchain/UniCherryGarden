@@ -15,17 +15,17 @@ import java.security.NoSuchProviderException;
  * The default implementation for {@link Keygen} interface.
  */
 public class KeygenImpl implements Keygen {
-    /**
-     * Keygen to make a proper Ethereum-compatible private key.
-     */
     @NonNull
     @Override
-    public final PrivateKey _generatePrivateKey() {
-        return generatePrivateKey();
+    public final PrivateKey generatePrivateKey() {
+        return _generatePrivateKey();
     }
 
+    /**
+     * A statically-avaiable version of private key generation method.
+     */
     @NonNull
-    public static PrivateKey generatePrivateKey() {
+    public static PrivateKey _generatePrivateKey() {
         try {
             final ECKeyPair pair = Keys.createEcKeyPair();
             return new PrivateKeyImpl(pair);

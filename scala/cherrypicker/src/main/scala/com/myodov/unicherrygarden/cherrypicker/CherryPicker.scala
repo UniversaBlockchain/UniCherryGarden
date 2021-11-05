@@ -213,7 +213,7 @@ object CherryPicker extends LazyLogging {
                   )) {
                     Some(addr.address)
                   } else {
-                    None[String]
+                    None
                   }
                 }
               )

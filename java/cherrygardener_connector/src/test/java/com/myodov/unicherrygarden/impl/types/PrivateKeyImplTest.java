@@ -4,6 +4,8 @@ import com.myodov.unicherrygarden.api.types.PrivateKey;
 import org.bouncycastle.util.encoders.Hex;
 import org.junit.Test;
 
+import java.util.Arrays;
+
 import static org.junit.Assert.*;
 
 public class PrivateKeyImplTest {
@@ -34,20 +36,18 @@ public class PrivateKeyImplTest {
     }
 
     @Test
-    public void testBasics() {
+    public void testTryWithResourcesSafety() {
         {  // private key 1
             final PrivateKey pkCopy;
+            final String addressCopy;
+            final byte[] bytesCopy;
+            final String bytesHexCopy;
 
             // Using via try-with-resources
             try (final PrivateKey pk = new PrivateKeyImpl(PK1)) {
                 assertEquals(
-                        PK1_STR,
-                        pk.getBytesHex()
-                );
-
-                assertArrayEquals(
-                        PK1.clone(),
-                        pk.getBytes()
+                        "PrivateKeyImpl<0x34e1e4f805fcdc936068a760b2c17bc62135b5ae>",
+                        pk.toString()
                 );
 
                 assertEquals(
@@ -60,66 +60,110 @@ public class PrivateKeyImplTest {
                         pk.getAddressEip55()
                 );
 
+                assertArrayEquals(
+                        PK1.clone(),
+                        pk.getBytes()
+                );
+
                 assertEquals(
-                        "PrivateKeyImpl<0x34e1e4f805fcdc936068a760b2c17bc62135b5ae>",
-                        pk.toString()
+                        PK1_STR,
+                        pk.getBytesHex()
                 );
 
                 // the object leaks outside of try-with-resources zone;
                 // for now it still has the private key inside. Will the private key survive leaving
                 // the try-with-resources zone?
                 pkCopy = pk;
+                addressCopy = pk.getAddress();
+                bytesCopy = pk.getBytes().clone();
+                bytesHexCopy = pk.getBytesHex();
 
-                assertArrayEquals(
-                        "Still equal",
-                        PK1.clone(),
-                        pkCopy.getBytes()
-                );
-
-                assertEquals(
-                        "Still equal",
+                assertEquals("Still equal: toString",
                         "PrivateKeyImpl<0x34e1e4f805fcdc936068a760b2c17bc62135b5ae>",
                         pkCopy.toString()
                 );
+
+                assertEquals("Still equal: getAddress",
+                        addressCopy,
+                        pkCopy.getAddress()
+                );
+                assertEquals("Still equal: getAddress",
+                        "0x34e1E4F805fCdC936068A760b2C17BC62135b5AE".toLowerCase(),
+                        pkCopy.getAddress()
+                );
+
+                assertEquals("Still equal: getAddressEip55",
+                        PK1_ADDR,
+                        pkCopy.getAddressEip55()
+                );
+
+                assertArrayEquals("Still equal: getBytes",
+                        PK1.clone(),
+                        pkCopy.getBytes()
+                );
+                assertArrayEquals("Still equal: getBytes",
+                        bytesCopy,
+                        pkCopy.getBytes()
+                );
+
+                assertEquals("Still equal: getBytesHex",
+                        PK1_STR,
+                        pkCopy.getBytesHex()
+                );
+                assertEquals("Still equal: getBytesHex",
+                        bytesHexCopy,
+                        pkCopy.getBytesHex()
+                );
             }
+
             // We are leaving the try-with-resources zone so all the private key contents is no more valid
-            assertNotEquals(
-                    "private key contents is wiped on exiting",
-                    PK1_STR,
-                    pkCopy.getBytesHex()
+
+            assertNotEquals("Private key contents is wiped on exiting: toString",
+                    "PrivateKeyImpl<0x34e1e4f805fcdc936068a760b2c17bc62135b5ae>",
+                    pkCopy.toString()
             );
 
-            assertNotEquals(
-                    "private key contents is wiped on exiting",
+            assertNotEquals("Private key contents is wiped on exiting: getAddress",
                     PK1_ADDR.toLowerCase(),
                     pkCopy.getAddress()
             );
+            assertNotEquals("Private key contents is wiped on exiting: getAddress",
+                    addressCopy,
+                    pkCopy.getAddress()
+            );
 
-            assertNotEquals(
-                    "private key contents is wiped on exiting",
+            assertNotEquals("Private key contents is wiped on exiting: getAddressEip55",
                     PK1_ADDR,
                     pkCopy.getAddressEip55()
             );
 
-            assertNotEquals(
-                    "private key contents is wiped on exiting",
-                    "PrivateKeyImpl<0x34e1e4f805fcdc936068a760b2c17bc62135b5ae>",
-                    pkCopy.toString()
+            assertFalse("Private key contents is wiped on exiting: getBytes",
+                    Arrays.equals(PK1.clone(), pkCopy.getBytes())
+            );
+            assertFalse("Private key contents is wiped on exiting: getBytes",
+                    Arrays.equals(bytesCopy, pkCopy.getBytes())
+            );
+
+            assertNotEquals("Private key contents is wiped on exiting: getBytesHex",
+                    PK1_STR,
+                    pkCopy.getBytesHex()
+            );
+            assertNotEquals("Private key contents is wiped on exiting: getBytesHex",
+                    bytesHexCopy,
+                    pkCopy.getBytesHex()
             );
         }
 
         {  // private key 2
             final PrivateKey pkCopy;
+            final String addressCopy;
+            final byte[] bytesCopy;
+            final String bytesHexCopy;
 
             try (final PrivateKeyImpl pk = new PrivateKeyImpl(PK2)) {
                 assertEquals(
-                        PK2_STR,
-                        pk.getBytesHex()
-                );
-
-                assertArrayEquals(
-                        PK2.clone(),
-                        pk.getBytes()
+                        "PrivateKeyImpl<0x408a4ac0e80ba57210ea6a9ae6a9a7b687a51023>",
+                        pk.toString()
                 );
 
                 assertEquals(
@@ -132,52 +176,97 @@ public class PrivateKeyImplTest {
                         pk.getAddressEip55()
                 );
 
+                assertArrayEquals(
+                        PK2.clone(),
+                        pk.getBytes()
+                );
+
                 assertEquals(
-                        "PrivateKeyImpl<0x408a4ac0e80ba57210ea6a9ae6a9a7b687a51023>",
-                        pk.toString()
+                        PK2_STR,
+                        pk.getBytesHex()
                 );
 
                 // the object leaks outside of try-with-resources zone;
                 // for now it still has the private key inside. Will the private key survive leaving
                 // the try-with-resources zone?
                 pkCopy = pk;
+                addressCopy = pk.getAddress();
+                bytesCopy = pk.getBytes().clone();
+                bytesHexCopy = pk.getBytesHex();
 
-                assertArrayEquals(
-                        "Still equal",
+                assertEquals("Still equal: toString",
+                        "PrivateKeyImpl<0x408a4ac0e80ba57210ea6a9ae6a9a7b687a51023>",
+                        pkCopy.toString()
+                );
+
+                assertEquals("Still equal: getAddress",
+                        addressCopy,
+                        pkCopy.getAddress()
+                );
+                assertEquals("Still equal: getAddress",
+                        "0x408a4ac0e80ba57210ea6a9ae6a9a7b687a51023".toLowerCase(),
+                        pkCopy.getAddress()
+                );
+
+                assertEquals("Still equal: getAddressEip55",
+                        PK2_ADDR,
+                        pkCopy.getAddressEip55()
+                );
+
+                assertArrayEquals("Still equal: getBytes",
                         PK2.clone(),
                         pkCopy.getBytes()
                 );
+                assertArrayEquals("Still equal: getBytes",
+                        bytesCopy,
+                        pkCopy.getBytes()
+                );
 
-                assertEquals(
-                        "Still equal",
-                        "PrivateKeyImpl<0x408a4ac0e80ba57210ea6a9ae6a9a7b687a51023>",
-                        pkCopy.toString()
+                assertEquals("Still equal: getBytesHex",
+                        PK2_STR,
+                        pkCopy.getBytesHex()
+                );
+                assertEquals("Still equal: getBytesHex",
+                        bytesHexCopy,
+                        pkCopy.getBytesHex()
                 );
             }
 
             // We are leaving the try-with-resources zone so all the private key contents is no more valid
-            assertNotEquals(
-                    "private key contents is wiped on exiting",
-                    PK2_STR,
-                    pkCopy.getBytesHex()
+
+            assertNotEquals("Private key contents is wiped on exiting: toString",
+                    "PrivateKeyImpl<0x408a4ac0e80ba57210ea6a9ae6a9a7b687a51023>",
+                    pkCopy.toString()
             );
 
-            assertNotEquals(
-                    "private key contents is wiped on exiting",
+            assertNotEquals("Private key contents is wiped on exiting: getAddress",
                     PK2_ADDR.toLowerCase(),
                     pkCopy.getAddress()
             );
+            assertNotEquals("Private key contents is wiped on exiting: getAddress",
+                    addressCopy,
+                    pkCopy.getAddress()
+            );
 
-            assertNotEquals(
-                    "private key contents is wiped on exiting",
+            assertNotEquals("Private key contents is wiped on exiting: getAddressEip55",
                     PK2_ADDR,
                     pkCopy.getAddressEip55()
             );
 
-            assertNotEquals(
-                    "private key contents is wiped on exiting",
-                    "PrivateKeyImpl<0x408a4ac0e80ba57210ea6a9ae6a9a7b687a51023>",
-                    pkCopy.toString()
+            assertFalse("Private key contents is wiped on exiting: getBytes",
+                    Arrays.equals(PK2.clone(), pkCopy.getBytes())
+            );
+            assertFalse("Private key contents is wiped on exiting: getBytes",
+                    Arrays.equals(bytesCopy, pkCopy.getBytes())
+            );
+
+            assertNotEquals("Private key contents is wiped on exiting: getBytesHex",
+                    PK2_STR,
+                    pkCopy.getBytesHex()
+            );
+            assertNotEquals("Private key contents is wiped on exiting: getBytesHex",
+                    bytesHexCopy,
+                    pkCopy.getBytesHex()
             );
         }
     }

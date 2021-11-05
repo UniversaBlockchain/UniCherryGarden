@@ -43,6 +43,7 @@ public interface PrivateKey extends AutoCloseable {
 
     /**
      * Hex serialization string of the private key.
+     * You can use this string to import the private key into Ethereum clients like MyEtherWallet/MyCrypto.
      *
      * @apiNote always 64 characters long.
      */
