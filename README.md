@@ -65,13 +65,37 @@ import com.myodov.unicherrygarden.connector.impl.ClientConnectorImpl;
 // ...
 
     final List<String> urls = List.of("127.0.0.1:2551", "127.0.0.1:2552");
-    final ClientConnector connector = new ClientConnectorImpl(urls);
+    final int listenPort = 25371;
+    final int confirmations = 24;
+    final ClientConnector connector = new ClientConnectorImpl(urls, listenPort, confirmations);
 ~~~
+
+#### `urls` constructor argument
 
 `ClientConnectorImpl` class constructor takes a list of URLs as the arguments; normally these are the URLs for CherryGardener and GardenWatcher instances (the order doesn’t matter). Most of the time, you want to launch at least a single instance of CherryGardener, and at least a single instance of GardenWatcher, and upgrade them in sequence (so at least one of them always up while the other is being upgraded), to maintain the cluster connectivity.
 
 You shouldn’t pass `null` instead of the list to the constructor; but you can pass an empty list, implying you don’t want the ClientConnector to connect to anything. It will try to work in “offline mode” then, having some of its functionality unavailable (which requires the connection to the CherryGardener) but still have some functionality available (which runs on the address space of the connector – such as, generation of private keys, or confirmation/validation of addresses through signing the messages).
 
+#### `listenPort` constructor argument
+
+During running, your client (and thus your instance of connector) will work in the same DMZ as CherryPicker/CherryPlanter/CherryGardener components. It will become a full-grown member of Akka cluster, so it should explicitly specify the IP port it will be bound to; and this port should be reachable from CherryPicker/CherryPlanter/CherryGardener. The regular rules for IP ports are applicable (e.g. if you specify a privileged port lower than 1024, you may need the root privileges to be able to run your client).
+
+#### `confirmations` constructor argument
+
+Most of the operations reading the Ethereum blockchain need some level of “trust” that the data in the block won’t suddenly be changed by an unexpected blockchain reorganization. This argument is a single-point place to specify “minimal number of confirmations” requirement for all the data provided to your client.
+
+This number means the necessary number of Ethereum block confirmations to be sure in any blockchain data stability. None of the functionality (getting balances, getting the list of transfers, etc) will return any data confirmed with less than this amount of confirmation blocks. Some API calls may let you add extra number of confirmations on top of this number.
+
+0 confirmations (should not be used!) means the transaction is considered valid if it is available in the latest mined block; 1 confirmation for a transaction means there is a 1 block mined <i>after</i> the transaction.
+
+Some numbers to consider:
+
+* **5** confirmations – often been considered as “everyday level of security”.
+* **12** confirmations – often been considered as “everyday level of security”.
+* **20** confirmations – used on large exchange Kraken for most transactions.
+* **250**, **375**, even **500** confirmations – used by most conservative crypto exchanges.
+
+Please note that at the moment of writing, it takes about 13 seconds to mine any single next block, therefore about 4 blocks per minute is generated.
 
 ### API
 

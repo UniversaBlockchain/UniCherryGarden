@@ -12,7 +12,13 @@ public interface Keygen {
     /**
      * Keygen to make a proper Ethereum-compatible private key.
      * <p>
-     * You may want to use it via try-with-resources approach.
+     * You may want to use it via try-with-resources approach, as in:
+     * <pre>
+     * try (final PrivateKey pk = keygen.generatePrivateKey()) {
+     *     ... Do something with pk
+     * }
+     * // At this point the data in pk gets explicitly cleaned and not stored in the RAM anymore.
+     * </pre>
      */
     @NonNull
     PrivateKey generatePrivateKey();

@@ -14,6 +14,7 @@ public interface ClientConnector {
     /**
      * Stop whole connector to shut it down.
      */
+    @SuppressWarnings("unused")
     void shutdown();
 
     /**
@@ -27,6 +28,7 @@ public interface ClientConnector {
      * @throws IllegalArgumentException if neither `getVerified` nor `getUnverified` are defined.
      */
     @Nullable
+    @SuppressWarnings("unused")
     List<Currency> getCurrencies(boolean getVerified, boolean getUnverified);
 
     /**
@@ -37,6 +39,7 @@ public interface ClientConnector {
      * or the list of all supported currencies.
      */
     @Nullable
+    @SuppressWarnings("unused")
     default List<Currency> getCurrencies() {
         return getCurrencies(true, false);
     };
@@ -46,12 +49,14 @@ public interface ClientConnector {
      * Returns the engine/subsystem that allows you to confirm the Ethereum address ownership.
      */
     @NonNull
+    @SuppressWarnings("unused")
     AddressOwnershipConfirmator getAddressOwnershipConfirmator();
 
     /**
      * Returns the engine/subsystem that allows you to create valid Ethereum private keys.
      */
     @NonNull
+    @SuppressWarnings("unused")
     Keygen getKeygen();
 
     /**
@@ -62,5 +67,6 @@ public interface ClientConnector {
      * @return <code>null</code> if the client connector is created in “offline mode”.
      */
     @Nullable
+    @SuppressWarnings("unused")
     Observer getObserver();
 }

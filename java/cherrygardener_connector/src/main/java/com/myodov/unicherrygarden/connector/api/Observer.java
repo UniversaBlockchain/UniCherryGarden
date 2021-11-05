@@ -94,7 +94,7 @@ public interface Observer {
      * @param filterCurrencyKeys (optional) the set of the currency keys, for which to get the balances.
      *                           If <code>null</code>, gets the balances for all the supported currencies.
      *                           (Note if the set is empty, it will return the empty balances).
-     * @param confirmations      The number of confirmations required, i.e. the offset from the latest data.
+     * @param confirmations      The number of extra confirmations required, i.e. the offset from the latest data.
      *                           Should be 0 or higher. Normally it is 6–12 confirmations,
      *                           20 confirmations on large crypto exchanges.
      *                           Each confirmation roughly takes 15 seconds, i.e. 4 confirmations per minute.

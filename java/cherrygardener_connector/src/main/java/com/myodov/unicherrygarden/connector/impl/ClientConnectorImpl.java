@@ -17,20 +17,13 @@ import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActor;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.GetCurrenciesCommand;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.WaitForBootCommand;
-import com.myodov.unicherrygarden.ethereum.Ethereum;
-import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.web3j.crypto.ECKeyPair;
-import org.web3j.crypto.Keys;
-import org.web3j.utils.Numeric;
 
-import java.security.InvalidAlgorithmParameterException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionException;
@@ -62,16 +55,56 @@ public class ClientConnectorImpl implements ClientConnector {
     private final boolean offlineMode;
 
     /**
-     * Constructor of CherryGardener client connector.
+     * Primary and most detailed constructor of CherryGardener client connector.
      *
-     * @param gardenerUrls the list of URLs of CherryGardener service (strings containing host and port),
-     *                     e.g. <code>List.of("127.0.0.1:2551", "127.0.0.1:2552")</code>.
-     *                     If the list is empty, the connector is executed in “offline mode”,
-     *                     capable to perform only the operations which are executed locally.
+     * @param gardenerUrls           the list of URLs of CherryGardener service (strings containing host and port),
+     *                               e.g. <code>List.of("127.0.0.1:2551", "127.0.0.1:2552")</code>.
+     *                               If the list is empty, the connector is executed in “offline mode”,
+     *                               capable to perform only the operations which are executed locally.
+     * @param listenPort             IP the client should listen to. Between 0 (exclusive) and 65535 (inclusive).
+     *                               Note your client (at port) and the CherryGardener service URLs should be mutually
+     *                               reachable.
+     * @param mandatoryConfirmations the necessary number of Ethereum block confirmations to be sure
+     *                               in any blockchain data stability.
+     *                               None of the functionality (getting balances, getting the list of transfers, etc)
+     *                               will return any data confirmed with less than this amount of confirmations/blocks.
+     *                               <p>
+     *                               Some API calls may let you add extra number of confirmations on top of this number.
+     *                               0 confirmations (should not be used!) means the transaction is considered valid
+     *                               if it is available in the latest mined block; 1 confirmation for a transaction
+     *                               means there is a 1 block mined <i>after</i> the transaction.
+     *                               <p>
+     *                               conds.
+     *                               <p>
+     *                               Some numbers to consider:
+     *                               <ul>
+     *                               <li>5 confirmations – often been considered as “everyday level of security”.</li>
+     *                               <li>12 confirmations – often been considered as “everyday level of security”.</li>
+     *                               <li>20 confirmations – used on large exchange Kraken for most transactions.</li>
+     *                               <li>250, 375, even 500 confirmations – used by most conservative crypto
+     *                               exchanges.</li>
+     *                               </ul>
      * @throws CompletionException if failed to initialize.
      */
-    public ClientConnectorImpl(@NonNull List<String> gardenerUrls) throws CompletionException {
-        assert gardenerUrls != null;
+    public ClientConnectorImpl(@NonNull List<String> gardenerUrls,
+                               int listenPort,
+                               int mandatoryConfirmations) throws CompletionException {
+        if (gardenerUrls == null) {
+            throw new IllegalArgumentException("gardenerUrls should not be null! " +
+                    "Pass an empty list of URLs if you want an offline mode");
+        }
+        if (!gardenerUrls.isEmpty()) {
+            // The listenPort and mandatoryConfirmations validations are relevant only if non-offline mode
+            if (!(65535 >= listenPort && listenPort > 0)) {
+                throw new IllegalArgumentException("When in non-offline mode, listenPort should be " +
+                        "between 0 exclusive and 65535 inclusive!");
+            }
+            if (mandatoryConfirmations < 0) {
+                throw new IllegalArgumentException("When in non-offline mode, mandatoryConfirmations should be " +
+                        "at least 0, the higher the better!");
+            }
+        }
+
         logger.info("Launching CherryGardener connector: gardener urls {}", gardenerUrls);
         offlineMode = gardenerUrls.isEmpty();
 
@@ -108,29 +141,41 @@ public class ClientConnectorImpl implements ClientConnector {
         }
     }
 
-    @Override
-    public void shutdown() {
-        actorSystem.terminate();
+    /**
+     * Simplified constructor, with safe defaults (24 confirmations, around 6 minutes).
+     *
+     * @param gardenerUrls the list of URLs of CherryGardener service (strings containing host and port),
+     *                     e.g. <code>List.of("127.0.0.1:2551", "127.0.0.1:2552")</code>.
+     *                     If the list is empty, the connector is executed in “offline mode”,
+     *                     capable to perform only the operations which are executed locally.
+     * @param listenPort   IP the client should listen to. Between 0 (exclusive) and 65535 (inclusive).
+     *                     Note your client (at port) and the CherryGardener service URLs should be mutually
+     *                     reachable.
+     * @throws CompletionException if failed to initialize.
+     */
+    @SuppressWarnings("unused")
+    public ClientConnectorImpl(@NonNull List<String> gardenerUrls,
+                               int listenPort) throws CompletionException {
+        this(gardenerUrls, listenPort, 24);
     }
 
     /**
-     * Main loop execution.
+     * Convenient constructor to create a connector in offline mode.
+     *
+     * @throws CompletionException if failed to initialize.
      */
-    public static void main(String[] args) {
-        // TODO: remove, not necessary
-        final ECKeyPair pair;
+    @SuppressWarnings("unused")
+    public static ClientConnector createOfflineConnector() throws CompletionException {
+        return new ClientConnectorImpl(
+                Collections.emptyList(),
+                0,
+                0
+        );
+    }
 
-        try {
-            pair = Keys.createEcKeyPair();
-
-            final String address = Keys.getAddress(pair);
-            System.out.printf("Address: 0x%s\n", address);
-
-            final byte[] bytes = Numeric.toBytesPadded(pair.getPrivateKey(), Ethereum.PRIVATE_KEY_SIZE_BYTES);
-            System.out.printf("Private key: %s\n", Hex.toHexString(bytes));
-        } catch (InvalidAlgorithmParameterException | NoSuchAlgorithmException | NoSuchProviderException e) {
-            e.printStackTrace();
-        }
+    @Override
+    public void shutdown() {
+        actorSystem.terminate();
     }
 
     //
