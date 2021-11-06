@@ -1,8 +1,7 @@
 package com.myodov.unicherrygarden.api.dlt
 
+import com.myodov.unicherrygarden.api.dlt.events.ERC20TransferEvent
 import com.myodov.unicherrygarden.ethereum.{EthUtils, Ethereum}
-
-case class ERC20TransferEvent(from: String, to: String, value: BigInt)
 
 /** Information for any transaction log (in a transaction) in Ethereum blockchain;
  * stored in `ucg_tx_log` table.

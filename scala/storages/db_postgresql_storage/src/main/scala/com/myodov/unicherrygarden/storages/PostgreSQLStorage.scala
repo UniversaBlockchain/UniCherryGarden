@@ -293,7 +293,7 @@ class PostgreSQLStorage(jdbcUrl: String,
       sql"""
       SELECT *
       FROM ucg_currency
-      WHERE verified IN $verifiedValues;
+      WHERE verified IN ($verifiedValues);
       """.map(rs => DBCurrency(
         CurrencyTypes.fromString(rs.string("type")),
         rs.stringOpt("dapp_address"),

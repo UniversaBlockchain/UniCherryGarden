@@ -1,5 +1,6 @@
 package com.myodov.unicherrygarden.api.dlt
 
+import com.myodov.unicherrygarden.api.dlt.events.ERC20TransferEvent
 import org.scalatest.flatspec.AnyFlatSpec
 
 class TxLogSpec extends AnyFlatSpec {

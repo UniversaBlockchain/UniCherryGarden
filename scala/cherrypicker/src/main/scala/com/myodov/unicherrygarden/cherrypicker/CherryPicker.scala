@@ -159,7 +159,7 @@ object CherryPicker extends LazyLogging {
         // but 5 seconds after a previous iteration *completed*.
         // The latter though can be resolved by scheduleWithFixedDelay.
         logger.error("Running first iteration of CherryPicker...")
-        context.self ! Iterate() // TODO: enable to start iterations
+//        context.self ! Iterate() // TODO: enable to start iterations
 
         Behaviors.receiveMessage {
           case Iterate() => {

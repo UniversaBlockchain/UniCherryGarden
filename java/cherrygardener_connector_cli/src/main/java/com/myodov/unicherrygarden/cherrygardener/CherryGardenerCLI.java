@@ -28,35 +28,9 @@ public class CherryGardenerCLI {
 
     private static final Options options = new Options();
 
+    protected static final int DEFAULT_NUMBER_OF_CONFIRMATIONS = 6;
+
     static {
-        final OptionGroup commandOptionGroup = new OptionGroup();
-
-        commandOptionGroup.addOption(new Option(
-                "h", "help", false,
-                "Display help."));
-        commandOptionGroup.addOption(new Option(
-                "gc", "get-currencies", false,
-                "Print the list of currencies supported by CherryGardener and all other components."));
-        commandOptionGroup.addOption(new Option(
-                "gta", "get-tracked-addresses", false,
-                "Print the list of addresses tracked by CherryPicker."));
-        commandOptionGroup.addOption(new Option(
-                "ata", "add-tracked-address", true,
-                "Add an Ethereum address to track.\n" +
-                        "Should be a valid Ethereum address;\n" +
-                        "e.g. \"0x884191033518be08616821d7676ca01695698451\".\n" +
-                        "See also:\n" +
-                        "--track-from-block (mandatory),\n" +
-                        "--comment (optional)."));
-        commandOptionGroup.addOption(new Option(
-                "gb", "get-balances", true,
-                "Get balances (of currencies tokens) for an (already tracked) Ethereum address.\n" +
-                        "Should be a valid Ethereum address;\n" +
-                        "e.g. \"0x884191033518be08616821d7676ca01695698451\".\n" +
-                        "See also:\n" +
-                        "--confirmations (optional; default: 0)."));
-        commandOptionGroup.setRequired(true);
-
         options.addOption(
                 "c", "connect", true,
                 "Comma-separated list of addresses to connect;\n" +
@@ -64,7 +38,42 @@ public class CherryGardenerCLI {
         options.addOption(
                 null, "confirmations", true,
                 "The number of confirmations (Ethereum blocks already mined after an event);\n" +
-                        "Should be a non-negative integer number, likely 6 or 12.");
+                        "Should be a non-negative integer number, likely 6 or 12 or more. Default: 6.");
+        options.addOption(
+                "lp", "listen-port", true,
+                "The IP port to listen;\n" +
+                        "Should be a non-negative integer number, 0 to 65535, 0 means autogenerate. " +
+                        "Note the client (at this port) should be reachable to the servers, so if you are using " +
+                        "SSH port forwarding, you may need to forward both local and remote ports. " +
+                        "Default: 0 (autogenerate).");
+
+        final OptionGroup commandOptionGroup = new OptionGroup() {{
+            addOption(new Option(
+                    "h", "help", false,
+                    "Display help."));
+            addOption(new Option(
+                    "gc", "get-currencies", false,
+                    "Print the list of currencies supported by CherryGardener and all other components."));
+            addOption(new Option(
+                    "gta", "get-tracked-addresses", false,
+                    "Print the list of addresses tracked by CherryPicker."));
+            addOption(new Option(
+                    "ata", "add-tracked-address", true,
+                    "Add an Ethereum address to track.\n" +
+                            "Should be a valid Ethereum address;\n" +
+                            "e.g. \"0x884191033518be08616821d7676ca01695698451\".\n" +
+                            "See also:\n" +
+                            "--track-from-block (mandatory),\n" +
+                            "--comment (optional)."));
+            addOption(new Option(
+                    "gb", "get-balances", true,
+                    "Get balances (of currencies tokens) for an (already tracked) Ethereum address.\n" +
+                            "Should be a valid Ethereum address;\n" +
+                            "e.g. \"0x884191033518be08616821d7676ca01695698451\".\n" +
+                            "See also:\n" +
+                            "--confirmations (optional; default: 0)."));
+            setRequired(true);
+        }};
         options.addOptionGroup(commandOptionGroup);
 
         options.addOption(
@@ -104,6 +113,36 @@ public class CherryGardenerCLI {
             }
         }
         return props;
+    }
+
+    /**
+     * Parses the "--listen-port" option assuming it is optional, with 0 (autogenerate) as default,
+     * printing all necessary warnings in the process.
+     *
+     * @return non-empty {@link Optional<>} with the listen port if it has been properly parsed;
+     * “empty” optional if parsing failed (and all necessary warnings were printed).
+     */
+    private static Optional<Integer> parseListenPort(@NonNull CommandLine line) {
+        if (line.hasOption("listen-port")) {
+            final String optString = line.getOptionValue("listen-port");
+            final int listenPort;
+            try {
+                listenPort = Integer.parseUnsignedInt(optString);
+            } catch (NumberFormatException e) {
+                System.err.println("WARNING: --listen-port option should contain an IP port!");
+                return Optional.empty();
+            }
+            if (!(0 <= listenPort && listenPort <= 65535)) {
+                System.err.println("WARNING: --listen-port value should be between 0 and 65535 inclusive!");
+                return Optional.empty();
+            }
+            return Optional.of(listenPort);
+        } else {
+            // Default: 0
+            System.err.println("Note: --listen-port value is missing, using 0 as default (autogenerate the port). " +
+                    "Please make sure your client at this port is reachable from the server network!");
+            return Optional.of(0);
+        }
     }
 
     /**
@@ -189,8 +228,8 @@ public class CherryGardenerCLI {
          *             (if you want to use a specific block number, use {@link #fromSpecificBlock(int)} method instead).
          */
         static TrackFromBlockOption fromAutoDetectedBlock(AddTrackedAddresses.@NonNull StartTrackingAddressMode mode) {
-            assert mode != null && mode != AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK: mode;
-            return new TrackFromBlockOption(mode,null);
+            assert mode != null && mode != AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK : mode;
+            return new TrackFromBlockOption(mode, null);
         }
     }
 
@@ -240,7 +279,7 @@ public class CherryGardenerCLI {
      * printing all necessary warnings in the process.
      *
      * @return non-empty {@link Optional<>} with the parsed number of confirmations,
-     * if it has been properly parsed;
+     * if it has been properly parsed (or the option is missing, then the default value is assumed);
      * “empty” optional if parsing failed (and all required warnings were printed).
      * If the optional parameter is missing in the command line,
      * the result is dependent on the "_default" argument:
@@ -277,6 +316,19 @@ public class CherryGardenerCLI {
     }
 
     /**
+     * Parse "--confirmations" option,
+     * printing all necessary warnings in the process.
+     * The default number of confirmations is used.
+     *
+     * @return non-empty {@link Optional<>} with the parsed number of confirmations,
+     * if it has been properly parsed (or the option is missing, then the default value is assumed);
+     * “empty” optional if parsing failed (and all required warnings were printed).
+     */
+    private static Optional<Integer> parseConfirmations(@NonNull CommandLine line) {
+        return parseConfirmations(line, DEFAULT_NUMBER_OF_CONFIRMATIONS);
+    }
+
+    /**
      * Constructor: analyze the CLI arguments and act accordingly.
      */
     public CherryGardenerCLI(@NonNull String[] args) {
@@ -308,12 +360,13 @@ public class CherryGardenerCLI {
         printTitle(System.err);
 
         final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
+        final @NonNull Optional<Integer> listenPortOpt = parseListenPort(line);
 
-        if (connectUrlsOpt.isPresent()) {
+        if (connectUrlsOpt.isPresent() && listenPortOpt.isPresent()) {
             System.err.println("Getting supported currencies...");
 
             try {
-                final ClientConnector connector = new ClientConnectorImpl(connectUrlsOpt.get());
+                final ClientConnector connector = new ClientConnectorImpl(connectUrlsOpt.get(), listenPortOpt.get());
                 final @Nullable List<Currency> currencies = connector.getCurrencies();
                 if (currencies == null) {
                     System.err.println("ERROR: Could not get the supported currencies!");
@@ -345,12 +398,13 @@ public class CherryGardenerCLI {
         printTitle(System.err);
 
         final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
+        final @NonNull Optional<Integer> listenPortOpt = parseListenPort(line);
 
-        if (connectUrlsOpt.isPresent()) {
+        if (connectUrlsOpt.isPresent() && listenPortOpt.isPresent()) {
             System.err.println("Getting tracked addresses...");
 
             try {
-                final ClientConnector connector = new ClientConnectorImpl(connectUrlsOpt.get());
+                final ClientConnector connector = new ClientConnectorImpl(connectUrlsOpt.get(), listenPortOpt.get());
                 final Observer observer = connector.getObserver();
 
                 final @Nullable List<@NonNull String> trackedAddresses = observer.getTrackedAddresses();
@@ -379,12 +433,14 @@ public class CherryGardenerCLI {
         final @NonNull Optional<String> addressOpt = parseEthereumAddressOption(line, "add-tracked-address");
         final @NonNull Optional<TrackFromBlockOption> trackFromBlockOpt = parseTrackFromBlock(line);
         final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
+        final @NonNull Optional<Integer> listenPortOpt = parseListenPort(line);
         final @NonNull Optional<String> commentOpt = Optional.ofNullable(line.getOptionValue("comment"));
 
         if (true &&
+                connectUrlsOpt.isPresent() &&
+                listenPortOpt.isPresent() &&
                 addressOpt.isPresent() &&
-                trackFromBlockOpt.isPresent() &&
-                connectUrlsOpt.isPresent()
+                trackFromBlockOpt.isPresent()
         ) {
             final @NonNull String address = addressOpt.get();
             final @NonNull TrackFromBlockOption trackFromBlock = trackFromBlockOpt.get();
@@ -397,7 +453,7 @@ public class CherryGardenerCLI {
             );
 
             try {
-                final ClientConnector connector = new ClientConnectorImpl(connectUrlsOpt.get());
+                final ClientConnector connector = new ClientConnectorImpl(connectUrlsOpt.get(), listenPortOpt.get());
                 final Observer observer = connector.getObserver();
 
                 final boolean success = observer.startTrackingAddress(
@@ -428,12 +484,14 @@ public class CherryGardenerCLI {
 
         final @NonNull Optional<String> addressOpt = parseEthereumAddressOption(line, "get-balances");
         final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
-        final @NonNull Optional<Integer> confirmationsOpt = parseConfirmations(line, 0);
+        final @NonNull Optional<Integer> listenPortOpt = parseListenPort(line);
+        final @NonNull Optional<Integer> confirmationsOpt = parseConfirmations(line);
 
         if (true &&
+                connectUrlsOpt.isPresent() &&
+                listenPortOpt.isPresent() &&
                 addressOpt.isPresent() &&
-                confirmationsOpt.isPresent() &&
-                connectUrlsOpt.isPresent()
+                confirmationsOpt.isPresent()
         ) {
             final String address = addressOpt.get();
             final int confirmations = confirmationsOpt.get().intValue();
@@ -442,7 +500,10 @@ public class CherryGardenerCLI {
                     address, confirmations);
 
             try {
-                final ClientConnector connector = new ClientConnectorImpl(connectUrlsOpt.get());
+                final ClientConnector connector = new ClientConnectorImpl(
+                        connectUrlsOpt.get(),
+                        listenPortOpt.get(),
+                        confirmations);
                 final GetBalances.@NonNull BalanceRequestResult balanceResult = connector.getObserver().getAddressBalances(
                         address,
                         null,
