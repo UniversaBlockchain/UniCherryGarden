@@ -459,12 +459,10 @@ public class CherryGardenerCLI {
                 final boolean success = observer.startTrackingAddress(
                         address,
                         trackFromBlock.mode,
-                        // .getBlock() rather than just .block, as it should be null if mode
-                        // is different from FROM_BLOCK
                         trackFromBlock.block,
                         commentOpt.orElse(null));
                 if (success) {
-                    System.err.printf("Address %s successfully added!\n");
+                    System.err.printf("Address %s successfully added!\n", address);
                 } else {
                     System.err.printf("ERROR: Address %s failed to add!\n", address);
                 }
@@ -534,8 +532,9 @@ public class CherryGardenerCLI {
                             balanceResult.latestBlockchainSyncedBlock,
                             balanceResult.latestUniCherryGardenSyncedBlock
                     );
-                    connector.shutdown();
                 }
+
+                connector.shutdown();
             } catch (CompletionException exc) {
                 System.err.println("ERROR: Could not connect to UniCherryGarden!");
             }

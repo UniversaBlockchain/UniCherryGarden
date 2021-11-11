@@ -3,7 +3,6 @@ package com.myodov.unicherrygarden
 import akka.actor.typed.Behavior
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
-import com.myodov.unicherrygarden.api.dlt.Asset
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult
@@ -207,9 +206,12 @@ object CherryPicker extends LazyLogging {
                 yield {
                   if (pgStorage.trackedAddresses.addTrackedAddress(
                     addr.address,
-                    Some(addr.comment),
+                    Option(addr.comment), // nullable
                     payload.trackingMode,
-                    Some(payload.fromBlock)
+                    // The next line needs cunning processing of java.lang.Integer,
+                    // as otherwise Option(null:Integer): Option[Int]
+                    // will be evaluated as Some(0)
+                    Option(payload.fromBlock).map(_.toInt) // nullable
                   )) {
                     Some(addr.address)
                   } else {

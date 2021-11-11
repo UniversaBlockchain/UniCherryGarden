@@ -79,7 +79,7 @@ public class ObserverImpl implements Observer {
             // We've requested just a single address. Therefore, the result `response.addresses`
             // should be a set containing just it.
             if (response.addresses.size() == 1 &&
-                    response.addresses.iterator().next() == address) {
+                    response.addresses.iterator().next().equals(address)) {
                 return true;
             } else {
                 logger.error("Received the weird response (not a single item {} but {}), " +
