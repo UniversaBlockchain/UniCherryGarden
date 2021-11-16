@@ -12,6 +12,7 @@ import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
+import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -43,18 +44,37 @@ public class ObserverImpl implements Observer {
         this.actorSystem = actorSystem;
     }
 
-    @Override
-    public boolean startTrackingAddress(@NonNull String address,
-                                        AddTrackedAddresses.@NonNull StartTrackingAddressMode mode,
-                                        @Nullable Integer blockNumber,
-                                        @Nullable String comment) {
-        assert (address != null) && EthUtils.Addresses.isValidLowercasedAddress(address) : address;
-        if (!EthUtils.Addresses.isValidLowercasedAddress(address)) {
+    /**
+     * @throws RuntimeException if <code>data</code> is not a valid lowercased Ethereum address;
+     */
+    private final void requireValidEthereumAddress(@NonNull String argname, @NonNull String data) {
+        assert argname != null : argname;
+        assert data != null : data;
+        if (!EthUtils.Addresses.isValidLowercasedAddress(data)) {
             throw new RuntimeException(String.format(
-                    "%s is not a properly formed lowercased Ethereum address!",
-                    address));
+                    "%s (%s) must be properly formed lowercased Ethereum address!", argname, data));
         }
+    }
 
+    /**
+     * @throws RuntimeException if <code>data</code> is not a valid block number;
+     */
+    private final void requireValidBlockNumber(@NonNull String argname, int data) {
+        assert argname != null : argname;
+        if (data < 0) {
+            throw new RuntimeException(String.format(
+                    "%s (%d) is a block number so must be 0 or higher!", argname, data));
+        }
+    }
+
+    @Override
+    public boolean startTrackingAddress(
+            @NonNull String address,
+            AddTrackedAddresses.@NonNull StartTrackingAddressMode mode,
+            @Nullable Integer blockNumber,
+            @Nullable String comment) {
+        assert address != null : address;
+        requireValidEthereumAddress("address", address);
         if ((mode == AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK) != (blockNumber != null)) {
             throw new RuntimeException(String.format(
                     "Tracking mode (%s) should be FROM_BLOCK if and only if blockNumber (%s) is not null!",
@@ -131,9 +151,14 @@ public class ObserverImpl implements Observer {
     }
 
     @Override
-    public GetBalances.@NonNull BalanceRequestResult getAddressBalances(@NonNull String address,
-                                                                        @Nullable Set<String> filterCurrencyKeys,
-                                                                        int confirmations) {
+    public GetBalances.@NonNull BalanceRequestResult getAddressBalances(
+            @NonNull String address,
+            @Nullable Set<String> filterCurrencyKeys,
+            int confirmations) {
+        assert address != null : address;
+        requireValidEthereumAddress("address", address);
+        requireValidBlockNumber("confirmations", confirmations);
+
         final CompletionStage<GetBalancesCommand.Result> stage =
                 AskPattern.ask(
                         actorSystem,
@@ -150,5 +175,32 @@ public class ObserverImpl implements Observer {
             logger.error("Could not complete GetAddressBalances command", exc);
             return GetBalances.BalanceRequestResult.unsuccessful();
         }
+    }
+
+    @Override
+    public GetTransfers.@NonNull TransfersRequestResult getTransfers(
+            @Nullable Set<String> filterCurrencyKeys,
+            int confirmations,
+            @Nullable String sender,
+            @Nullable String receiver,
+            @Nullable Integer fromBlock,
+            @Nullable Integer toBlock) {
+        // Validations
+        requireValidBlockNumber("confirmations", confirmations);
+
+        if (sender != null) requireValidEthereumAddress("sender", sender);
+        if (receiver != null) requireValidEthereumAddress("receiver", receiver);
+        if (sender == null && receiver == null) {
+            throw new RuntimeException("At least sender or receiver must be specified!");
+        }
+
+        if (fromBlock != null) requireValidBlockNumber("fromBlock", fromBlock);
+        if (toBlock != null) requireValidBlockNumber("toBlock", toBlock);
+        if (fromBlock != null && toBlock != null && fromBlock > toBlock) {
+            throw new RuntimeException(String.format(
+                    "If both are defined, fromBlock (%d) must be <= toBlock (%d)!", fromBlock, toBlock));
+        }
+
+        throw new RuntimeException("WIP: not implemented yet!");
     }
 }

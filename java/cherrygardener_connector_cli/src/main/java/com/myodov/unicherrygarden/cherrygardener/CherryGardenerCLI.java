@@ -1,5 +1,6 @@
 package com.myodov.unicherrygarden.cherrygardener;
 
+import com.myodov.unicherrygarden.api.types.Transfer;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.connector.api.Observer;
@@ -7,6 +8,7 @@ import com.myodov.unicherrygarden.connector.impl.ClientConnectorImpl;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
+import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers;
 import org.apache.commons.cli.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -18,6 +20,7 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.*;
 import java.util.concurrent.CompletionException;
+import java.util.function.Supplier;
 
 
 /**
@@ -67,11 +70,25 @@ public class CherryGardenerCLI {
                             "--comment (optional)."));
             addOption(new Option(
                     "gb", "get-balances", true,
-                    "Get balances (of currencies tokens) for an (already tracked) Ethereum address.\n" +
+                    "Get balances (of currencies/tokens) for an (already tracked) Ethereum address.\n" +
                             "Should be a valid Ethereum address;\n" +
                             "e.g. \"0x884191033518be08616821d7676ca01695698451\".\n" +
                             "See also:\n" +
                             "--confirmations (optional; default: 0)."));
+            addOption(new Option(
+                    "gt", "get-transfers", false,
+                    "Get the transfers balances (of currencies/tokens).\n" +
+                            "At least one of --sender or --receiver values should be provided, " +
+                            "and must be an already tracked Ethereum address!\n" +
+                            "See also:\n" +
+                            "--confirmations (optional; default: 0);\n" +
+                            "--sender (optional; valid Ethereum address);\n" +
+                            "--receiver (optional; valid Ethereum address);\n" +
+                            "--from-block (optional; default: first available);\n" +
+                            "--to-block (optional; default: last available, but not newer than " +
+                            "the --confirmations value permit).\n"
+
+            ));
             setRequired(true);
         }};
         options.addOptionGroup(commandOptionGroup);
@@ -88,6 +105,26 @@ public class CherryGardenerCLI {
                         "* LATEST_KNOWN – latest block known to Ethereum node." /* + "\n" +
                         "* LATEST_NODE_SYNCED – latest block fully synced by Ethereum node (available to the Ethereum node);\n" +
                         "* LATEST_CHERRYGARDEN_SYNCED – latest block fully synced by UniCherryGarden." */
+        );
+        options.addOption(
+                "from", "sender", true,
+                "Sender Ethereum address."
+        );
+        options.addOption(
+                "to", "receiver", true,
+                "Receiver Ethereum address."
+        );
+        options.addOption(
+                null, "from-block", true,
+                "First block to use (inclusive) for read operations.\n" +
+                        "Should contain a number of the block (0 or more)."
+        );
+        options.addOption(
+                null, "to-block", true,
+                "Last block to use (inclusive) for read operations.\n" +
+                        "Should contain a number of the block (0 or more).\n" +
+                        "If --from-block is also present, --to-block value should be greater or equal " +
+                        "to --from-block value."
         );
     }
 
@@ -182,14 +219,49 @@ public class CherryGardenerCLI {
      */
     private static final Optional<String> parseEthereumAddressOption(@NonNull CommandLine line,
                                                                      @NonNull String optionName) {
-        @NonNull final String address = line.getOptionValue(optionName).toLowerCase();
-        if (!EthUtils.Addresses.isValidLowercasedAddress(address)) {
+        @NonNull final String address = line.getOptionValue(optionName);
+        if (!EthUtils.Addresses.isValidAddress(address)) {
             System.err.printf(
                     "WARNING: --%s option should contain a valid Ethereum address!",
                     optionName);
             return Optional.empty();
         } else {
-            return Optional.of(address);
+            return Optional.of(address.toLowerCase());
+        }
+    }
+
+    /**
+     * Parse an option (with the name of the option passed as the "optionName" argument)
+     * that should contain a valid block number,
+     * printing all necessary warnings in the process.
+     *
+     * @param optionName The name of the option to parse.
+     * @return non-empty {@link Optional<>} with the parsed Ethereum block number,
+     * if it has been properly parsed;
+     * “empty” optional if parsing failed (and all required warnings were printed).
+     */
+    private static final Optional<Integer> parseBlockNumberOption(@NonNull CommandLine line,
+                                                                  @NonNull String optionName) {
+        @NonNull final String blockNumberCandidate = line.getOptionValue(optionName);
+
+
+        final int intValue;
+        try {
+            intValue = Integer.parseInt(blockNumberCandidate);
+        } catch (NumberFormatException e) {
+            System.err.printf(
+                    "WARNING: --%s option should contain a valid Ethereum block number!",
+                    optionName);
+            return Optional.empty();
+        }
+
+        if (intValue < 0) {
+            System.err.printf(
+                    "WARNING: --%s option should be 0 or higher!",
+                    optionName);
+            return Optional.empty();
+        } else {
+            return Optional.of(intValue);
         }
     }
 
@@ -345,6 +417,8 @@ public class CherryGardenerCLI {
                 handleAddTrackedAddress(line);
             } else if (line.hasOption("get-balances")) {
                 handleGetBalances(line);
+            } else if (line.hasOption("get-transfers")) {
+                handleGetTransfers(line);
             } else {
                 printHelp();
             }
@@ -362,7 +436,10 @@ public class CherryGardenerCLI {
         final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
         final @NonNull Optional<Integer> listenPortOpt = parseListenPort(line);
 
-        if (connectUrlsOpt.isPresent() && listenPortOpt.isPresent()) {
+        if (true &&
+                connectUrlsOpt.isPresent() &&
+                listenPortOpt.isPresent()
+        ) {
             System.err.println("Getting supported currencies...");
 
             try {
@@ -400,7 +477,10 @@ public class CherryGardenerCLI {
         final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
         final @NonNull Optional<Integer> listenPortOpt = parseListenPort(line);
 
-        if (connectUrlsOpt.isPresent() && listenPortOpt.isPresent()) {
+        if (true &&
+                connectUrlsOpt.isPresent() &&
+                listenPortOpt.isPresent()
+        ) {
             System.err.println("Getting tracked addresses...");
 
             try {
@@ -502,19 +582,18 @@ public class CherryGardenerCLI {
                         connectUrlsOpt.get(),
                         listenPortOpt.get(),
                         confirmations);
-                final GetBalances.@NonNull BalanceRequestResult balanceResult = connector.getObserver().getAddressBalances(
+                final GetBalances.@NonNull BalanceRequestResult result = connector.getObserver().getAddressBalances(
                         address,
                         null,
-                        confirmations
+                        0 // on top of connector-level confirmations number
                 );
-                if (!balanceResult.overallSuccess) {
+                if (!result.overallSuccess) {
                     System.err.printf("ERROR: Could not get the balances for %s!\n", address);
                 } else {
                     System.err.printf("Received the balances for %s (with %s confirmation(s)):\n",
                             address, confirmations);
 
-                    for (final GetBalances.BalanceRequestResult.CurrencyBalanceFact balanceFact :
-                            balanceResult.balances) {
+                    for (final GetBalances.BalanceRequestResult.CurrencyBalanceFact balanceFact : result.balances) {
                         System.err.printf("  %s: %s (synced to %s, %s)\n",
                                 balanceFact.currency,
                                 balanceFact.amount,
@@ -527,16 +606,118 @@ public class CherryGardenerCLI {
                                     "  block %10s: latest known,\n" +
                                     "  block %10s: latest synced by node,\n" +
                                     "  block %10s: latest processed by UniCherryGarden.\n",
-                            balanceResult.overallSuccess,
-                            balanceResult.latestBlockchainKnownBlock,
-                            balanceResult.latestBlockchainSyncedBlock,
-                            balanceResult.latestUniCherryGardenSyncedBlock
+                            result.overallSuccess,
+                            result.syncStatus.latestBlockchainKnownBlock,
+                            result.syncStatus.latestBlockchainSyncedBlock,
+                            result.syncStatus.latestUniCherryGardenSyncedBlock
                     );
                 }
 
                 connector.shutdown();
             } catch (CompletionException exc) {
                 System.err.println("ERROR: Could not connect to UniCherryGarden!");
+            }
+        }
+    }
+
+    private static final void handleGetTransfers(@NonNull CommandLine line) {
+        assert line != null;
+
+        printTitle(System.err);
+
+        final @NonNull Optional<List<String>> connectUrlsOpt = parseConnectUrls(line);
+        final @NonNull Optional<Integer> listenPortOpt = parseListenPort(line);
+        final @NonNull Optional<Integer> confirmationsOpt = parseConfirmations(line);
+        final @NonNull Optional<String> senderOpt = parseEthereumAddressOption(line, "--sender");
+        final @NonNull Optional<String> receiverOpt = parseEthereumAddressOption(line, "--receiver");
+        final @NonNull Optional<Integer> fromBlockOpt = parseBlockNumberOption(line, "--from-block");
+        final @NonNull Optional<Integer> toBlockOpt = parseBlockNumberOption(line, "--to-block");
+
+        if (true &&
+                connectUrlsOpt.isPresent() &&
+                listenPortOpt.isPresent() &&
+                confirmationsOpt.isPresent()
+        ) {
+            final int confirmations = confirmationsOpt.get().intValue();
+
+            // Extra validations to co-validate the arguments
+            final boolean coValid;
+            {
+                final Supplier<Boolean> coValidator = (() -> {
+                    if (!senderOpt.isPresent() && !receiverOpt.isPresent()) {
+                        System.err.println("ERROR: at least one of --sender or --receiver must be defined!");
+                        return false;
+                    }
+
+                    if (fromBlockOpt.isPresent() && toBlockOpt.isPresent()) {
+                        final int fromBlock = fromBlockOpt.get();
+                        final int toBlock = toBlockOpt.get();
+                        if (toBlock < fromBlock) {
+                            System.err.println("ERROR: --from-block value must be <= --to-block value!");
+                            return false;
+                        }
+                    }
+                    // In any other case, all the arguments are valid together.
+                    return true;
+                });
+                coValid = coValidator.get();
+            }
+
+            if (!coValid) {
+                // All error messages were printed already by coValidator
+            } else {
+                @NonNull final String transfersDescription = String.format("%s%s%s%swith %s confirmation(s)",
+                        (senderOpt.isPresent() ? String.format("from %s ", senderOpt.get()) : ""),
+                        (receiverOpt.isPresent() ? String.format("to %s ", receiverOpt.get()) : ""),
+                        (fromBlockOpt.isPresent() ? String.format("from block %s ", fromBlockOpt.get()) : ""),
+                        (toBlockOpt.isPresent() ? String.format("to block %s ", toBlockOpt.get()) : ""),
+                        confirmations);
+
+                System.err.printf("Getting transfers %s...\n", transfersDescription);
+
+                try {
+                    final ClientConnector connector = new ClientConnectorImpl(
+                            connectUrlsOpt.get(),
+                            listenPortOpt.get(),
+                            confirmations);
+                    final GetTransfers.@NonNull TransfersRequestResult result = connector.getObserver().getTransfers(
+                            null,
+                            0, // on top of connector-level confirmations number
+                            senderOpt.orElse(null),
+                            receiverOpt.orElse(null),
+                            fromBlockOpt.orElse(null),
+                            toBlockOpt.orElse(null)
+                    );
+                    if (!result.overallSuccess) {
+                        System.err.printf("ERROR: Could not get the transfers %s!\n", transfersDescription);
+                    } else {
+                        System.err.printf("Received the transfers %s - at block %s:\n",
+                                transfersDescription, result.resultAtBlock);
+
+                        for (final Transfer transfer : result.transfers) {
+                            System.err.printf("  %s of %s from %s to %s\n",
+                                    transfer.amount,
+                                    transfer.currencyKey,
+                                    transfer.from,
+                                    transfer.to
+                            );
+                        }
+                        System.err.printf("" +
+                                        "Overall status: %s\n" +
+                                        "  block %10s: latest known,\n" +
+                                        "  block %10s: latest synced by node,\n" +
+                                        "  block %10s: latest processed by UniCherryGarden.\n",
+                                result.overallSuccess,
+                                result.syncStatus.latestBlockchainKnownBlock,
+                                result.syncStatus.latestBlockchainSyncedBlock,
+                                result.syncStatus.latestUniCherryGardenSyncedBlock
+                        );
+                    }
+
+                    connector.shutdown();
+                } catch (CompletionException exc) {
+                    System.err.println("ERROR: Could not connect to UniCherryGarden!");
+                }
             }
         }
     }

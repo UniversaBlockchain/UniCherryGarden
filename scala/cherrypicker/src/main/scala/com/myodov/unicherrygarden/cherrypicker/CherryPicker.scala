@@ -3,6 +3,7 @@ package com.myodov.unicherrygarden
 import akka.actor.typed.Behavior
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
+import com.myodov.unicherrygarden.api.types.BlockchainSyncStatus
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult
@@ -236,6 +237,7 @@ object CherryPicker extends LazyLogging {
             message.replyTo ! new GetBalances.Response(
               new BalanceRequestResult(
                 false,
+                0,
                 //                List[CurrencyBalanceFact](
                 //                  new CurrencyBalanceFact(
                 //                    Currency.newEthCurrency(),
@@ -245,9 +247,7 @@ object CherryPicker extends LazyLogging {
                 //                  )
                 //                ).asJava,
                 List.empty[CurrencyBalanceFact].asJava,
-                0,
-                0,
-                0)
+                new BlockchainSyncStatus(0, 0, 0))
             )
             Behaviors.same
           }

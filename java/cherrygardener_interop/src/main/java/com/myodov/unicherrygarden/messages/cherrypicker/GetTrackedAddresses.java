@@ -10,7 +10,6 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.List;
 
-
 public class GetTrackedAddresses {
     @NonNull
     public static final ServiceKey<Request> SERVICE_KEY =

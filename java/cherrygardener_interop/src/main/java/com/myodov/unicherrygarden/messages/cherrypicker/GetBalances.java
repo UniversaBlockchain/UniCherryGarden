@@ -3,6 +3,7 @@ package com.myodov.unicherrygarden.messages.cherrypicker;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.myodov.unicherrygarden.api.types.BlockchainSyncStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
 import com.myodov.unicherrygarden.messages.CherryPickerResponse;
@@ -12,7 +13,9 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 
 public class GetBalances {
@@ -169,7 +172,7 @@ public class GetBalances {
          * Whether or not the balances (stored in {@link #balances}) have been retrieved,
          * at least partially, at least non-fully-synced. “Overall success” of getting balances.
          * <p>
-         * If {@link #overallSuccess} is <code>false</code>, we should assume the balances retrieval
+         * If {@link #overallSuccess} is <code>false</code>, we should assume the result retrieval
          * failed completely, and {@link #balances} will likely have no records at all.
          * But if it’s <code>true</code>, we still should doublecheck every {@link CurrencyBalanceFact}
          * if it’s up-to-date (as we need).
@@ -179,48 +182,34 @@ public class GetBalances {
          */
         public final boolean overallSuccess;
 
+        /** The number of the block for which the results have been provided. */
+        public final int resultAtBlock;
+
         @NonNull
         public final List<CurrencyBalanceFact> balances;
 
-        /**
-         * The number of the latest block known to the Ethereum node.
-         */
-        public final int latestBlockchainKnownBlock;
+        /** The total status of blockchain synchronization. */
+        @NonNull
+        public final BlockchainSyncStatus syncStatus;
 
-        /**
-         * The number of the latest block the Ethereum node is synced to.
-         * <p>
-         * Normally <code>{@link #latestBlockchainSyncedBlock} <= {@link #latestBlockchainKnownBlock}</code>.
-         * <p>
-         * In ideal sync state, <code>{@link #latestBlockchainSyncedBlock} = {@link #latestBlockchainKnownBlock}</code>;
-         * but if it momentarily lags 1 or 2 blocks behind {@link #latestBlockchainKnownBlock}, it is also okay.
-         */
-        public final int latestBlockchainSyncedBlock;
-
-        /**
-         * The number of the latest block the UniCherryGarden considers itself globally synced to.
-         * <p>
-         * Can momentarily lag some blocks behind {@link #latestBlockchainSyncedBlock}
-         * or {@link #latestBlockchainKnownBlock}.
-         */
-        public final int latestUniCherryGardenSyncedBlock;
 
         /**
          * Constructor.
          */
         @JsonCreator
         public BalanceRequestResult(boolean overallSuccess,
+                                    int resultAtBlock,
                                     @NonNull List<CurrencyBalanceFact> balances,
-                                    int latestBlockchainKnownBlock,
-                                    int latestBlockchainSyncedBlock,
-                                    int latestUniCherryGardenSyncedBlock) {
+                                    @NonNull BlockchainSyncStatus syncStatus) {
             assert balances != null;
+            assert syncStatus != null;
+
             this.overallSuccess = overallSuccess;
+            this.resultAtBlock = resultAtBlock;
+
             this.balances = Collections.unmodifiableList(balances);
 
-            this.latestBlockchainKnownBlock = latestBlockchainKnownBlock;
-            this.latestBlockchainSyncedBlock = latestBlockchainSyncedBlock;
-            this.latestUniCherryGardenSyncedBlock = latestUniCherryGardenSyncedBlock;
+            this.syncStatus = syncStatus;
         }
 
         /**
@@ -229,18 +218,18 @@ public class GetBalances {
         public static final BalanceRequestResult unsuccessful() {
             return new BalanceRequestResult(
                     false,
+                    0,
                     Collections.emptyList(),
-                    0, 0, 0);
+                    new BlockchainSyncStatus(0, 0, 0));
         }
 
         @Override
         public String toString() {
-            return String.format("BalanceRequestResult.BalanceRequestResult(success=%s, balances=%s, %s/%s/%s)",
+            return String.format("BalanceRequestResult.BalanceRequestResult(success=%s, atBlock=%s, balances=%s, %s)",
                     overallSuccess,
+                    resultAtBlock,
                     balances,
-                    latestBlockchainKnownBlock,
-                    latestBlockchainSyncedBlock,
-                    latestUniCherryGardenSyncedBlock);
+                    syncStatus);
         }
     }
 

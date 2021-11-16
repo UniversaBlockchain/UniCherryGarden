@@ -2,6 +2,7 @@ package com.myodov.unicherrygarden.connector.api;
 
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
+import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -104,4 +105,42 @@ public interface Observer {
     GetBalances.@NonNull BalanceRequestResult getAddressBalances(@NonNull String address,
                                                                  @Nullable Set<String> filterCurrencyKeys,
                                                                  int confirmations);
+
+    /**
+     * Get transfers (optionally filtered by currency, sender, receiver, from-block number, to-block number).
+     *
+     * @param filterCurrencyKeys (optional) the set of the currency keys, for which to get the balances.
+     *                           If <code>null</code>, gets the balances for all the supported currencies.
+     *                           (Note if the set is empty, it will return the empty balances).
+     * @param confirmations      The number of extra confirmations required, i.e. the offset from the latest data.
+     *                           Should be 0 or higher. Normally it is 6–12 confirmations,
+     *                           20 confirmations on large crypto exchanges.
+     *                           Each confirmation roughly takes 15 seconds, i.e. 4 confirmations per minute.
+     * @param sender             (optional; at least one of <code>sender</code> or <code>receiver</code> is mandatory)
+     *                           only transfers sent <b>from</b> this Ethereum address should be present;
+     *                           must contain a valid lowercased Ethereum address.
+     *                           If <code>null</code>, the results are not filtered to have the specific sender.
+     * @param receiver           (optional; at least one of <code>sender</code> or <code>receiver</code> is mandatory)
+     *                           only transfers sent <b>to</b> this Ethereum address should be present;
+     *                           must contain a valid lowercased Ethereum address.
+     *                           If <code>null</code>, the results are not filtered to have the specific receiver.
+     * @param fromBlock          (optional) the first block number (of Ethereum blockchain) containing
+     *                           the transfers to find.
+     *                           (Note: the transfers in this block <b>are</b> included).
+     *                           If <code>null</code>, the transfers are returned from the earliest available block.
+     * @param toBlock            (optional) the last block number (of Ethereum blockchain) containing
+     *                           the transfers to find.
+     *                           (Note: the transfers in this block <b>are</b> included).
+     *                           If <code>null</code>, the transfers are returned till the latest available block.
+     * @return The structure containing the data about the balances.
+     * Check the {@link GetTransfers.TransfersRequestResult#overallSuccess} to be sure the data inside is legit.
+     * @apiNote the transfers involving the unverified currencies are not returned: for the unverified tokens we may not
+     * be fully sure about their “decimals” value.
+     */
+    GetTransfers.@NonNull TransfersRequestResult getTransfers(@Nullable Set<String> filterCurrencyKeys,
+                                                              int confirmations,
+                                                              @Nullable String sender,
+                                                              @Nullable String receiver,
+                                                              @Nullable Integer fromBlock,
+                                                              @Nullable Integer toBlock);
 }
