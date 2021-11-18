@@ -5,6 +5,8 @@ import com.myodov.unicherrygarden.ethereum.EthUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.util.Objects;
+
 /**
  * Very high-level details about any Ethereum transaction.
  */
@@ -51,5 +53,24 @@ public class Tx {
         return String.format("%s(%s, %s, %s)",
                 this.getClass().getSimpleName(),
                 txhash, from, to);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        } else if (o == null || getClass() != o.getClass()) {
+            return false;
+        } else {
+            final Tx other = (Tx) o;
+            return Objects.equals(this.txhash, other.txhash) &&
+                    Objects.equals(this.from, other.from) &&
+                    Objects.equals(this.to, other.to);
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(txhash, from, to);
     }
 }

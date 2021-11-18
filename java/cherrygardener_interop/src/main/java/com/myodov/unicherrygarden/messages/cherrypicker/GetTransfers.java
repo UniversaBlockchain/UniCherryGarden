@@ -10,9 +10,10 @@ import com.myodov.unicherrygarden.messages.CherryPickerResponse;
 import com.myodov.unicherrygarden.messages.RequestPayload;
 import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 
 public class GetTransfers {
@@ -63,6 +64,12 @@ public class GetTransfers {
         @NonNull
         public final BlockchainSyncStatus syncStatus;
 
+        // A (unmodifiable, for safety) map of transfers, indexed by `from`, then `to` addresses.
+        final Map<String, Map<String, List<MinedTransfer>>> transfersIndexedByFromThenTo;
+
+        // A (unmodifiable, for safety) map of transfers, indexed by `to`, then `from` addresses.
+        final Map<String, Map<String, List<MinedTransfer>>> transfersIndexedByToThenFrom;
+
 
         /**
          * Constructor.
@@ -80,6 +87,154 @@ public class GetTransfers {
             this.transfers = Collections.unmodifiableList(transfers);
 
             this.syncStatus = syncStatus;
+
+            // Now generate convenient mappings by other keys
+//            byFromThenTo = Collections.unmodifiableMap(new HashMap<String, Map<String, MinedTransfer>>() {{
+//
+//            }});
+
+            // Generate map `byFromThenTo`
+            {
+                final Map<String, Map<String, List<MinedTransfer>>> outerMapByFrom =
+                        new HashMap<String, Map<String, List<MinedTransfer>>>();
+
+                for (final MinedTransfer transfer : transfers) {
+                    outerMapByFrom
+                            .computeIfAbsent( // outerMapByTo[from]
+                                    transfer.from,
+                                    (key) -> new HashMap<String, List<MinedTransfer>>())
+                            .computeIfAbsent( // outerMapByTo[from][to]
+                                    transfer.to,
+                                    (key) -> new ArrayList<MinedTransfer>())
+                            .add(transfer);
+                }
+
+                transfersIndexedByFromThenTo = freezeBiIndex(outerMapByFrom);
+            }
+            // Generate map `byToThenFrom`
+            {
+                final Map<String, Map<String, List<MinedTransfer>>> outerMapByTo =
+                        new HashMap<String, Map<String, List<MinedTransfer>>>();
+
+                for (final MinedTransfer transfer : transfers) {
+                    outerMapByTo
+                            .computeIfAbsent( // outerMapByTo[to]
+                                    transfer.to,
+                                    (key) -> new HashMap<String, List<MinedTransfer>>())
+                            .computeIfAbsent( // outerMapByTo[to][from]
+                                    transfer.from,
+                                    (key) -> new ArrayList<MinedTransfer>())
+                            .add(transfer);
+                }
+
+                transfersIndexedByToThenFrom = freezeBiIndex(outerMapByTo);
+            }
+        }
+
+        /**
+         * Take modifiable maps-of-lists, turn it to unmodifiable.
+         */
+        @NonNull
+        private static <K, T> Map<K, List<T>> freezeMonoIndex(
+                @NonNull Map<K, List<T>> index
+        ) {
+            return Collections.unmodifiableMap(
+                    index.entrySet()
+                            .stream()
+                            .collect(Collectors.toMap(
+                                    e -> e.getKey(),
+                                    e -> Collections.unmodifiableList(e.getValue()))
+                            )
+            );
+        }
+
+        /**
+         * Take modifiable map-of-maps-of-lists, turn it to unmodifiable.
+         */
+        @NonNull
+        private static <K1, K2, T> Map<K1, Map<K2, List<T>>> freezeBiIndex(
+                @NonNull Map<K1, Map<K2, List<T>>> index
+        ) {
+            return Collections.unmodifiableMap(
+                    index.entrySet()
+                            .stream()
+                            .collect(Collectors.toMap(
+                                    e -> e.getKey(),
+                                    e -> freezeMonoIndex(e.getValue()))
+                            )
+            );
+        }
+
+        /**
+         * Get the list of all the senders of the received transfers (i.e. all the distinct values of
+         * the <code>from</code> fields).
+         */
+        public Set<String> getSenders() {
+            return Collections.unmodifiableSet(transfersIndexedByFromThenTo.keySet());
+        }
+
+        /**
+         * Get the list of all the senders of the received transfers (i.e. all the distinct values of
+         * the <code>from</code> fields).
+         */
+        public Set<String> getReceivers() {
+            return Collections.unmodifiableSet(transfersIndexedByToThenFrom.keySet());
+        }
+
+        /**
+         * Get the list of all the transfers from <code>fromAddress</code> (optionally limited only to the transfers
+         * to <code>toAddress</code>).
+         **/
+        public List<MinedTransfer> getTransfersFrom(@NonNull String fromAddress,
+                                                    @Nullable String toAddress) {
+            assert fromAddress != null : fromAddress;
+
+            if (!transfersIndexedByFromThenTo.containsKey(fromAddress)) {
+                return Collections.emptyList();
+            } else {
+                final Map<String, List<MinedTransfer>> innerMapByTo = transfersIndexedByFromThenTo.get(fromAddress);
+                if (toAddress == null) {
+                    // We don’t need inner index; just loop over all the values and stream them together;
+                    // and make a single sorted unmodifiableList of all of them.
+                    return sortedTransfers(
+                            innerMapByTo
+                                    .values()
+                                    .stream()
+                                    .flatMap(List::stream)
+                                    .collect(Collectors.toList())
+                    );
+                } else {
+                    // We have an inner index also.
+                    // We don’t run “unmodifiableList” on the result; it should be already an unmodifiableList.
+                    return innerMapByTo.getOrDefault(toAddress, Collections.emptyList());
+                }
+            }
+        }
+
+        /**
+         * Get the list of all the transfers from <code>fromAddress</code>.
+         **/
+        public List<MinedTransfer> getTransfersFrom(@NonNull String fromAddress) {
+            return getTransfersFrom(fromAddress, null);
+        }
+
+        /**
+         * Sort the transfers in a stable manner:
+         * 1. Smaller block numbers go earlier;
+         * 2. Inside a block,
+         */
+        static List<MinedTransfer> sortedTransfers(@NonNull Collection<MinedTransfer> transfers) {
+            assert transfers != null : transfers;
+            return Collections.unmodifiableList(
+                    transfers
+                            .stream()
+                            .sorted(Comparator
+                                    .comparing((MinedTransfer tr) -> tr.tx.block.blockNumber)
+                                    .thenComparing((MinedTransfer tr) -> tr.tx.block.blockNumber)
+                                    .thenComparing((MinedTransfer tr) -> tr.tx.transactionIndex)
+                                    .thenComparing((MinedTransfer tr) -> tr.logIndex))
+                            .collect(Collectors.toList())
+            );
         }
     }
 

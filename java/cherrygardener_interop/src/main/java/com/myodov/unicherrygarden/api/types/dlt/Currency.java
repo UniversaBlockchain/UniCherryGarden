@@ -139,13 +139,14 @@ public class Currency implements Serializable {
 
     @Override
     public boolean equals(Object o) {
-        if (o == this) {
+        if (this == o) {
             return true;
-        } else if (!(o instanceof Currency)) {
+        } else if (o == null || getClass() != o.getClass()) {
             return false;
         } else {
             final Currency other = (Currency) o;
-            return (this.type == other.type) && (Objects.equals(this.dAppAddress, other.dAppAddress));
+            return this.type == other.type &&
+                    Objects.equals(this.dAppAddress, other.dAppAddress);
         }
     }
 

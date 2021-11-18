@@ -19,7 +19,7 @@ public class CurrencyTest {
     @Test
     public void testBasicEthBehavior() {
         assertEquals(
-                "CurrencyImpl(ETH, ETH, Ether, null)",
+                "CurrencyImpl(ETH, ETH, Ether, null, verified=true, decimals=null)",
                 CUR_ETH.toString()
         );
 
@@ -50,7 +50,7 @@ public class CurrencyTest {
     @Test
     public void testBasicErc20Behavior() {
         assertEquals(
-                "CurrencyImpl(ERC20, UTNP, Universa Token, 0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7)",
+                "CurrencyImpl(ERC20, UTNP, Universa Token, 0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7, verified=false, decimals=null)",
                 CUR_UTNP.toString()
         );
 
