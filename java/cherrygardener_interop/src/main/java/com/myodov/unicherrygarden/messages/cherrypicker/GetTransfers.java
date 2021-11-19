@@ -5,6 +5,7 @@ import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.myodov.unicherrygarden.api.types.BlockchainSyncStatus;
 import com.myodov.unicherrygarden.api.types.MinedTransfer;
+import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
 import com.myodov.unicherrygarden.messages.CherryPickerResponse;
 import com.myodov.unicherrygarden.messages.RequestPayload;
@@ -182,46 +183,79 @@ public class GetTransfers {
         }
 
         /**
-         * Get the list of all the transfers from <code>fromAddress</code> (optionally limited only to the transfers
-         * to <code>toAddress</code>).
-         **/
-        public List<MinedTransfer> getTransfersFrom(@NonNull String fromAddress,
-                                                    @Nullable String toAddress) {
-            assert fromAddress != null : fromAddress;
+         * Get the list of all the transfers (optionally filtered only) from <code>fromAddress</code>,
+         * (optionally filtered only) to <code>toAddress</code>).
+         * <p>
+         * At least one of the filters must be present.
+         *
+         * @param fromAddress (Optional) Lowercased Ethereum address, from which the transfers are selected.
+         *                    May be <code>null</code> if no filter by sender address required.
+         * @param toAddress   (Optional) Lowercased Ethereum address, to which the transfers are selected.
+         *                    May be <code>null</code> if no filter by receiver address required.
+         */
+        public List<MinedTransfer> getTransfers(@Nullable String fromAddress,
+                                                @Nullable String toAddress) {
+            if (fromAddress == null && toAddress == null) {
+                throw new RuntimeException("At least one of `fromAddress` or `toAddress` must be non-null!");
+            }
+            assert fromAddress == null || EthUtils.Addresses.isValidLowercasedAddress(fromAddress) : fromAddress;
+            assert toAddress == null || EthUtils.Addresses.isValidLowercasedAddress(toAddress) : toAddress;
 
-            if (!transfersIndexedByFromThenTo.containsKey(fromAddress)) {
-                return Collections.emptyList();
-            } else {
-                final Map<String, List<MinedTransfer>> innerMapByTo = transfersIndexedByFromThenTo.get(fromAddress);
-                if (toAddress == null) {
-                    // We don’t need inner index; just loop over all the values and stream them together;
-                    // and make a single sorted unmodifiableList of all of them.
-                    return sortedTransfers(
-                            innerMapByTo
-                                    .values()
-                                    .stream()
-                                    .flatMap(List::stream)
-                                    .collect(Collectors.toList())
-                    );
-                } else {
-                    // We have an inner index also.
-                    // We don’t run “unmodifiableList” on the result; it should be already an unmodifiableList.
-                    return innerMapByTo.getOrDefault(toAddress, Collections.emptyList());
-                }
+            if (fromAddress != null && toAddress == null) {
+                // Search by fromAddress only
+                return sortedTransfers(
+                        transfersIndexedByFromThenTo
+                                .getOrDefault(fromAddress, Collections.emptyMap())
+                                .values()
+                                .stream()
+                                .flatMap(List::stream)
+                                .collect(Collectors.toList())
+                );
+            } else if (fromAddress == null && toAddress != null) {
+                // Search by toAddress only
+                return sortedTransfers(
+                        transfersIndexedByToThenFrom
+                                .getOrDefault(toAddress, Collections.emptyMap())
+                                .values()
+                                .stream()
+                                .flatMap(List::stream)
+                                .collect(Collectors.toList())
+                );
+            } else { // if (fromAddress != null && toAddress != null)
+                // Search by both fromAddress and toAddress
+                return sortedTransfers(
+                        transfersIndexedByFromThenTo
+                                .getOrDefault(fromAddress, Collections.emptyMap())
+                                .getOrDefault(toAddress, Collections.emptyList())
+                );
             }
         }
 
         /**
          * Get the list of all the transfers from <code>fromAddress</code>.
-         **/
+         */
         public List<MinedTransfer> getTransfersFrom(@NonNull String fromAddress) {
-            return getTransfersFrom(fromAddress, null);
+            return getTransfers(fromAddress, null);
+        }
+
+        /**
+         * Get the list of all the transfers to <code>toAddress</code>.
+         */
+        public List<MinedTransfer> getTransfersTo(@NonNull String toAddress) {
+            return getTransfers(null, toAddress);
         }
 
         /**
          * Sort the transfers in a stable manner:
-         * 1. Smaller block numbers go earlier;
-         * 2. Inside a block,
+         * <ol>
+         * <li>Smaller block numbers go earlier;</li>
+         * <li>Inside a block, the transactions with smaller transaction index go earlier;</li>
+         * <li>If a transaction has generated multiple ERC20 “Transfer” events (or any other EVM events),
+         * the events with smaller log index go earlier.</li>
+         * </ol>
+         * <p>
+         * Note this function doesn’t support (and currently, whole UniCherryPicker doesn’t support)
+         * any so-called “internal transactions” (i.e. ETH transfers generated inside the smart contract transactions).
          */
         static List<MinedTransfer> sortedTransfers(@NonNull Collection<MinedTransfer> transfers) {
             assert transfers != null : transfers;
@@ -230,7 +264,6 @@ public class GetTransfers {
                             .stream()
                             .sorted(Comparator
                                     .comparing((MinedTransfer tr) -> tr.tx.block.blockNumber)
-                                    .thenComparing((MinedTransfer tr) -> tr.tx.block.blockNumber)
                                     .thenComparing((MinedTransfer tr) -> tr.tx.transactionIndex)
                                     .thenComparing((MinedTransfer tr) -> tr.logIndex))
                             .collect(Collectors.toList())

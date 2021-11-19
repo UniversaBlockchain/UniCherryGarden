@@ -1,7 +1,7 @@
 package com.myodov.unicherrygarden.messages.connector.impl;
 
-import com.myodov.unicherrygarden.connector.api.AddressOwnershipConfirmator;
 import com.myodov.unicherrygarden.api.types.PrivateKey;
+import com.myodov.unicherrygarden.connector.api.AddressOwnershipConfirmator;
 import com.myodov.unicherrygarden.connector.impl.AddressOwnershipConfirmatorImpl;
 import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
 import org.bouncycastle.util.encoders.Hex;
@@ -34,8 +34,7 @@ public class AddressOwnershipConfirmatorImplTest {
 
     @Test
     public void testGetMessageSigner() {
-        assertEquals(
-                "Unit test from MyCrypto source code",
+        assertEquals("Unit test from MyCrypto source code",
                 "0x6980ba0ab378c2ed0efccd7ea6ab84d54615a2de",
                 confirmator.getMessageSigner(
                         "Testing your code is great!",
@@ -43,32 +42,28 @@ public class AddressOwnershipConfirmatorImplTest {
                 )
         );
 
-        assertNull(
-                "Malformed sig (no “0x”)",
+        assertNull("Malformed sig (no “0x”)",
                 confirmator.getMessageSigner(
                         "Testing your code is great!",
                         "f08688e9dddbb5e4e0d1fb685ee9f693accb3c9aac84fdcf327423ca4a1c50463ef7aeb70be3221fe028bc752e210a4c377db8090bc4efa5ea7d391049c3a4771c"
                 )
         );
 
-        assertNull(
-                "Malformed sig (invalid symbols inside)",
+        assertNull("Malformed sig (invalid symbols inside)",
                 confirmator.getMessageSigner(
                         "Testing your code is great!",
                         "0xf08688e9dddbb5e4e0d1fb685ee9f693accb3c9aac84fdcf327423ca4a1c50463ef7aeb70be3221fe028bc752e210a4c377db8090bc4efa5ea7d391049c3a4771h"
                 )
         );
 
-        assertNull(
-                "Malformed sig (wrong length)",
+        assertNull("Malformed sig (wrong length)",
                 confirmator.getMessageSigner(
                         "Testing your code is great!",
                         "0xf08688e9dddbb5e4e0d1fb685ee9f693accb3c9aac84fdcf327423ca4a1c50463ef7aeb70be3221fe028bc752e210a4c377db8090bc4efa5ea7d391049c3a4771cdd"
                 )
         );
 
-        assertNotEquals(
-                "Altered msg should have a different sig (not null though)",
+        assertNotEquals("Altered msg should have a different sig (not null though)",
                 "0x6980ba0ab378c2ed0efccd7ea6ab84d54615a2de",
                 confirmator.getMessageSigner(
                         "Testing your code is great?",
@@ -76,8 +71,7 @@ public class AddressOwnershipConfirmatorImplTest {
                 )
         );
 
-        assertEquals(
-                "Some custom test message (1)",
+        assertEquals("Some custom test message (1)",
                 PK1_ADDR,
                 confirmator.getMessageSigner(
                         MSG1,
@@ -85,8 +79,7 @@ public class AddressOwnershipConfirmatorImplTest {
                 )
         );
 
-        assertEquals(
-                "Some custom test message (2)",
+        assertEquals("Some custom test message (2)",
                 PK1_ADDR,
                 confirmator.getMessageSigner(
                         MSG2,
@@ -97,8 +90,7 @@ public class AddressOwnershipConfirmatorImplTest {
 
     @Test
     public void testValidateMessage() throws SignatureException {
-        assertNull(
-                "Invalid JSON",
+        assertNull("Invalid JSON",
                 confirmator.validateMessage(
                         "BAD JSON {\n" +
                                 "  \"address\": \"0x34e1e4f805fcdc936068a760b2c17bc62135b5ae\",\n" +
@@ -109,8 +101,7 @@ public class AddressOwnershipConfirmatorImplTest {
                 )
         );
 
-        assertNull(
-                "Bad address in JSON",
+        assertNull("Bad address in JSON",
                 confirmator.validateMessage(
                         "{\n" +
                                 "  \"address\": \"0x34e1e4f805fcdc936068a760b2c17bc62135b5aeDD\",\n" +
@@ -121,8 +112,7 @@ public class AddressOwnershipConfirmatorImplTest {
                 )
         );
 
-        assertNull(
-                "No address field",
+        assertNull("No address field",
                 confirmator.validateMessage(
                         "{\n" +
                                 "  \"msg\": \"JohnDoe\",\n" +
@@ -132,8 +122,7 @@ public class AddressOwnershipConfirmatorImplTest {
                 )
         );
 
-        assertNull(
-                "No msg field",
+        assertNull("No msg field",
                 confirmator.validateMessage(
                         "{\n" +
                                 "  \"address\": \"0x34e1e4f805fcdc936068a760b2c17bc62135b5ae\",\n" +
@@ -143,8 +132,7 @@ public class AddressOwnershipConfirmatorImplTest {
                 )
         );
 
-        assertNull(
-                "No sig field",
+        assertNull("No sig field",
                 confirmator.validateMessage(
                         "{\n" +
                                 "  \"address\": \"0x34e1e4f805fcdc936068a760b2c17bc62135b5ae\",\n" +
@@ -154,8 +142,7 @@ public class AddressOwnershipConfirmatorImplTest {
                 )
         );
 
-        assertNull(
-                "Unparseable signature",
+        assertNull("Unparseable signature",
                 confirmator.validateMessage(
                         "{\n" +
                                 "  \"address\": \"0x34e1e4f805fcdc936068a760b2c17bc62135b5ae\",\n" +

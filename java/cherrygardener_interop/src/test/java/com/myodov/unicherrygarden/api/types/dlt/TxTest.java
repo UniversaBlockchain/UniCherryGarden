@@ -23,24 +23,20 @@ public class TxTest {
 
     @Test
     public void testEquals() {
-        assertEquals(
-                "Tx with the same contents",
+        assertEquals("Tx with the same contents",
                 TX1,
                 TX1_COPY
         );
-        assertEquals(
-                "Tx with the same contents - vice versa",
+        assertEquals("Tx with the same contents - vice versa",
                 TX1_COPY,
                 TX1
         );
 
-        assertNotEquals(
-                "Tx with different contents",
+        assertNotEquals("Tx with different contents",
                 TX1,
                 TX2
         );
-        assertNotEquals(
-                "Tx with different contents - vice versa",
+        assertNotEquals("Tx with different contents - vice versa",
                 TX2,
                 TX1
         );

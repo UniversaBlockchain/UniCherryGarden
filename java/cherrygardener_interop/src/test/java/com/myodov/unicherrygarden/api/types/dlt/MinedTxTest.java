@@ -59,24 +59,20 @@ public class MinedTxTest extends TxTest {
 
     @Test
     public void testEquals() {
-        assertEquals(
-                "MinedTx with the same contents",
+        assertEquals("MinedTx with the same contents",
                 MTX1,
                 MTX1_COPY
         );
-        assertEquals(
-                "MinedTx with the same contents - vice versa",
+        assertEquals("MinedTx with the same contents - vice versa",
                 MTX1_COPY,
                 MTX1
         );
 
-        assertNotEquals(
-                "MinedTx with different contents",
+        assertNotEquals("MinedTx with different contents",
                 MTX1,
                 MTX2
         );
-        assertNotEquals(
-                "MinedTx with different contents - vice versa",
+        assertNotEquals("MinedTx with different contents - vice versa",
                 MTX2,
                 MTX1
         );
@@ -84,24 +80,20 @@ public class MinedTxTest extends TxTest {
 
     @Test
     public void testEqualsCrossInheritance() {
-        assertNotEquals(
-                "Tx and MinedTx with the same contents",
+        assertNotEquals("Tx and MinedTx with the same contents",
                 TX1,
                 MTX1
         );
-        assertNotEquals(
-                "MinedTx and with the same contents - vice versa",
+        assertNotEquals("MinedTx and with the same contents - vice versa",
                 MTX1,
                 TX1
         );
 
-        assertNotEquals(
-                "Tx and MinedTx (typed as Tx) with the same contents",
+        assertNotEquals("Tx and MinedTx (typed as Tx) with the same contents",
                 TX1,
                 MTX1A
         );
-        assertNotEquals(
-                "MinedTx (typed as Tx) and with the same contents - vice versa",
+        assertNotEquals("MinedTx (typed as Tx) and with the same contents - vice versa",
                 MTX1A,
                 TX1
         );

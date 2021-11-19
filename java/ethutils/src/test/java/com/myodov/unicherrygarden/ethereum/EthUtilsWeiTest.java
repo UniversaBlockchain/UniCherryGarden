@@ -70,8 +70,7 @@ public class EthUtilsWeiTest {
 
     @Test
     public void testValueToGweis() {
-        assertEquals(
-                "Trailing zeros may be skipped, so need to use compareTo",
+        assertEquals("Trailing zeros may be skipped, so need to use compareTo",
                 0,
                 BigDecimal.valueOf(1_000_000_000l).compareTo(
                     EthUtils.Wei.valueToGweis(BigDecimal.ONE)
