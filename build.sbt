@@ -201,6 +201,8 @@ lazy val cherryGardenerConnectorCLI = (project in file("java/cherrygardener_conn
     libraryDependencies ++= Seq(
       "commons-cli" % "commons-cli" % javaCommonsCLIVersion,
       "ch.qos.logback" % "logback-classic" % logbackVersion,
+      // Parse HOCON config files - to read the CLI config file
+      "com.typesafe" % "config" % configLibVersion,
     ),
     Compile / resourceGenerators += versionFileTask("cherrygardener_connector_cli.properties").taskValue,
     mainClass in Compile := Some("com.myodov.unicherrygarden.cherrygardener.CherryGardenerCLI"),

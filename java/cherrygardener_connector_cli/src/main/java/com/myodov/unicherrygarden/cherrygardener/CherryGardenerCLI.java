@@ -29,6 +29,11 @@ import java.util.function.Supplier;
 public class CherryGardenerCLI {
     private static final Logger logger = LoggerFactory.getLogger(CherryGardenerCLI.class);
 
+    /**
+     * HOCON conf file in <code>~/.unicherrygarden/cli.conf</code>.
+     */
+    final static ConfFile confFile = new ConfFile();
+
     private static final Options options = new Options();
 
     protected static final int DEFAULT_NUMBER_OF_CONFIRMATIONS = 6;
@@ -153,13 +158,15 @@ public class CherryGardenerCLI {
     }
 
     private static Optional<Integer> _parseListenPort(@NonNull CommandLine line) {
+        final Optional<Integer> listenPortConf = confFile.getListenPort();
+
         if (line.hasOption("listen-port")) {
             final String optString = line.getOptionValue("listen-port");
             final int listenPort;
             try {
                 listenPort = Integer.parseUnsignedInt(optString);
             } catch (NumberFormatException e) {
-                System.err.println("WARNING: --listen-port option should contain an IP port!");
+                System.err.println("WARNING: --listen-port option should contain an IP port number!");
                 return Optional.empty();
             }
             if (!(0 <= listenPort && listenPort <= 65535)) {
@@ -167,8 +174,11 @@ public class CherryGardenerCLI {
                 return Optional.empty();
             }
             return Optional.of(listenPort);
+        } else if (listenPortConf.isPresent()) {
+            // Fallback to the option in conf file
+            return listenPortConf;
         } else {
-            // Default: 0
+            // Final fallback to the default: 0
             System.err.println("Note: --listen-port value is missing, using 0 as default (autogenerate the port). " +
                     "Please make sure your client at this port is reachable from the server network!");
             return Optional.of(0);
@@ -176,6 +186,8 @@ public class CherryGardenerCLI {
     }
 
     private static Optional<List<String>> _parseConnectUrls(@NonNull CommandLine line) {
+        final Optional<List<String>> connectUrlsConf = confFile.getConnectUrls();
+
         if (line.hasOption("connect")) {
             final String optUnstripped = line.getOptionValue("connect");
             final String optStripped = optUnstripped.replaceAll("^\\s+|\\s+$", ""); // TODO Since Java 11: optUnstripped.strip()
@@ -187,34 +199,13 @@ public class CherryGardenerCLI {
             } else {
                 return Optional.of(connectUrls);
             }
+        } else if (connectUrlsConf.isPresent()) {
+            // Fallback to the option in conf file
+            return connectUrlsConf;
         } else {
+            // Final fallback: no defaults
             System.err.println("WARNING: --connect option must be present!");
             return Optional.empty();
-        }
-    }
-
-
-    static class ConnectionSettings {
-        public final int listenPort;
-
-        @NonNull
-        public final List<String> connectUrls;
-
-        /**
-         * Constructor.
-         */
-        ConnectionSettings(int listenPort, @NonNull List<String> connectUrls) {
-            assert 0 <= listenPort && listenPort <= 65535 : listenPort;
-            assert connectUrls != null : connectUrls;
-
-            this.listenPort = listenPort;
-            this.connectUrls = connectUrls;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("ConnectionSetting(listenPort=%d, connectUrls=%s)",
-                    listenPort, connectUrls);
         }
     }
 
@@ -242,7 +233,6 @@ public class CherryGardenerCLI {
             return Optional.empty();
         }
     }
-
 
     /**
      * Parse an option (with the name of the option passed as the "optionName" argument)
@@ -340,6 +330,7 @@ public class CherryGardenerCLI {
             assert mode != null && mode != AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK : mode;
             return new TrackFromBlockOption(mode, null);
         }
+
     }
 
     /**
