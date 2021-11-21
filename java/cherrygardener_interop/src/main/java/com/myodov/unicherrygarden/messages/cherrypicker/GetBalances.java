@@ -178,7 +178,7 @@ public class GetBalances {
          * if it’s up-to-date (as we need).
          * <p>
          * There also may be some partial-fails (like, only the balance for some specific token failed);
-         * in this case, the balance will have {@link BalanceRequestResult::BalanceSyncState#NON_SYNCED} state.
+         * in this case, the result will have {@link BalanceRequestResult::BalanceSyncState#NON_SYNCED} state.
          */
         public final boolean overallSuccess;
 

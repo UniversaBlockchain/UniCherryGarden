@@ -708,12 +708,12 @@ public class CherryGardenerCLI {
                             connectionSettings.listenPort,
                             confirmations);
                     final GetTransfers.@NonNull TransfersRequestResult result = connector.getObserver().getTransfers(
-                            null,
                             0, // on top of connector-level confirmations number
                             senderOpt.orElse(null),
                             receiverOpt.orElse(null),
                             fromBlockOpt.orElse(null),
-                            toBlockOpt.orElse(null)
+                            toBlockOpt.orElse(null),
+                            null
                     );
                     if (!result.overallSuccess) {
                         System.err.printf("ERROR: Could not get the transfers %s!\n", transfersDescription);

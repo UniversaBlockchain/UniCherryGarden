@@ -109,9 +109,6 @@ public interface Observer {
     /**
      * Get transfers (optionally filtered by currency, sender, receiver, from-block number, to-block number).
      *
-     * @param filterCurrencyKeys (optional) the set of the currency keys, for which to get the balances.
-     *                           If <code>null</code>, gets the balances for all the supported currencies.
-     *                           (Note if the set is empty, it will return the empty balances).
      * @param confirmations      The number of extra confirmations required, i.e. the offset from the latest data.
      *                           Should be 0 or higher. Normally it is 6–12 confirmations,
      *                           20 confirmations on large crypto exchanges.
@@ -132,15 +129,18 @@ public interface Observer {
      *                           the transfers to find.
      *                           (Note: the transfers in this block <b>are</b> included).
      *                           If <code>null</code>, the transfers are returned till the latest available block.
+     * @param filterCurrencyKeys (optional) the set of the currency keys, for which to get the balances.
+     *                           If <code>null</code>, gets the balances for all the supported currencies.
+     *                           (Note if the set is empty, it will return the empty balances).
      * @return The structure containing the data about the balances.
      * Check the {@link GetTransfers.TransfersRequestResult#overallSuccess} to be sure the data inside is legit.
      * @apiNote the transfers involving the unverified currencies are not returned: for the unverified tokens we may not
      * be fully sure about their “decimals” value.
      */
-    GetTransfers.@NonNull TransfersRequestResult getTransfers(@Nullable Set<String> filterCurrencyKeys,
-                                                              int confirmations,
+    GetTransfers.@NonNull TransfersRequestResult getTransfers(int confirmations,
                                                               @Nullable String sender,
                                                               @Nullable String receiver,
                                                               @Nullable Integer fromBlock,
-                                                              @Nullable Integer toBlock);
+                                                              @Nullable Integer toBlock,
+                                                              @Nullable Set<String> filterCurrencyKeys);
 }

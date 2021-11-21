@@ -17,6 +17,7 @@ import com.myodov.unicherrygarden.messages.cherrygardener.PingCherryGardener;
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
+import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,6 +105,14 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                         makeMsgResultHandler(
                                 GetBalances.Response.class,
                                 GetBalancesCommand.Result.class))
+                // GetTransfers
+                .onMessage(GetTransfersCommand.class, this::onGetTransfers)
+                .onMessage(GetTransfersCommand.ReceptionistResponse.class, this::onGetTransfersReceptionistResponse)
+                .onMessage(
+                        GetTransfersCommand.InternalResult.class,
+                        makeMsgResultHandler(
+                                GetTransfers.Response.class,
+                                GetTransfersCommand.Result.class))
                 .build();
     }
 
@@ -281,6 +290,38 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         return this;
     }
 
+    /**
+     * When someone (like ClientConnector) has sent the {@link GetTransfersCommand} message to the actor system
+     * and expect it to be processed and return the result.
+     */
+    private Behavior<ConnectorActorMessage> onGetTransfers(@NonNull GetTransfersCommand msg) {
+        assert msg != null;
+        logger.debug("onGetTransfers: Received message {}", msg);
+
+        final ActorContext<ConnectorActorMessage> context = getContext();
+        final ActorRef<Receptionist.Command> receptionist = context.getSystem().receptionist();
+        final ServiceKey<GetTransfers.Request> serviceKey = msg.getServiceKey();
+
+        context.ask(
+                Receptionist.Listing.class,
+                receptionist,
+                DEFAULT_CALL_TIMEOUT,
+                // Construct the outgoing message
+                (ActorRef<Receptionist.Listing> replyTo) ->
+                        Receptionist.find(serviceKey, replyTo),
+                // Adapt the incoming response into `GetTransfersCommand.ReceptionistResponse`
+                (Receptionist.Listing response, Throwable throwable) -> {
+                    logger.debug("Returned listing response: {}", response);
+                    final Set<ActorRef<GetTransfers.Request>> serviceInstances =
+                            response.getServiceInstances(serviceKey);
+                    logger.debug("Service instances for {}: {}", response.getKey(), serviceInstances);
+                    return new GetTransfersCommand.ReceptionistResponse(response, msg.payload, msg.replyTo);
+                }
+        );
+
+        return this;
+    }
+
 
     private Behavior<ConnectorActorMessage> onGetCurrenciesReceptionistResponse(
             GetCurrenciesCommand.@NonNull ReceptionistResponse msg) {
@@ -408,6 +449,38 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         }
         return this;
     }
+
+    private Behavior<ConnectorActorMessage> onGetTransfersReceptionistResponse(
+            GetTransfersCommand.@NonNull ReceptionistResponse msg) {
+        assert msg != null;
+
+        final ActorContext<ConnectorActorMessage> context = getContext();
+
+        final Set<ActorRef<GetTransfers.Request>> reachableInstances =
+                msg.listing.getServiceInstances(GetTransfers.SERVICE_KEY);
+
+        logger.debug("Received onGetTransfersReceptionistResponse with reachable instances {}",
+                reachableInstances);
+        if (!reachableInstances.isEmpty()) {
+            // There may be multiple instance, but we take only one, on random
+            final ActorRef<GetTransfers.Request> gclProvider = reachableInstances.iterator().next();
+
+            context.ask(
+                    GetTransfers.Response.class,
+                    gclProvider,
+                    DEFAULT_CALL_TIMEOUT,
+                    // Construct the outgoing message
+                    (replyTo) -> new GetTransfers.Request(replyTo, msg.payload),
+                    // Adapt the incoming response
+                    (GetTransfers.Response response, Throwable throwable) -> {
+                        logger.debug("Returned GetTransfers response: {}", response);
+                        return new GetTransfersCommand.InternalResult(response, msg.replyTo);
+                    }
+            );
+        }
+        return this;
+    }
+
 
     /**
      * A generic method that makes a handler for any “InternalResult” (<code>IntRes</code>)

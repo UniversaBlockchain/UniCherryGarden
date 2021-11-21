@@ -8,6 +8,7 @@ import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.AddTrackedAddressesCommand;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.GetBalancesCommand;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.GetTrackedAddressesCommand;
+import com.myodov.unicherrygarden.connector.impl.actors.messages.GetTransfersCommand;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
@@ -172,19 +173,20 @@ public class ObserverImpl implements Observer {
             final GetBalances.Response response = stage.toCompletableFuture().join().response;
             return response.result;
         } catch (CancellationException | CompletionException exc) {
-            logger.error("Could not complete GetAddressBalances command", exc);
+            logger.error("Could not complete GetBalances command", exc);
             return GetBalances.BalanceRequestResult.unsuccessful();
         }
     }
 
     @Override
     public GetTransfers.@NonNull TransfersRequestResult getTransfers(
-            @Nullable Set<String> filterCurrencyKeys,
             int confirmations,
             @Nullable String sender,
             @Nullable String receiver,
             @Nullable Integer fromBlock,
-            @Nullable Integer toBlock) {
+            @Nullable Integer toBlock,
+            @Nullable Set<String> filterCurrencyKeys
+    ) {
         // Validations
         requireValidBlockNumber("confirmations", confirmations);
 
@@ -201,6 +203,25 @@ public class ObserverImpl implements Observer {
                     "If both are defined, fromBlock (%d) must be <= toBlock (%d)!", fromBlock, toBlock));
         }
 
-        throw new RuntimeException("WIP: not implemented yet!");
+        final CompletionStage<GetTransfersCommand.Result> stage =
+                AskPattern.ask(
+                        actorSystem,
+                        GetTransfersCommand.createReplier(
+                                confirmations,
+                                sender,
+                                receiver,
+                                fromBlock,
+                                toBlock,
+                                filterCurrencyKeys),
+                        ConnectorActor.DEFAULT_CALL_TIMEOUT,
+                        actorSystem.scheduler());
+
+        try {
+            final GetTransfers.Response response = stage.toCompletableFuture().join().response;
+            return response.result;
+        } catch (CancellationException | CompletionException exc) {
+            logger.error("Could not complete GetTransfers command", exc);
+            return GetTransfers.TransfersRequestResult.unsuccessful();
+        }
     }
 }

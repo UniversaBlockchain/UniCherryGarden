@@ -19,12 +19,57 @@ import java.util.stream.Collectors;
 
 public class GetTransfers {
     @NonNull
-    public static final ServiceKey<GetBalances.Request> SERVICE_KEY =
-            ServiceKey.create(GetBalances.Request.class, "getTransfersService");
+    public static final ServiceKey<GetTransfers.Request> SERVICE_KEY =
+            ServiceKey.create(GetTransfers.Request.class, "getTransfersService");
 
     public static final class GTRequestPayload
             implements RequestPayload {
+        public final int confirmations;
 
+        @Nullable
+        public final String sender;
+
+        @Nullable
+        public final String receiver;
+
+        @Nullable
+        public final Integer fromBlock;
+
+        @Nullable
+        public final Integer toBlock;
+
+        @Nullable
+        public final Set<String> filterCurrencyKeys;
+
+        @JsonCreator
+        public GTRequestPayload(int confirmations,
+                                @Nullable String sender,
+                                @Nullable String receiver,
+                                @Nullable Integer fromBlock,
+                                @Nullable Integer toBlock,
+                                @Nullable Set<String> filterCurrencyKeys) {
+            assert confirmations >= 0 : confirmations;
+            assert sender == null || EthUtils.Addresses.isValidLowercasedAddress(sender) : sender;
+            assert receiver == null || EthUtils.Addresses.isValidLowercasedAddress(receiver) : receiver;
+            assert fromBlock == null || fromBlock >= 0 : fromBlock;
+            assert toBlock == null || toBlock >= 0 : toBlock;
+            if (fromBlock != null && toBlock != null) {
+                assert fromBlock <= toBlock : String.format("%s/%s", fromBlock, toBlock);
+            }
+
+            this.confirmations = confirmations;
+            this.sender = sender;
+            this.receiver = receiver;
+            this.fromBlock = fromBlock;
+            this.toBlock = toBlock;
+            this.filterCurrencyKeys = filterCurrencyKeys;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("GetTransfers.GTRequestPayload(%s, %s, %s, %s, %s, %s)",
+                    confirmations, sender, receiver, fromBlock, toBlock, filterCurrencyKeys);
+        }
     }
 
     public static final class Request
@@ -47,7 +92,7 @@ public class GetTransfers {
          * failed completely, and {@link #transfers} will likely have no records at all.
          * <p>
          * There also may be some partial-fails (like, only the transfers for some specific token failed);
-         * in this case, the balance will have {@link TransfersRequestResult::TransfersSyncState#NON_SYNCED} state.
+         * in this case, the result will have {@link TransfersRequestResult::TransfersSyncState#NON_SYNCED} state.
          */
         public final boolean overallSuccess;
 
@@ -89,11 +134,6 @@ public class GetTransfers {
 
             this.syncStatus = syncStatus;
 
-            // Now generate convenient mappings by other keys
-//            byFromThenTo = Collections.unmodifiableMap(new HashMap<String, Map<String, MinedTransfer>>() {{
-//
-//            }});
-
             // Generate map `byFromThenTo`
             {
                 final Map<String, Map<String, List<MinedTransfer>>> outerMapByFrom =
@@ -130,6 +170,17 @@ public class GetTransfers {
 
                 transfersIndexedByToThenFrom = freezeBiIndex(outerMapByTo);
             }
+        }
+
+        /**
+         * Auxilary constructor: create an “Unsuccessful” result of getting transfers.
+         */
+        public static final GetTransfers.TransfersRequestResult unsuccessful() {
+            return new GetTransfers.TransfersRequestResult(
+                    false,
+                    0,
+                    Collections.emptyList(),
+                    new BlockchainSyncStatus(0, 0, 0));
         }
 
         /**
