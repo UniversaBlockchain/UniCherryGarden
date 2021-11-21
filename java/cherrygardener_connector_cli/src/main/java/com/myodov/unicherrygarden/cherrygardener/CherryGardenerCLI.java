@@ -722,7 +722,7 @@ public class CherryGardenerCLI {
                                 transfersDescription, result.resultAtBlock);
 
                         for (final Transfer transfer : result.transfers) {
-                            System.err.printf("  %s of %s from %s to %s\n",
+                            System.err.printf("  * %s of %s from %s to %s\n",
                                     transfer.amount,
                                     transfer.currencyKey,
                                     transfer.from,

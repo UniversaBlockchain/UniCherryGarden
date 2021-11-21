@@ -3,6 +3,8 @@ package com.myodov.unicherrygarden.messages.cherrypicker;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.myodov.unicherrygarden.api.types.BlockchainSyncStatus;
 import com.myodov.unicherrygarden.api.types.MinedTransfer;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
@@ -221,6 +223,8 @@ public class GetTransfers {
          * Get the list of all the senders of the received transfers (i.e. all the distinct values of
          * the <code>from</code> fields).
          */
+        @JsonIgnore
+        @NonNull
         public Set<String> getSenders() {
             return Collections.unmodifiableSet(transfersIndexedByFromThenTo.keySet());
         }
@@ -229,6 +233,8 @@ public class GetTransfers {
          * Get the list of all the senders of the received transfers (i.e. all the distinct values of
          * the <code>from</code> fields).
          */
+        @JsonIgnore
+        @NonNull
         public Set<String> getReceivers() {
             return Collections.unmodifiableSet(transfersIndexedByToThenFrom.keySet());
         }

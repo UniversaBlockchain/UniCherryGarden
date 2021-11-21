@@ -3,13 +3,11 @@ package com.myodov.unicherrygarden
 import akka.actor.typed.Behavior
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
-import com.myodov.unicherrygarden.api.types.BlockchainSyncStatus
+import com.myodov.unicherrygarden.api.types.{BlockchainSyncStatus, MinedTransfer}
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
-import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult
-import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult.CurrencyBalanceFact
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.Response
-import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses}
+import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses, GetTransfers}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.typesafe.scalalogging.LazyLogging
 import scalikejdbc.DB
@@ -134,8 +132,8 @@ object CherryPicker extends LazyLogging {
   /** A message informing CherryPicker it needs to run a next iteration. */
   final case class Iterate() extends CherryPickerRequest
 
-    private val ITERATION_PERIOD = 15 seconds
-//  private val ITERATION_PERIOD = 1 second
+  private val ITERATION_PERIOD = 15 seconds
+  //  private val ITERATION_PERIOD = 1 second
 
   /** Object constructor. */
   def apply(pgStorage: PostgreSQLStorage,
@@ -146,9 +144,13 @@ object CherryPicker extends LazyLogging {
     Behaviors.setup { context =>
       logger.info(s"Launching CherryPicker: v. $propVersionStr, built at $propBuildTimestampStr")
 
-      context.system.receptionist ! Receptionist.Register(GetTrackedAddresses.SERVICE_KEY, context.self)
-      context.system.receptionist ! Receptionist.Register(AddTrackedAddresses.SERVICE_KEY, context.self)
-      context.system.receptionist ! Receptionist.Register(GetBalances.SERVICE_KEY, context.self)
+      // Register all service keys
+      List(
+        GetTrackedAddresses.SERVICE_KEY,
+        AddTrackedAddresses.SERVICE_KEY,
+        GetBalances.SERVICE_KEY,
+        GetTransfers.SERVICE_KEY
+      ).foreach(context.system.receptionist ! Receptionist.Register(_, context.self))
 
       logger.debug("Setting up CherryPicker actor with timers")
       Behaviors.withTimers(timers => {
@@ -159,7 +161,7 @@ object CherryPicker extends LazyLogging {
         // but 5 seconds after a previous iteration *completed*.
         // The latter though can be resolved by scheduleWithFixedDelay.
         logger.error("Running first iteration of CherryPicker...")
-//        context.self ! Iterate() // TODO: enable to start iterations
+        //        context.self ! Iterate() // TODO: enable to start iterations
 
         Behaviors.receiveMessage {
           case Iterate() => {
@@ -235,7 +237,7 @@ object CherryPicker extends LazyLogging {
           case message: GetBalances.Request => {
             logger.debug(s"Receiving GetBalances message: $message")
             message.replyTo ! new GetBalances.Response(
-              new BalanceRequestResult(
+              new GetBalances.BalanceRequestResult(
                 false,
                 0,
                 //                List[CurrencyBalanceFact](
@@ -246,8 +248,55 @@ object CherryPicker extends LazyLogging {
                 //                    15
                 //                  )
                 //                ).asJava,
-                List.empty[CurrencyBalanceFact].asJava,
+                List.empty[GetBalances.BalanceRequestResult.CurrencyBalanceFact].asJava,
                 new BlockchainSyncStatus(0, 0, 0))
+            )
+            Behaviors.same
+          }
+          case message: GetTransfers.Request => {
+            logger.debug(s"Receiving GetTransfers message: $message")
+            message.replyTo ! new GetTransfers.Response(
+              new GetTransfers.TransfersRequestResult(
+                true,
+                0,
+                //                List(
+                //                  new MinedTransfer(
+                //                    "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+                //                    "0xedcc6f8f20962e6747369a71a5b89256289da87f",
+                //                    "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                //                    BigDecimal("10045.6909000003").underlying,
+                //                    new MinedTx(
+                //                      "0x9cb54df2444658891df0c8165fecaecb4a2f1197ebe7b175dda1130b91ea4c9f",
+                //                      "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+                //                      "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                //                      new Block(
+                //                        13628884,
+                //                        "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
+                //                        Instant.ofEpochSecond(1637096843)),
+                //                      111
+                //                    ),
+                //                    144),
+                //                  // UTNP out #6
+                //                  new MinedTransfer(
+                //                    "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+                //                    "0x74644fd700c11dcc262eed1c59715ee874f65251",
+                //                    "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                //                    BigDecimal("30000").underlying,
+                //                    new MinedTx(
+                //                      "0x3f0c1e4f1e903381c1e8ad2ad909482db20a747e212fbc32a4c626cad6bb14ab",
+                //                      "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+                //                      "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                //                      new Block(
+                //                        13631007,
+                //                        "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
+                //                        Instant.ofEpochSecond(1637125704)),
+                //                      133
+                //                    ),
+                //                    173)
+                //                ).asJava,
+                List.empty[MinedTransfer].asJava,
+                new BlockchainSyncStatus(0, 0, 0)
+              )
             )
             Behaviors.same
           }
