@@ -245,12 +245,16 @@ public class CherryGardenerCLI {
      * “empty” optional if parsing failed (and all required warnings were printed).
      */
     private static final Optional<String> parseEthereumAddressOption(@NonNull CommandLine line,
-                                                                     @NonNull String optionName) {
-        @NonNull final String address = line.getOptionValue(optionName);
-        if (!EthUtils.Addresses.isValidAddress(address)) {
-            System.err.printf(
-                    "WARNING: --%s option should contain a valid Ethereum address!",
-                    optionName);
+                                                                     @NonNull String optionName,
+                                                                     boolean mandatory) {
+        @Nullable final String address = line.getOptionValue(optionName);
+        if (address == null) {
+            if (mandatory) {
+                System.err.printf("WARNING: --%s option should be present!\n", optionName);
+            }
+            return Optional.empty();
+        } else if (!EthUtils.Addresses.isValidAddress(address)) {
+            System.err.printf("WARNING: --%s option should contain a valid Ethereum address!\n", optionName);
             return Optional.empty();
         } else {
             return Optional.of(address.toLowerCase());
@@ -268,27 +272,29 @@ public class CherryGardenerCLI {
      * “empty” optional if parsing failed (and all required warnings were printed).
      */
     private static final Optional<Integer> parseBlockNumberOption(@NonNull CommandLine line,
-                                                                  @NonNull String optionName) {
-        @NonNull final String blockNumberCandidate = line.getOptionValue(optionName);
-
-
-        final int intValue;
-        try {
-            intValue = Integer.parseInt(blockNumberCandidate);
-        } catch (NumberFormatException e) {
-            System.err.printf(
-                    "WARNING: --%s option should contain a valid Ethereum block number!",
-                    optionName);
-            return Optional.empty();
-        }
-
-        if (intValue < 0) {
-            System.err.printf(
-                    "WARNING: --%s option should be 0 or higher!",
-                    optionName);
+                                                                  @NonNull String optionName,
+                                                                  boolean mandatory) {
+        @Nullable final String blockNumberCandidate = line.getOptionValue(optionName);
+        if (blockNumberCandidate == null) {
+            if (mandatory) {
+                System.err.printf("WARNING: --%s option should be present!\n", optionName);
+            }
             return Optional.empty();
         } else {
-            return Optional.of(intValue);
+            final int intValue;
+            try {
+                intValue = Integer.parseInt(blockNumberCandidate);
+            } catch (NumberFormatException e) {
+                System.err.printf("WARNING: --%s option should contain a valid Ethereum block number!\n", optionName);
+                return Optional.empty();
+            }
+
+            if (intValue < 0) {
+                System.err.printf("WARNING: --%s option should be 0 or higher!\n", optionName);
+                return Optional.empty();
+            } else {
+                return Optional.of(intValue);
+            }
         }
     }
 
@@ -535,7 +541,7 @@ public class CherryGardenerCLI {
         printTitle(System.err);
 
         final @NonNull Optional<ConnectionSettings> connectionSettingsOpt = parseConnectionSettings(line);
-        final @NonNull Optional<String> addressOpt = parseEthereumAddressOption(line, "add-tracked-address");
+        final @NonNull Optional<String> addressOpt = parseEthereumAddressOption(line, "add-tracked-address", true);
         final @NonNull Optional<TrackFromBlockOption> trackFromBlockOpt = parseTrackFromBlock(line);
         final @NonNull Optional<String> commentOpt = Optional.ofNullable(line.getOptionValue("comment"));
 
@@ -585,7 +591,7 @@ public class CherryGardenerCLI {
         printTitle(System.err);
 
         final @NonNull Optional<ConnectionSettings> connectionSettingsOpt = parseConnectionSettings(line);
-        final @NonNull Optional<String> addressOpt = parseEthereumAddressOption(line, "get-balances");
+        final @NonNull Optional<String> addressOpt = parseEthereumAddressOption(line, "get-balances", true);
         final @NonNull Optional<Integer> confirmationsOpt = parseConfirmations(line);
 
         if (true &&
@@ -650,17 +656,17 @@ public class CherryGardenerCLI {
 
         final @NonNull Optional<ConnectionSettings> connectionSettingsOpt = parseConnectionSettings(line);
         final @NonNull Optional<Integer> confirmationsOpt = parseConfirmations(line);
-        final @NonNull Optional<String> senderOpt = parseEthereumAddressOption(line, "--sender");
-        final @NonNull Optional<String> receiverOpt = parseEthereumAddressOption(line, "--receiver");
-        final @NonNull Optional<Integer> fromBlockOpt = parseBlockNumberOption(line, "--from-block");
-        final @NonNull Optional<Integer> toBlockOpt = parseBlockNumberOption(line, "--to-block");
+        final @NonNull Optional<String> senderOpt = parseEthereumAddressOption(line, "sender", false);
+        final @NonNull Optional<String> receiverOpt = parseEthereumAddressOption(line, "receiver", false);
+        final @NonNull Optional<Integer> fromBlockOpt = parseBlockNumberOption(line, "from-block", false);
+        final @NonNull Optional<Integer> toBlockOpt = parseBlockNumberOption(line, "to-block", false);
 
         if (true &&
                 connectionSettingsOpt.isPresent() &&
                 confirmationsOpt.isPresent()
         ) {
             final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
-            final int confirmations = confirmationsOpt.get().intValue();
+            final int confirmations = confirmationsOpt.get();
 
             // Extra validations to co-validate the arguments
             final boolean coValid;

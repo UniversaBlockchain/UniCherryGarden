@@ -33,6 +33,9 @@ public class ConfFile {
     public ConfFile() {
     }
 
+    /**
+     * Note: prints errors to STDERR.
+     */
     @NonNull
     public Optional<List<String>> getConnectUrls() {
         final @NonNull List<String> candidate;
@@ -50,6 +53,9 @@ public class ConfFile {
         return Optional.of(candidate);
     }
 
+    /**
+     * Note: prints errors to STDERR.
+     */
     @NonNull
     public Optional<Integer> getListenPort() {
         final int candidate;
