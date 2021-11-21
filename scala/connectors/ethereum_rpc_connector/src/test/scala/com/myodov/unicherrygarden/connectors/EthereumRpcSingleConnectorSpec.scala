@@ -23,7 +23,7 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
           EthereumBlock(
             0,
             hash = "0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3",
-            parentHash = "0x0000000000000000000000000000000000000000000000000000000000000000",
+            parentHash = Some("0x0000000000000000000000000000000000000000000000000000000000000000"),
             Instant.parse("1970-01-01T00:00:00Z")
           ),
           List(),
@@ -44,7 +44,7 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
           EthereumBlock(
             1,
             hash = "0x88e96d4537bea4d9c05d12549907b32561d3bf31f45aae734cdc119f13406cb6",
-            parentHash = "0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3",
+            parentHash = Some("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3"),
             Instant.parse("2015-07-30T15:26:28Z")
           ),
           List(),
@@ -65,7 +65,7 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
           EthereumBlock(
             11906373,
             hash = "0x71313d0f8edb2146c071d088a7ea4f91dd6f108ee42a7b7041c95a6154ed94e8",
-            parentHash = "0x7a5412e1e68f2627ac671e33a0b8f1e0aad47231b78333328dabdaf5e1b692d9",
+            parentHash = Some("0x7a5412e1e68f2627ac671e33a0b8f1e0aad47231b78333328dabdaf5e1b692d9"),
             Instant.parse("2021-02-22T10:50:22Z")
           ),
           List(),
@@ -89,7 +89,7 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
           EthereumBlock(
             120522,
             hash = "0xace30c8603317cff2dd4ba7ddfce8e67bc94ea74ec5479ef1c802985551a1662",
-            parentHash = "0xd9d68173bb59563f20ec99fcce92dbc33c25160a1c77dd1257243b1fcf723003",
+            parentHash = Some("0xd9d68173bb59563f20ec99fcce92dbc33c25160a1c77dd1257243b1fcf723003"),
             Instant.parse("2015-08-21T12:48:31Z")
           ),
           List(),
@@ -110,7 +110,7 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
           EthereumBlock(
             120522,
             hash = "0xace30c8603317cff2dd4ba7ddfce8e67bc94ea74ec5479ef1c802985551a1662",
-            parentHash = "0xd9d68173bb59563f20ec99fcce92dbc33c25160a1c77dd1257243b1fcf723003",
+            parentHash = Some("0xd9d68173bb59563f20ec99fcce92dbc33c25160a1c77dd1257243b1fcf723003"),
             Instant.parse("2015-08-21T12:48:31Z")
           ),
           List(),
@@ -131,7 +131,7 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
           EthereumBlock(
             120522,
             hash = "0xace30c8603317cff2dd4ba7ddfce8e67bc94ea74ec5479ef1c802985551a1662",
-            parentHash = "0xd9d68173bb59563f20ec99fcce92dbc33c25160a1c77dd1257243b1fcf723003",
+            parentHash = Some("0xd9d68173bb59563f20ec99fcce92dbc33c25160a1c77dd1257243b1fcf723003"),
             Instant.parse("2015-08-21T12:48:31Z")
           ),
           List(),
@@ -154,7 +154,7 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
           EthereumBlock(
             60003,
             hash = "0xaf0615219cf8b66cabdd0ca559cc27dfc070740489f5f83fd7afcdf717d00ee4",
-            parentHash = "0xb76c54058fb9eb9590cf1140f8f4df429d2632fb2196b7b551bc1cbad84bcbb8",
+            parentHash = Some("0xb76c54058fb9eb9590cf1140f8f4df429d2632fb2196b7b551bc1cbad84bcbb8"),
             Instant.parse("2015-08-09T19:09:21Z")
           ),
           List(),
@@ -176,7 +176,7 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
           EthereumBlock(
             11906373,
             hash = "0x71313d0f8edb2146c071d088a7ea4f91dd6f108ee42a7b7041c95a6154ed94e8",
-            parentHash = "0x7a5412e1e68f2627ac671e33a0b8f1e0aad47231b78333328dabdaf5e1b692d9",
+            parentHash = Some("0x7a5412e1e68f2627ac671e33a0b8f1e0aad47231b78333328dabdaf5e1b692d9"),
             Instant.parse("2021-02-22T10:50:22Z")
           ),
           List(),

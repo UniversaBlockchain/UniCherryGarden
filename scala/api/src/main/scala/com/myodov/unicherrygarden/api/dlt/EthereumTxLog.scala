@@ -3,22 +3,24 @@ package com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.dlt.events.ERC20TransferEvent
 import com.myodov.unicherrygarden.ethereum.{EthUtils, Ethereum}
 
-/** Information for any transaction log (in a transaction) in Ethereum blockchain;
- * stored in `ucg_tx_log` table.
+/** Information for any transaction log (in a transaction) in Ethereum blockchain.
+ * In the DB, stored in `ucg_tx_log` table.
  *
  * Each single log contains an information about a single event emitted.
  */
-trait TxLog {
-  val logIndex: Int
+class EthereumTxLog(val logIndex: Int,
+                    val topics: Seq[String],
+                    val data: String
+                   ) {
   require(logIndex >= 0, logIndex)
-
-  val topics: Seq[String]
   require(topics != null && topics.forall(EthUtils.isValidHexString(_, 66)), topics)
-
-  val data: String
   require(data != null && (data.equals("") || EthUtils.isValidHexString(data)), data)
 
-  /** Whether any of the topics is the `needle` (as in, “needle in haystack”), some data to be searched.
+  override def toString = s"EthereumTxLog(logIndex=$logIndex, topics=$topics, data=$data)"
+
+  /** Whether any of the topics is equal to the `needle` (as in, “needle in haystack”), some data to be searched.
+   *
+   * @param needle some topic data to find.
    */
   def topicsContain(needle: String): Boolean = {
     require(EthUtils.isValidHexString(needle, 66), needle)
@@ -37,15 +39,7 @@ trait TxLog {
       case _ => None
     }
   }
-
-  override def toString = s"TxLog(logIndex=$logIndex, topics=$topics, data=$data)"
 }
-
-/** Standard implementation of [[TxLog]] trait. */
-class EthereumTxLog(val logIndex: Int,
-                    val topics: Seq[String],
-                    val data: String
-                   ) extends TxLog
 
 object EthereumTxLog {
   @inline def apply(logIndex: Int,

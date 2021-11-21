@@ -1,6 +1,6 @@
 package com.myodov.unicherrygarden.storages.types
 
-import com.myodov.unicherrygarden.api.dlt.{EthereumMinedTransaction, TxLog}
+import com.myodov.unicherrygarden.api.dlt
 
 /** Information for any transaction mined (recorded) in Ethereum blockchain;
  * stored in `ucg_transaction` table.
@@ -21,10 +21,10 @@ final case class CommentedMinedEthereumTransaction(
                                                     override val gasUsed: BigInt = 0,
                                                     override val effectiveGasPrice: BigInt = 0,
                                                     override val cumulativeGasUsed: BigInt = 0,
-                                                    override val txLogs: Seq[TxLog] = Seq(),
+                                                    override val txLogs: Seq[dlt.EthereumTxLog] = Seq(),
                                                     // Commented
                                                     comment: Option[String] = None
-                                                  ) extends EthereumMinedTransaction(
+                                                  ) extends dlt.EthereumMinedTransaction(
   txhash,
   from,
   to,

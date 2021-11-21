@@ -112,7 +112,7 @@ trait MinedTransaction extends Transaction {
    *
    * From `eth.getTransactionReceipt()`.
    */
-  val txLogs: Seq[TxLog]
+  val txLogs: Seq[EthereumTxLog]
 
 
   /** Whether any of the logs contains any of the topics matching the `needle` (as in, “needle in haystack”),
@@ -156,7 +156,7 @@ class EthereumMinedTransaction( // Transaction-specific
                                 val gasUsed: BigInt,
                                 val effectiveGasPrice: BigInt,
                                 val cumulativeGasUsed: BigInt,
-                                val txLogs: Seq[TxLog]
+                                val txLogs: Seq[EthereumTxLog]
                               ) extends MinedTransaction()
 
 object EthereumMinedTransaction {
@@ -175,7 +175,7 @@ object EthereumMinedTransaction {
                      gasUsed: BigInt = 0,
                      effectiveGasPrice: BigInt = 0,
                      cumulativeGasUsed: BigInt = 0,
-                     txLogs: Seq[TxLog] = Seq()
+                     txLogs: Seq[EthereumTxLog] = Seq()
                    ): EthereumMinedTransaction = {
     require(txhash != null, txhash)
     require(from != null, from)

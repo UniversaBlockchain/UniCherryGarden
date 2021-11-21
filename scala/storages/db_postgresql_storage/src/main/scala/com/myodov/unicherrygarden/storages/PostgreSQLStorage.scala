@@ -3,7 +3,6 @@ package com.myodov.unicherrygarden.storages
 import java.sql.SQLException
 
 import com.myodov.unicherrygarden.api.dlt
-import com.myodov.unicherrygarden.api.dlt.TxLog
 import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
@@ -407,7 +406,7 @@ class PostgreSQLStorage(jdbcUrl: String,
   /** Access `ucg_block` table. */
   class Blocks {
 
-    def addBlock(block: dlt.Block
+    def addBlock(block: dlt.EthereumBlock
                 )(implicit
                   session: DBSession = AutoSession
                 ) = {
@@ -444,7 +443,7 @@ class PostgreSQLStorage(jdbcUrl: String,
     def addTxLogs(
                    blockNumber: Int,
                    transactionHash: String,
-                   txLogs: Seq[TxLog]
+                   txLogs: Seq[dlt.EthereumTxLog]
                  )(implicit
                    session: DBSession = AutoSession
                  ): Boolean = {

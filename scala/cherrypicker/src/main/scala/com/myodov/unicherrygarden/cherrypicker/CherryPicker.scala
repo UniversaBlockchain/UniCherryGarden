@@ -259,41 +259,41 @@ object CherryPicker extends LazyLogging {
               new GetTransfers.TransfersRequestResult(
                 true,
                 0,
-                //                List(
-                //                  new MinedTransfer(
-                //                    "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //                    "0xedcc6f8f20962e6747369a71a5b89256289da87f",
-                //                    "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //                    BigDecimal("10045.6909000003").underlying,
-                //                    new MinedTx(
-                //                      "0x9cb54df2444658891df0c8165fecaecb4a2f1197ebe7b175dda1130b91ea4c9f",
-                //                      "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //                      "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //                      new Block(
-                //                        13628884,
-                //                        "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
-                //                        Instant.ofEpochSecond(1637096843)),
-                //                      111
-                //                    ),
-                //                    144),
-                //                  // UTNP out #6
-                //                  new MinedTransfer(
-                //                    "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //                    "0x74644fd700c11dcc262eed1c59715ee874f65251",
-                //                    "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //                    BigDecimal("30000").underlying,
-                //                    new MinedTx(
-                //                      "0x3f0c1e4f1e903381c1e8ad2ad909482db20a747e212fbc32a4c626cad6bb14ab",
-                //                      "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //                      "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //                      new Block(
-                //                        13631007,
-                //                        "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
-                //                        Instant.ofEpochSecond(1637125704)),
-                //                      133
-                //                    ),
-                //                    173)
-                //                ).asJava,
+                // List(
+                //   new MinedTransfer(
+                //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+                //     "0xedcc6f8f20962e6747369a71a5b89256289da87f",
+                //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                //     BigDecimal("10045.6909000003").underlying,
+                //     new MinedTx(
+                //       "0x9cb54df2444658891df0c8165fecaecb4a2f1197ebe7b175dda1130b91ea4c9f",
+                //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+                //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                //       new Block(
+                //         13628884,
+                //         "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
+                //         Instant.ofEpochSecond(1637096843)),
+                //       111
+                //     ),
+                //     144),
+                //   // UTNP out #6
+                //   new MinedTransfer(
+                //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+                //     "0x74644fd700c11dcc262eed1c59715ee874f65251",
+                //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                //     BigDecimal("30000").underlying,
+                //     new MinedTx(
+                //       "0x3f0c1e4f1e903381c1e8ad2ad909482db20a747e212fbc32a4c626cad6bb14ab",
+                //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+                //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                //       new Block(
+                //         13631007,
+                //         "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
+                //         Instant.ofEpochSecond(1637125704)),
+                //       133
+                //     ),
+                //     173)
+                // ).asJava,
                 List.empty[MinedTransfer].asJava,
                 new BlockchainSyncStatus(0, 0, 0)
               )
