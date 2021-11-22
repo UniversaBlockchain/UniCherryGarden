@@ -14,7 +14,7 @@ class EthereumTxLog(val logIndex: Int,
                    ) {
   require(logIndex >= 0, logIndex)
   require(topics != null && topics.forall(EthUtils.isValidHexString(_, 66)), topics)
-  require(data != null && (data.equals("") || EthUtils.isValidHexString(data)), data)
+  require(data != null && (data.equals("") || data.equals("0x") || EthUtils.isValidHexString(data)), data)
 
   override def toString = s"EthereumTxLog(logIndex=$logIndex, topics=$topics, data=$data)"
 

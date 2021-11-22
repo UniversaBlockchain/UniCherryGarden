@@ -1,5 +1,6 @@
 package com.myodov.unicherrygarden.connectors
 
+import java.math.BigInteger
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
@@ -212,25 +213,29 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
           Some(w3jBlock.getParentHash),
           blockTime
         )
-        logger.debug(s"Block $block")
+        logger.debug(s"Read block $block")
 
         val minedTransactions = for (w3jTr <- w3jTransactions) yield {
           val trHash = w3jTr.getHash
           val w3jTrReceipt = w3jReceiptsByTrHash.get(trHash).get // it must exist
           assert(trHash == w3jTrReceipt.getTransactionHash, (trHash, w3jTrReceipt.getTransactionHash))
 
+          logger.debug(s"Building tx $trHash")
+          logger.debug(s"Status? ${w3jTrReceipt.getStatus}")
+
           dlt.EthereumMinedTransaction(
             // *** Before-mined transaction ***
             txhash = w3jTr.getHash,
             from = w3jTr.getFrom,
-            to = Some(w3jTr.getTo),
+            to = Option(w3jTr.getTo), // Option(nullable)
             gas = w3jTr.getGas,
             gasPrice = w3jTr.getGasPrice,
             nonce = w3jTr.getNonce.intValueExact,
             value = w3jTr.getValue,
             // *** Mined transaction ***
             // "status" – EIP 658, since Byzantium fork
-            status = Some(w3jTrReceipt.getStatus).map(decodeQuantity(_).intValueExact),
+            // using Option(nullable)
+            status = Option(w3jTrReceipt.getStatus).map(decodeQuantity(_).intValueExact),
             blockNumber = w3jTr.getBlockNumber,
             transactionIndex = w3jTrReceipt.getTransactionIndex.intValueExact,
             gasUsed = w3jTrReceipt.getGasUsed,

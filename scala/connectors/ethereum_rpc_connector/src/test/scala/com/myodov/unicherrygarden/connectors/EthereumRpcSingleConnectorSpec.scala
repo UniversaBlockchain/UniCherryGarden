@@ -2,7 +2,7 @@ package com.myodov.unicherrygarden.connectors
 
 import java.time.Instant
 
-import com.myodov.unicherrygarden.api.dlt.EthereumBlock
+import com.myodov.unicherrygarden.api.dlt.{EthereumBlock, EthereumMinedTransaction}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -26,7 +26,6 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
             parentHash = Some("0x0000000000000000000000000000000000000000000000000000000000000000"),
             Instant.parse("1970-01-01T00:00:00Z")
           ),
-          List(),
           List()
         )
       )
@@ -47,7 +46,6 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
             parentHash = Some("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3"),
             Instant.parse("2015-07-30T15:26:28Z")
           ),
-          List(),
           List()
         )
       )
@@ -68,7 +66,6 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
             parentHash = Some("0x7a5412e1e68f2627ac671e33a0b8f1e0aad47231b78333328dabdaf5e1b692d9"),
             Instant.parse("2021-02-22T10:50:22Z")
           ),
-          List(),
           List()
         )
       )
@@ -92,8 +89,23 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
             parentHash = Some("0xd9d68173bb59563f20ec99fcce92dbc33c25160a1c77dd1257243b1fcf723003"),
             Instant.parse("2015-08-21T12:48:31Z")
           ),
-          List(),
-          List()
+          List(
+            EthereumMinedTransaction(
+              txhash = "0x8fda3564427d18f119aa2309306babc7cd137893bd32260e4c75b9f74d3eeff6",
+              from = "0x90d331f19e4ef54c4dc2710087ebd8536084a85a",
+              to = Some("0x8f22398f1567cddaba1b6bb1973e62b4992d5c9c"),
+              nonce = 0,
+              value = BigInt(1000000000000000000l),
+              status = None,
+              blockNumber = BigInt(120522),
+              gas = BigInt(90000),
+              gasPrice = BigInt(59920793400l),
+              transactionIndex = 0,
+              gasUsed = BigInt(21000),
+              effectiveGasPrice = BigInt(59920793400l),
+              cumulativeGasUsed = BigInt(21000)
+            )
+          )
         )
       )
     )(
@@ -113,7 +125,6 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
             parentHash = Some("0xd9d68173bb59563f20ec99fcce92dbc33c25160a1c77dd1257243b1fcf723003"),
             Instant.parse("2015-08-21T12:48:31Z")
           ),
-          List(),
           List()
         )
       )
@@ -134,14 +145,13 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
             parentHash = Some("0xd9d68173bb59563f20ec99fcce92dbc33c25160a1c77dd1257243b1fcf723003"),
             Instant.parse("2015-08-21T12:48:31Z")
           ),
-          List(),
           List()
         )
       )
     )(
       sharedConnector.readBlock(
         blockNumber = 120522,
-        addressesOfInterest = Set("0x90d331f19e4ef54c4dc2710087ebd8536084a85a", "0x8f22398f1567cddaba1b6bb1973e62b4992d5c9c" ))
+        addressesOfInterest = Set("0x90d331f19e4ef54c4dc2710087ebd8536084a85a", "0x8f22398f1567cddaba1b6bb1973e62b4992d5c9c"))
     )
   }
 
@@ -157,7 +167,6 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
             parentHash = Some("0xb76c54058fb9eb9590cf1140f8f4df429d2632fb2196b7b551bc1cbad84bcbb8"),
             Instant.parse("2015-08-09T19:09:21Z")
           ),
-          List(),
           List()
         )
       )
@@ -179,7 +188,6 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
             parentHash = Some("0x7a5412e1e68f2627ac671e33a0b8f1e0aad47231b78333328dabdaf5e1b692d9"),
             Instant.parse("2021-02-22T10:50:22Z")
           ),
-          List(),
           List()
         )
       )
