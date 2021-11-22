@@ -1,6 +1,6 @@
 package com.myodov.unicherrygarden.api.dlt
 
-import com.myodov.unicherrygarden.api.dlt.events.ERC20TransferEvent
+import com.myodov.unicherrygarden.api.dlt.events.Erc20TransferEvent
 import org.scalatest.flatspec.AnyFlatSpec
 
 class EthereumTxLogSpec extends AnyFlatSpec {
@@ -87,7 +87,7 @@ class EthereumTxLogSpec extends AnyFlatSpec {
           "0x0000000000000000000000001df163ef8699c9b9c16236e6ff016c7834206304"),
         "0x00000000000000000000000000000000000000000000054c2c9e1a40db440000"
       ).isErc20Transfer.get ==
-        ERC20TransferEvent(
+        Erc20TransferEvent(
           from = "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
           to = "0x1df163ef8699c9b9c16236e6ff016c7834206304",
           value = BigInt("25017000000000000000000")
@@ -103,7 +103,7 @@ class EthereumTxLogSpec extends AnyFlatSpec {
           "0x000000000000000000000000b5d85cbf7cb3ee0d56b3bb207d5fc4b82f43f511"),
         "0x000000000000000000000000000000000000000000000000000000001beb297f"
       ).isErc20Transfer.get ==
-        ERC20TransferEvent(
+        Erc20TransferEvent(
           from = "0x4b35c092772f6187b1cd2a26c4f537292ce68b2c",
           to = "0xb5d85cbf7cb3ee0d56b3bb207d5fc4b82f43f511",
           value = BigInt(468396415)

@@ -1,6 +1,6 @@
 package com.myodov.unicherrygarden.api.dlt
 
-import com.myodov.unicherrygarden.api.dlt.events.ERC20TransferEvent
+import com.myodov.unicherrygarden.api.dlt.events.Erc20TransferEvent
 import com.myodov.unicherrygarden.ethereum.{EthUtils, Ethereum}
 
 /** Information for any transaction log (in a transaction) in Ethereum blockchain.
@@ -28,10 +28,10 @@ class EthereumTxLog(val logIndex: Int,
   }
 
   /** Checks if the log is for ERC20 Transfer event; returns the parsed details if yes. */
-  lazy val isErc20Transfer: Option[ERC20TransferEvent] = {
+  lazy val isErc20Transfer: Option[Erc20TransferEvent] = {
     topics match {
       case Seq(Ethereum.ERC20.TRANSFER_EVENT_SIGNATURE, fromStr: String, toStr: String) =>
-        Some(ERC20TransferEvent(
+        Some(Erc20TransferEvent(
           EthUtils.Uint256Str.toAddress(fromStr),
           EthUtils.Uint256Str.toAddress(toStr),
           EthUtils.Uint256Str.toBigInteger(data)
