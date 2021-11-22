@@ -423,7 +423,7 @@ class PostgreSQLStorage(jdbcUrl: String,
   /** Access `ucg_transaction` table. */
   class Transactions {
 
-    def addTransaction(transaction: dlt.Transaction,
+    def addTransaction(transaction: dlt.EthereumTransaction,
                        // The transaction already has the block number, but, passing the block hash,
                        // we ensure that the block hasn’t been reorganized
                        blockHash: String,

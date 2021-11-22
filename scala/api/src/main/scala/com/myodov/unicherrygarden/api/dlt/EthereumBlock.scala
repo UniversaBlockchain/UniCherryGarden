@@ -4,7 +4,7 @@ import java.time.Instant
 
 import com.myodov.unicherrygarden.ethereum.EthUtils
 
-/** This is a single block in blockchain, containing one or more transactions.
+/** This is a single (mined) block in blockchain, containing one or more transactions.
  * In the DB, stored in `ucg_block` table.
  *
  * @param number     the block number, typically sequentially increasing;

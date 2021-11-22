@@ -1,5 +1,7 @@
 package com.myodov.unicherrygarden.api.dlt
 
+import java.util.Objects
+
 import com.myodov.unicherrygarden.api.dlt.events.Erc20TransferEvent
 import com.myodov.unicherrygarden.ethereum.{EthUtils, Ethereum}
 
@@ -17,6 +19,24 @@ class EthereumTxLog(val logIndex: Int,
   require(data != null && (data.equals("") || data.equals("0x") || EthUtils.isValidHexString(data)), data)
 
   override def toString = s"EthereumTxLog(logIndex=$logIndex, topics=$topics, data=$data)"
+
+  def canEqual(other: Any): Boolean = other.isInstanceOf[EthereumTxLog]
+
+  override def equals(other: Any): Boolean = other match {
+    case that: EthereumTxLog =>
+      (that canEqual this) &&
+        isErc20Transfer == that.isErc20Transfer &&
+        logIndex == that.logIndex &&
+        topics == that.topics &&
+        data == that.data
+    case _ => false
+  }
+
+  override def hashCode(): Int = {
+    val state = Seq(logIndex, topics, data)
+    Objects.hash(state: _*)
+  }
+
 
   /** Whether any of the topics is equal to the `needle` (as in, “needle in haystack”), some data to be searched.
    *

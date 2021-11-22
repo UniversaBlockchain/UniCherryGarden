@@ -1,6 +1,5 @@
 package com.myodov.unicherrygarden.connectors
 
-import java.math.BigInteger
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
@@ -194,7 +193,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
    *
    * @param blockNumber what block to read (by its number).
    */
-  def readBlock(blockNumber: BigInt): Option[(dlt.EthereumBlock, Seq[dlt.MinedTransaction])] =
+  def readBlock(blockNumber: BigInt): Option[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])] =
     readBlockWeb3j(blockNumber) match {
       case None => None
       case Some((w3jBlock, w3jTransactions, w3jReceiptsByTrHash)) => {
@@ -254,7 +253,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
    * @param addressesOfInterest list of address hashes (all lowercased); only these addresses are returned.
    */
   def readBlock(blockNumber: BigInt,
-                addressesOfInterest: Set[String]): Option[(dlt.EthereumBlock, Seq[dlt.MinedTransaction])] = {
+                addressesOfInterest: Set[String]): Option[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])] = {
     assert(addressesOfInterest.forall(EthUtils.Addresses.isValidLowercasedAddress), addressesOfInterest)
     // Convert the addresses (which should be used to filter) to their Uint256 representations
     val addressesOfInterestUint256: Set[String] = addressesOfInterest.map(EthUtils.Uint256Str.fromAddress)
@@ -263,7 +262,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
       case None => None
       case Some((block, minedTransactionsUnfiltered)) => {
         val minedTransactionsFiltered =
-          for (tr: dlt.MinedTransaction <- minedTransactionsUnfiltered
+          for (tr: dlt.EthereumMinedTransaction <- minedTransactionsUnfiltered
                // We take a transaction if it is sent from any address of interest...
                if addressesOfInterest.contains(tr.from) ||
                  // ... or sent to any address of interest...
