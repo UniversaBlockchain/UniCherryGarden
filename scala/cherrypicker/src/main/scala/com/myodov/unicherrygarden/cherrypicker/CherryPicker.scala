@@ -82,7 +82,7 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
               // Find the earliest of them and sync.
               logger.debug(s"Progress is: $progress")
 
-              pgStorage.progress.getFirstBlockResolvingSomeUnsyncedPCTAddress match {
+              pgStorage.progress.getFirstBlockResolvingSomeUnsyncedCTAddress match {
                 case None => logger.error(s"Progress is $progress and some tracked addresses are untouched, but could not find them")
                 case Some(blockToSync) => {
                   pgStorage.state.setSyncState(s"Resyncing untouched addresses: block $blockToSync")
@@ -97,8 +97,41 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
                     case Some((block, transactions)) => {
                       logger.debug(s"Reading block $block: txes $transactions")
 
-                      logger.debug(s"Storing block: $block")
-                      pgStorage.blocks.addBlock(block.withoutParentHash)
+                      val thisBlockInDbOpt = pgStorage.blocks.getBlockByNumber(block.number)
+                      val prevBlockInDbOpt = pgStorage.blocks.getBlockByNumber(block.number - 1)
+
+                      logger.debug(s"Storing block: $block; " +
+                        s"block may be present as $thisBlockInDbOpt, " +
+                        s"parent may be present as $prevBlockInDbOpt")
+
+                      (thisBlockInDbOpt, prevBlockInDbOpt) match {
+                        case (None, None) => {
+                          // This is the simplest case: this is probably the very first block in the DB
+                          logger.debug(s"Adding first block ${block.number}: " +
+                            s"neither it nor previous block exist in the DB")
+                          pgStorage.blocks.addBlock(block.withoutParentHash)
+                        }
+                        case (Some(thisBlockInDb), _) if thisBlockInDb.hash == block.hash => {
+                          logger.debug(s"Block ${block.number} exists already in the DB with the same hash ${block.hash}; " +
+                            s"no need to readd")
+                        }
+                        case (Some(thisBlockInDb), _) if thisBlockInDb.hash != block.hash => {
+                          logger.debug(s"Block ${block.number} exists already in the DB but with ${thisBlockInDb.hash} " +
+                            s"rather than ${block.hash}; need to wipe some blocks!")
+                          throw new RuntimeException("TODO")
+                        }
+                        case (None, Some(prevBlockInDb)) if prevBlockInDb.hash != block.parentHash.get => {
+                          logger.debug(s"Adding new block ${block.number}: " +
+                            s"expecting parent block to be ${prevBlockInDb.hash} but it is ${block.parentHash.get}; " +
+                            s"need to wipe some blocks!")
+                          throw new RuntimeException("TODO")
+                        }
+                      }
+                      logger.debug(s"Now trying to store the transactions: $transactions")
+                      for (tx <- transactions) {
+                        pgStorage.transactions.addTransaction(tx, block.hash)
+                        pgStorage.txlogs.addTxLogs(block.number, tx.txhash, tx.txLogs)
+                      }
                     }
                   }
                 }

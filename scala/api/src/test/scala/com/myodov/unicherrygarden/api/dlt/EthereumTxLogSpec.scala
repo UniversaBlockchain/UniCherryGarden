@@ -5,14 +5,14 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 class EthereumTxLogSpec extends AnyFlatSpec {
   "TxLog" should "validate nulls" in {
-    assertThrows[IllegalArgumentException](
+    assertThrows[NullPointerException](
       EthereumTxLog(
         0,
         null,
         ""),
       "Topics cannot be null"
     )
-    assertThrows[IllegalArgumentException](
+    assertThrows[NullPointerException](
       EthereumTxLog(
         0,
         List(null),
@@ -22,7 +22,7 @@ class EthereumTxLogSpec extends AnyFlatSpec {
     assertThrows[IllegalArgumentException](
       EthereumTxLog(
         0,
-        List(),
+        List[Seq[Byte]](),
         null),
       "Data cannot be null"
     )

@@ -11,6 +11,7 @@ import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.{CleanResult, MigrateResult}
 import scalikejdbc._
 
+import scala.collection.compat.Factory
 import scala.util.control.NonFatal
 
 /** Stores the blockchain information in PostgreSQL database. */
@@ -86,14 +87,18 @@ class PostgreSQLStorage(jdbcUrl: String,
 
     /** Sync status of `ucg_currency_tracked_address_progress` table.
      *
-     * @param minFrom    : minimum `synced_from_block_number` value among all currency/tracked-address pairs.
-     * @param maxFrom    : maximum `synced_from_block_number` value among all currency/tracked-address pairs.
-     * @param minTo      : minimum `synced_to_block_number` value among all currency/tracked-address pairs (may be missing).
-     * @param maxTo      : maximum `synced_to_block_number` value among all currency/tracked-address pairs (may be missing).
+     * @param minFrom    : minimum `synced_from_block_number` value among all currency/tracked-address pairs
+     *                   (may be missing on very beginning of the sync).
+     * @param maxFrom    : maximum `synced_from_block_number` value among all currency/tracked-address pairs
+     *                   (may be missing on very beginning of the sync).
+     * @param minTo      : minimum `synced_to_block_number` value among all currency/tracked-address pairs
+     *                   (may be missing).
+     * @param maxTo      : maximum `synced_to_block_number` value among all currency/tracked-address pairs
+     *                   (may be missing).
      * @param toHasNulls : whether `synced_to_block_number` has nulls;
      *                   i.e., for some currency/tracked-address pairs, the synced_to value is missing.
      */
-    final case class PerCurrencyTrackedAddressesSyncStatus(minFrom: Int, maxFrom: Int,
+    final case class PerCurrencyTrackedAddressesSyncStatus(minFrom: Option[Int], maxFrom: Option[Int],
                                                            minTo: Option[Int], maxTo: Option[Int],
                                                            toHasNulls: Boolean)
 
@@ -136,31 +141,34 @@ class PostgreSQLStorage(jdbcUrl: String,
             toHasNulls = rs.boolean("address_to_has_nulls")
           ),
           PerCurrencyTrackedAddressesSyncStatus(
-            minFrom = rs.int("currency_address_from_min"),
-            maxFrom = rs.int("currency_address_from_max"),
+            minFrom = rs.intOpt("currency_address_from_min"),
+            maxFrom = rs.intOpt("currency_address_from_max"),
             minTo = rs.intOpt("currency_address_to_min"),
             maxTo = rs.intOpt("currency_address_to_max"),
             toHasNulls = rs.boolean("currency_address_to_has_nulls")
           )
         )
-      }).single()
-        .apply()
+      }).single
+        .apply
     }
 
-    /** If we have any Per Currency Tracked Addresses (PCT Addresses) which have never been synced,
+    /** If we have any Currency Tracked Addresses (CT Addresses) which have never been synced,
      * find a (earliest possible) block to sync any of them.
      *
      * @return: [[Option]] with the first unsynced PCT address;
      *          Option is empty if there is no such address found.
      */
-    def getFirstBlockResolvingSomeUnsyncedPCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
+    def getFirstBlockResolvingSomeUnsyncedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
       sql"""
-      SELECT MIN(ucg_currency_tracked_address_progress.synced_from_block_number) AS min_synced_from_block_number
-      FROM ucg_currency_tracked_address_progress
-      WHERE ucg_currency_tracked_address_progress.synced_to_block_number IS NULL;
-      """.map(rs => rs.int("min_synced_from_block_number"))
-        .single()
-        .apply()
+      SELECT MIN(ucg_currency.sync_from_block_number) AS min_sync_from_block_number
+      FROM
+          ucg_currency
+          LEFT JOIN ucg_currency_tracked_address_progress uctap
+                    ON ucg_currency.id = uctap.currency_id
+      WHERE uctap.synced_from_block_number IS NULL;
+      """.map(_.int("min_sync_from_block_number"))
+        .single
+        .apply
     }
   }
 
@@ -171,13 +179,13 @@ class PostgreSQLStorage(jdbcUrl: String,
     def setRestartedAt(implicit session: DBSession = AutoSession) = {
       sql"""
       UPDATE ucg_state SET restarted_at=now()
-      """.execute.apply()
+      """.execute.apply
     }
 
     def setLastHeartbeatAt(implicit session: DBSession = AutoSession) = {
       sql"""
       UPDATE ucg_state SET last_heartbeat_at=now()
-      """.execute.apply()
+      """.execute.apply
     }
 
     def setSyncState(state: String)(implicit session: DBSession = AutoSession) = {
@@ -186,7 +194,7 @@ class PostgreSQLStorage(jdbcUrl: String,
       UPDATE ucg_state
       SET sync_state = $state
       WHERE sync_state != $state
-      """.execute.apply()
+      """.execute.apply
     }
 
     def setEthNodeData(blockNumber: Int, currentBlock: Int, highestBlock: Int)(implicit session: DBSession = AutoSession) = {
@@ -205,7 +213,7 @@ class PostgreSQLStorage(jdbcUrl: String,
         eth_node_blocknumber != $blockNumber OR
         eth_node_current_block != $currentBlock OR
         eth_node_highest_block != $highestBlock
-      """.execute.apply()
+      """.execute.apply
     }
 
     def setSyncedFromBlockNumber(blockNumber: Long)(implicit session: DBSession) = {
@@ -213,7 +221,7 @@ class PostgreSQLStorage(jdbcUrl: String,
       UPDATE ucg_state
       SET synced_from_block_number = $blockNumber
       WHERE synced_from_block_number != $blockNumber
-      """.execute.apply()
+      """.execute.apply
     }
 
     def setSyncedToBlockNumber(blockNumber: Long)(implicit session: DBSession) = {
@@ -221,7 +229,7 @@ class PostgreSQLStorage(jdbcUrl: String,
       UPDATE ucg_state
       SET synced_to_block_number = $blockNumber
       WHERE synced_to_block_number != $blockNumber
-      """.execute.apply()
+      """.execute.apply
     }
   }
 
@@ -301,7 +309,7 @@ class PostgreSQLStorage(jdbcUrl: String,
         rs.stringOpt("ucg_comment"),
         rs.boolean("verified"),
         rs.intOpt("decimals")
-      )).list.apply()
+      )).list.apply
     }
   }
 
@@ -342,14 +350,14 @@ class PostgreSQLStorage(jdbcUrl: String,
         rs.stringOpt("ucg_comment"),
         rs.intOpt("synced_from_block_number"),
         rs.intOpt("synced_to_block_number")
-      )).list.apply()
+      )).list.apply
     }
 
     /** Get the set of all tracked addresses (and just of the address strings, nothing else). */
     def getJustAddresses(implicit session: DBSession = ReadOnlyAutoSession): Set[String] = {
       sql"""
       SELECT address FROM ucg_tracked_address;
-      """.map(_.string("address")).list.apply().toSet
+      """.map(_.string("address")).list.apply.toSet
     }
 
     /** Add a new address to be tracked.
@@ -385,7 +393,7 @@ class PostgreSQLStorage(jdbcUrl: String,
           ELSE NULL -- should fail
         END
       );
-      """.execute.apply()
+      """.execute.apply
         true
       } catch {
         case ex: SQLException => {
@@ -413,7 +421,25 @@ class PostgreSQLStorage(jdbcUrl: String,
       sql"""
       INSERT INTO ucg_block(number, hash, parent_hash, timestamp)
       VALUES (${block.number}, ${block.hash}, ${block.parentHash}, ${block.timestamp})
-      """.execute.apply()
+      """.execute.apply
+    }
+
+    def getBlockByNumber(blockNumber: Int
+                        )(implicit session: DBSession = ReadOnlyAutoSession): Option[dlt.EthereumBlock] = {
+      sql"""
+      SELECT *
+      FROM ucg_block
+      WHERE number = $blockNumber
+      """
+        .map(
+          rs => dlt.EthereumBlock(
+            number = rs.int("number"),
+            hash = rs.string("hash"),
+            parentHash = rs.stringOpt("parent_hash"),
+            timestamp = rs.timestamp("timestamp").toInstant
+          ))
+        .single
+        .apply
     }
   }
 
@@ -423,15 +449,31 @@ class PostgreSQLStorage(jdbcUrl: String,
   /** Access `ucg_transaction` table. */
   class Transactions {
 
-    def addTransaction(transaction: dlt.EthereumTransaction,
+    def addTransaction(tx: dlt.EthereumMinedTransaction,
                        // The transaction already has the block number, but, passing the block hash,
                        // we ensure that the block hasn’t been reorganized
                        blockHash: String,
                       )(implicit
                         session: DBSession = AutoSession
-                      ): Boolean = {
+                      ) {
       require(EthUtils.Hashes.isValidBlockHash(blockHash), blockHash)
-      false
+
+      sql"""
+      INSERT INTO ucg_transaction(
+        block_number,
+        txhash, from_hash, to_hash,
+        status, is_status_ok, ucg_comment, gas_price,
+        gas_used, nonce, transaction_index, gas,
+        value, effective_gas_price, cumulative_gas_used
+      )
+      VALUES(
+        (SELECT number FROM ucg_block WHERE hash = $blockHash),
+        ${tx.txhash}, ${tx.from}, ${tx.to},
+        ${tx.status}, ${tx.isStatusOk}, NULL, ${tx.gasPrice},
+        ${tx.gasUsed}, ${tx.nonce}, ${tx.transactionIndex}, ${tx.gas},
+        ${tx.value}, ${tx.effectiveGasPrice}, ${tx.cumulativeGasUsed}
+      )
+      """.execute.apply
     }
   }
 
@@ -446,8 +488,32 @@ class PostgreSQLStorage(jdbcUrl: String,
                    txLogs: Seq[dlt.EthereumTxLog]
                  )(implicit
                    session: DBSession = AutoSession
-                 ): Boolean = {
-      false
+                 ) {
+      val batchParams: Seq[Seq[Any]] = txLogs.map(t => Seq(
+        transactionHash,
+        blockNumber,
+        t.logIndex,
+        t.topics.map(_.toArray).toArray,
+        t.data.toArray
+      ))
+      sql"""
+      INSERT INTO ucg_tx_log(
+        transaction_id,
+        block_number,
+        log_index,
+        topics,
+        data
+      )
+      VALUES(
+        (SELECT id FROM ucg_transaction WHERE txhash = ?),
+        ?,
+        ?,
+        ?,
+        ?
+      )
+      """
+        .batch(batchParams: _*)
+        .apply()(session, implicitly[Factory[Int, Seq[Int]]])
     }
   }
 

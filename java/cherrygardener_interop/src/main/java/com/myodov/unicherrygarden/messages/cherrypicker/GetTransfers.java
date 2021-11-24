@@ -250,6 +250,7 @@ public class GetTransfers {
          * @param toAddress   (Optional) Lowercased Ethereum address, to which the transfers are selected.
          *                    May be <code>null</code> if no filter by receiver address required.
          */
+        @NonNull
         public List<MinedTransfer> getTransfers(@Nullable String fromAddress,
                                                 @Nullable String toAddress) {
             if (fromAddress == null && toAddress == null) {
