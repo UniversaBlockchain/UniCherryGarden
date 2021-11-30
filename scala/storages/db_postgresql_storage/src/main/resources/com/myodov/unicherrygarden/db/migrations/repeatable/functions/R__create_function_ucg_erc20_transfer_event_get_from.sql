@@ -1,17 +1,10 @@
 CREATE OR REPLACE FUNCTION ucg_erc20_transfer_event_get_from(_topics BYTEA[])
     RETURNS CHAR(42)
-    LANGUAGE PLPGSQL
+    LANGUAGE SQL
     IMMUTABLE STRICT
 AS
 $$
-BEGIN
-    IF !ucg_is_erc20_transfer_event(_topics)
-    THEN
-        RAISE EXCEPTION 'Not a valid topics list for ERC20 Transfer event: %!', _topics;
-    END IF;
-
-    RETURN ucg_uint256_to_address_string(_topics[2]);
-END;
+SELECT ucg_uint256_to_address_string((ucg_ensure_topics_are_erc20_transfer_event(_topics))[2])
 $$;
 
 COMMENT ON FUNCTION ucg_erc20_transfer_event_get_from(_topics BYTEA[]) IS

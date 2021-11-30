@@ -1,20 +1,12 @@
 CREATE OR REPLACE FUNCTION ucg_is_erc20_transfer_event(_topics BYTEA[])
     RETURNS BOOLEAN
-    LANGUAGE PLPGSQL
+    LANGUAGE SQL
     IMMUTABLE STRICT
 AS
 $$
-BEGIN
-    IF !ucg_are_all_topics_valid(_topics)
-    THEN
-        RAISE EXCEPTION 'Not a valid list of topics: %!', _topics;
-    END IF;
-
-    RETURN (
-            (length(_topics) = 3) AND
-            (_topics[1] = '\xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'::bytea)
-        );
-END;
+SELECT
+        (array_length(_topics, 1) = 3) AND
+        (_topics[1] = '\xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'::bytea)
 $$;
 
 COMMENT ON FUNCTION ucg_is_erc20_transfer_event(_topics BYTEA[]) IS
