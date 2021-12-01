@@ -20,3 +20,8 @@ COMMENT ON COLUMN ucg_state.eth_node_highest_block IS
 
 COMMENT ON INDEX ucg_state_one_row IS
     'Ensures that the ucg_state table can have only one row.';
+
+COMMENT ON INDEX ucg_tx_log_erc20_from_to IS
+    'Speeds up queries by “from” (sender) address over ERC20 Transfers; optionally, also by “to” (receiver) address.';
+COMMENT ON INDEX ucg_tx_log_erc20_to IS
+    'Speeds up queries by “to” (receiver) address over ERC20 Transfers.';
