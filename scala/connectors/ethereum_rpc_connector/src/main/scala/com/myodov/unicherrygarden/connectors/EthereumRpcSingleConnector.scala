@@ -136,52 +136,63 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
       val startTime = System.nanoTime
 
       val block: EthBlock.Block = web3j.ethGetBlockByNumber(new DefaultBlockParameterNumber(blockNumber.bigInteger), true).send.getBlock
-      require(blockNumber.bigInteger == block.getNumber, (blockNumber, block.getNumber))
 
-      // Get the web3j-style transactions
-      val transactions: Seq[Transaction] = block.getTransactions.asScala.to(List).map(_.asInstanceOf[TransactionObject].get)
+      // Very basic validation
+      if (block.getNumber != blockNumber.bigInteger) {
+        // Very basic validation failed
+        logger.error(s"We've requested block $blockNumber but received block ${block.getNumber} (${block.getHash})")
+        None
+      } else {
+        // Very basic validation succeeded!
 
-      // Get all the receipts, as fast as we can, in a parallel way
-      val validReceipts: List[TransactionReceipt] = {
-        // There is a complex asynchronous launch, do it inside
-        val receiptFutures: LazyList[Future[EthGetTransactionReceipt]] =
-          transactions.to(LazyList).map(
-            tr => web3j.ethGetTransactionReceipt(tr.getHash).sendAsync.asScala
-          )
+        // Get the web3j-style transactions
+        val transactions: Seq[Transaction] = block.getTransactions.asScala.to(List).map(_.asInstanceOf[TransactionObject].get)
 
-        val batchSize = 64
-        val receiptFuturesBatched: LazyList[LazyList[Future[EthGetTransactionReceipt]]] = receiptFutures.sliding(batchSize, batchSize).to(LazyList)
+        // Get all the receipts, as fast as we can, in a parallel way
+        val validReceipts: List[TransactionReceipt] = {
+          // There is a complex asynchronous launch, do it inside
+          val receiptFutures: LazyList[Future[EthGetTransactionReceipt]] =
+            transactions.to(LazyList).map(
+              tr => web3j.ethGetTransactionReceipt(tr.getHash).sendAsync.asScala
+            )
 
-        val totalReceipts: Seq[Option[TransactionReceipt]] = receiptFuturesBatched.map(lazyBatchOfFutures => {
-          val batchOfFutures: Seq[Future[EthGetTransactionReceipt]] = lazyBatchOfFutures.toList
-          val futureOfBatch: Future[Seq[EthGetTransactionReceipt]] = Future.sequence(batchOfFutures)
-          val batchResult: Seq[EthGetTransactionReceipt] = Await.result(futureOfBatch, Duration.Inf)
+          val batchSize = 64
+          val receiptFuturesBatched: LazyList[LazyList[Future[EthGetTransactionReceipt]]] = receiptFutures.sliding(batchSize, batchSize).to(LazyList)
 
-          batchResult.map(trr => trr.getTransactionReceipt.toScala)
-        }).flatten.toList
+          val totalReceipts: Seq[Option[TransactionReceipt]] = receiptFuturesBatched.map(lazyBatchOfFutures => {
+            val batchOfFutures: Seq[Future[EthGetTransactionReceipt]] = lazyBatchOfFutures.toList
+            val futureOfBatch: Future[Seq[EthGetTransactionReceipt]] = Future.sequence(batchOfFutures)
+            val batchResult: Seq[EthGetTransactionReceipt] = Await.result(futureOfBatch, Duration.Inf)
 
-        logger.debug(s"Total receipts: ${totalReceipts.length}")
-        totalReceipts.flatten.to(List)
+            batchResult.map(trr => trr.getTransactionReceipt.toScala)
+          }).flatten.toList
+
+          logger.debug(s"Total receipts: ${totalReceipts.length}")
+          totalReceipts.flatten.to(List)
+        }
+        logger.debug(s"Valid receipts: ${validReceipts.length}")
+
+        // Map from transaction hash to transaction receipt
+        val receiptsByTrHash: Map[String, TransactionReceipt] =
+          validReceipts.iterator.map(v => v.getTransactionHash -> v).toMap
+        require(receiptsByTrHash.size == validReceipts.size, (receiptsByTrHash.size, validReceipts.size))
+
+        logger.debug("Transactions:")
+        for (tr <- transactions) {
+          val value = EthUtils.Wei.valueFromWeis(tr.getValue)
+          logger.debug(s"Transaction: Hash ${tr.getHash}: value $value, gas ${tr.getGas}, gas price ${tr.getGasPrice}")
+        }
+
+        logger.debug(s"Transaction receipts (very detailed): $receiptsByTrHash")
+        for ((key, trRec) <- receiptsByTrHash) {
+          logger.debug(s"TR receipt ($key): $trRec")
+        }
+
+        val duration = Duration(System.nanoTime - startTime, TimeUnit.NANOSECONDS)
+        logger.debug(s"Duration ${duration.toMillis} ms")
+
+        Some((block, transactions, receiptsByTrHash))
       }
-      logger.debug(s"Valid receipts: ${validReceipts.length}")
-
-      // Map from transaction hash to transaction receipt
-      val receiptsByTrHash: Map[String, TransactionReceipt] =
-        validReceipts.iterator.map(v => v.getTransactionHash -> v).toMap
-      require(receiptsByTrHash.size == validReceipts.size, (receiptsByTrHash.size, validReceipts.size))
-
-      println("\nTransactions:")
-      for (tr <- transactions) {
-        val value = EthUtils.Wei.valueFromWeis(tr.getValue)
-        println(s"TR: Hash ${tr.getHash}: value $value, gas ${tr.getGas}, gas price ${tr.getGasPrice}")
-      }
-
-      println(s"\nTransaction receipts: $receiptsByTrHash")
-
-      val duration = Duration(System.nanoTime - startTime, TimeUnit.NANOSECONDS)
-      logger.debug(s"Duration ${duration.toMillis} ms")
-
-      Some((block, transactions, receiptsByTrHash))
     } catch {
       case NonFatal(e) => {
         logger.error("On iteration, got a error", e)
@@ -197,53 +208,81 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
     readBlockWeb3j(blockNumber) match {
       case None => None
       case Some((w3jBlock, w3jTransactions, w3jReceiptsByTrHash)) => {
-        assert(blockNumber == BigInt(w3jBlock.getNumber),
+        assert(blockNumber.bigInteger == w3jBlock.getNumber,
           (blockNumber, w3jBlock.getNumber))
         assert(w3jBlock.getTransactions.size == w3jTransactions.size,
           (blockNumber, w3jBlock.getTransactions.size, w3jTransactions.size))
         assert(w3jTransactions.size == w3jReceiptsByTrHash.size,
           (blockNumber, w3jTransactions.size, w3jReceiptsByTrHash.size))
 
-        val blockTime = Instant.ofEpochSecond(w3jBlock.getTimestamp.longValueExact)
+        val blockHash = w3jBlock.getHash
 
-        val block = dlt.EthereumBlock(
-          blockNumber.bigInteger.intValueExact,
-          w3jBlock.getHash,
-          Some(w3jBlock.getParentHash),
-          blockTime
+        val w3jTransactionsByHash = w3jTransactions.map(tr => tr.getHash -> tr).toMap
+
+        // Now let’s validate all of the transaction receipts.
+        // Let’s find any one bad transaction receipt, that may be:
+        // 1. a receipt where the referred block doesn’t match the block we’ve requested, or:
+        // 2. a receipt where the referred transaction doesn’t match
+        //    the transaction from this block;
+        val badReceipt: Option[TransactionReceipt] = w3jReceiptsByTrHash.values.find(trRcpt =>
+          // The transaction receipt refers to a different block hash
+          (trRcpt.getBlockHash != blockHash) ||
+            // The transaction receipt refers to a different block number
+            (trRcpt.getBlockNumber != blockNumber.bigInteger) ||
+            // The transaction receipt hash for some reason don’t present in the original list of transactions
+            !w3jTransactionsByHash.contains(trRcpt.getTransactionHash) ||
+            // Original transaction in a block has a different transaction index
+            (w3jTransactionsByHash(trRcpt.getTransactionHash).getTransactionIndex != trRcpt.getTransactionIndex)
         )
-        logger.debug(s"Read block $block")
 
-        val minedTransactions = for (w3jTr <- w3jTransactions) yield {
-          val trHash = w3jTr.getHash
-          val w3jTrReceipt = w3jReceiptsByTrHash.get(trHash).get // it must exist
-          assert(trHash == w3jTrReceipt.getTransactionHash, (trHash, w3jTrReceipt.getTransactionHash))
+        if (badReceipt.nonEmpty) {
+          // We have some bad receipt; treat it as error
+          logger.error(s"Receipt ${badReceipt.get} is invalid! " +
+            s"Whole block $blockNumber is considered invalid, need to reread")
+          None
+        } else {
+          // We don’t have bad receipts, so it’s actually a good set of data
+          val blockTime = Instant.ofEpochSecond(w3jBlock.getTimestamp.longValueExact)
 
-          logger.debug(s"Building tx $trHash")
-          logger.debug(s"Status? ${w3jTrReceipt.getStatus}")
-
-          dlt.EthereumMinedTransaction(
-            // *** Before-mined transaction ***
-            txhash = w3jTr.getHash,
-            from = w3jTr.getFrom,
-            to = Option(w3jTr.getTo), // Option(nullable)
-            gas = w3jTr.getGas,
-            gasPrice = w3jTr.getGasPrice,
-            nonce = w3jTr.getNonce.intValueExact,
-            value = w3jTr.getValue,
-            // *** Mined transaction ***
-            // "status" – EIP 658, since Byzantium fork
-            // using Option(nullable)
-            status = Option(w3jTrReceipt.getStatus).map(decodeQuantity(_).intValueExact),
-            blockNumber = w3jTr.getBlockNumber,
-            transactionIndex = w3jTrReceipt.getTransactionIndex.intValueExact,
-            gasUsed = w3jTrReceipt.getGasUsed,
-            effectiveGasPrice = decodeQuantity(w3jTrReceipt.getEffectiveGasPrice),
-            cumulativeGasUsed = w3jTrReceipt.getCumulativeGasUsed,
-            txLogs = EthereumRpcSingleConnector.getLogsFromTransactionReceipt(w3jTrReceipt)
+          val block = dlt.EthereumBlock(
+            blockNumber.bigInteger.intValueExact,
+            blockHash,
+            Some(w3jBlock.getParentHash),
+            blockTime
           )
+          logger.debug(s"Read block $block")
+
+          val minedTransactions = for (w3jTr <- w3jTransactions) yield {
+            val trHash = w3jTr.getHash
+            val w3jTrReceipt = w3jReceiptsByTrHash(trHash) // it must exist
+            assert(trHash == w3jTrReceipt.getTransactionHash, (trHash, w3jTrReceipt.getTransactionHash))
+
+            logger.debug(s"Building tx $trHash")
+            logger.debug(s"Status? ${w3jTrReceipt.getStatus}")
+
+            dlt.EthereumMinedTransaction(
+              // *** Before-mined transaction ***
+              txhash = w3jTr.getHash,
+              from = w3jTr.getFrom,
+              to = Option(w3jTr.getTo), // Option(nullable)
+              gas = w3jTr.getGas,
+              gasPrice = w3jTr.getGasPrice,
+              nonce = w3jTr.getNonce.intValueExact,
+              value = w3jTr.getValue,
+              // *** Mined transaction ***
+              // "status" – EIP 658, since Byzantium fork
+              // using Option(nullable)
+              status = Option(w3jTrReceipt.getStatus).map(decodeQuantity(_).intValueExact),
+              blockNumber = w3jTr.getBlockNumber,
+              transactionIndex = w3jTrReceipt.getTransactionIndex.intValueExact,
+              gasUsed = w3jTrReceipt.getGasUsed,
+              effectiveGasPrice = decodeQuantity(w3jTrReceipt.getEffectiveGasPrice),
+              cumulativeGasUsed = w3jTrReceipt.getCumulativeGasUsed,
+              txLogs = EthereumRpcSingleConnector.getLogsFromTransactionReceipt(w3jTrReceipt)
+            )
+          }
+          Some((block, minedTransactions))
         }
-        Some((block, minedTransactions))
       }
     }
 
