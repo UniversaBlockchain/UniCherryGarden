@@ -1,5 +1,7 @@
 package com.myodov.unicherrygarden
 
+import java.util.concurrent.TimeUnit
+
 import akka.actor.typed.Behavior
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
@@ -28,6 +30,7 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
     // and work on the partially-updated state.
     this.synchronized {
       logger.debug("Iteration...")
+      val startTime = System.nanoTime
 
       // First, let's ask the Ethereum node what's the status of the syncing process
 
@@ -54,7 +57,8 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
 
         pgStorage.state.setEthNodeData(ethBlockNumber, currentBlock, highestBlock)
 
-        // Since this moment, we may want to use DB in a single atomic DB transaction
+        // Since this moment, we may want to use DB in a single atomic DB transaction;
+        // even though this will involve querying the Ethereum node, maybe even multiple times.
         DB localTx { implicit session =>
           val optProgress = pgStorage.progress.getProgress
           lazy val progress = optProgress.get
@@ -95,7 +99,8 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
                   ethereumConnector.readBlock(blockToSync, trackedAddresses) match {
                     case None => logger.error(s"Cannot read block $blockToSync")
                     case Some((block, transactions)) => {
-                      logger.debug(s"Reading block $block: txes $transactions")
+                      logger.debug(s"Reading block $block:" +
+                        s"txes $transactions")
 
                       val thisBlockInDbOpt = pgStorage.blocks.getBlockByNumber(block.number)
                       val prevBlockInDbOpt = pgStorage.blocks.getBlockByNumber(block.number - 1)
@@ -111,9 +116,16 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
                             s"neither it nor previous block exist in the DB")
                           pgStorage.blocks.addBlock(block.withoutParentHash)
                         }
+                        case (None, Some(prevBlockInDb)) if prevBlockInDb.hash == block.parentHash.get => {
+                          // Another simplest case: second and further blocks in the DB.
+                          // Very new block, and its parent matches the existing one
+                          logger.debug(s"Adding new block ${block.number}; parent block ${block.number - 1} " +
+                            s"exists already with proper hash")
+                          pgStorage.blocks.addBlock(block)
+                        }
                         case (Some(thisBlockInDb), _) if thisBlockInDb.hash == block.hash => {
                           logger.debug(s"Block ${block.number} exists already in the DB with the same hash ${block.hash}; " +
-                            s"no need to readd")
+                            s"no need to readd the block itself")
                         }
                         case (Some(thisBlockInDb), _) if thisBlockInDb.hash != block.hash => {
                           logger.debug(s"Block ${block.number} exists already in the DB but with ${thisBlockInDb.hash} " +
@@ -132,6 +144,7 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
                         pgStorage.transactions.addTransaction(tx, block.hash)
                         pgStorage.txlogs.addTxLogs(block.number, tx.txhash, tx.txLogs)
                       }
+                      pgStorage.state.advanceProgress(block.number, trackedAddresses)
                     }
                   }
                 }
@@ -140,6 +153,9 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
           }
         } // DB localTx
       }
+
+      val duration = Duration(System.nanoTime - startTime, TimeUnit.NANOSECONDS)
+      logger.debug(s"Iteration completed in ${duration.toMillis} ms.")
     }
   }
 
@@ -194,7 +210,7 @@ object CherryPicker extends LazyLogging {
         // but 5 seconds after a previous iteration *completed*.
         // The latter though can be resolved by scheduleWithFixedDelay.
         logger.error("Running first iteration of CherryPicker...")
-        //        context.self ! Iterate() // TODO: enable to start iterations
+        context.self ! Iterate() // TODO: enable to start iterations
 
         Behaviors.receiveMessage {
           case Iterate() => {

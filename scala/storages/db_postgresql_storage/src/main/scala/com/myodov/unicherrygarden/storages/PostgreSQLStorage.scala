@@ -6,7 +6,7 @@ import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.{CleanResult, MigrateResult}
 import scalikejdbc._
@@ -68,7 +68,7 @@ class PostgreSQLStorage(jdbcUrl: String,
     /** Sync status of `ucg_block` table
      *
      * @param from : minimum block number in `ucg_block` table (may be missing).
-     * @param to   : maximum block number in `ucg_block` tble (may be missing).
+     * @param to   : maximum block number in `ucg_block` table (may be missing).
      */
     final case class BlocksSyncStatus(from: Option[Int], to: Option[Int])
 
@@ -105,10 +105,10 @@ class PostgreSQLStorage(jdbcUrl: String,
     /** Whole-system syncing progress.
      *
      * @param overall                     : overall progress.
-     * @param currencies                  : progress of syncing as per `ucg_currency` tble.
+     * @param currencies                  : progress of syncing as per `ucg_currency` table.
      * @param blocks                      : progress of syncing as per `ucg_block` table.
      * @param trackedAddresses            : progress of syncing as per `ucg_tracked_address` table.
-     * @param perCurrencyTrackedAddresses : progress of syncing as per `ucg_currency_tracked_address_progress` tble.
+     * @param perCurrencyTrackedAddresses : progress of syncing as per `ucg_currency_tracked_address_progress` table.
      */
     final case class Progress(overall: OverallSyncStatus,
                               currencies: CurrenciesSyncStatus,
@@ -163,12 +163,13 @@ class PostgreSQLStorage(jdbcUrl: String,
       SELECT MIN(ucg_currency.sync_from_block_number) AS min_sync_from_block_number
       FROM
           ucg_currency
-          LEFT JOIN ucg_currency_tracked_address_progress uctap
-                    ON ucg_currency.id = uctap.currency_id
-      WHERE uctap.synced_from_block_number IS NULL;
-      """.map(_.int("min_sync_from_block_number"))
+          LEFT JOIN ucg_currency_tracked_address_progress cta_progress
+                    ON ucg_currency.id = cta_progress.currency_id
+      WHERE cta_progress.synced_from_block_number IS NULL;
+      """.map(_.intOpt("min_sync_from_block_number")) // may be null
         .single
         .apply
+        .flatten // Option[Option[Int]] to Option[Int]
     }
   }
 
@@ -230,6 +231,159 @@ class PostgreSQLStorage(jdbcUrl: String,
       SET synced_to_block_number = $blockNumber
       WHERE synced_to_block_number != $blockNumber
       """.execute.apply
+    }
+
+    /** Move the progress to the next block:
+     *
+     * @param syncedBlockNumber the number of the block that has just been synced/stored in the DB.
+     * @param trackedAddresses  the sequence of tracked addresses for which the blockchain progress has been read,
+     *                          parsed and stored.
+     *                          We cannot read it from the DB right now and rely upon it,
+     *                          because what if the tracked addresses have changed already since
+     *                          the reading/parsing time?
+     */
+    def advanceProgress(
+                         syncedBlockNumber: Long,
+                         trackedAddresses: Set[String]
+                       )(implicit session: DBSession) = {
+      assert(
+        trackedAddresses.forall(EthUtils.Addresses.isValidLowercasedAddress),
+        trackedAddresses)
+
+      logger.debug(s"DB advanceProgress: $syncedBlockNumber, $trackedAddresses")
+
+      // 1. Insert ucg_currency_tracked_address_progress records
+      //    where they didn’t exist before;
+      //    and where the syncedBlockNumber matches the start block number of a currency.
+      {
+        sql"""
+        WITH
+            -- Function argument
+            arg(block_number) AS (
+                SELECT $syncedBlockNumber
+            ),
+            -- Function argument
+            actually_tracked_address_arg(address) AS (
+                SELECT unnest(ARRAY[$trackedAddresses])
+            ),
+            -- Preprocess the function argument and find the IDs of tracked addresses
+            actually_tracked_address(id, address) AS (
+                SELECT
+                    ucg_tracked_address.id,
+                    ucg_tracked_address.address
+                FROM
+                    actually_tracked_address_arg
+                    INNER JOIN ucg_tracked_address
+                               USING (address)
+            ),
+            data_to_insert(currency_id, tracked_address_id, synced_from_block_number, synced_to_block_number) AS (
+                SELECT
+                    ucg_currency.id AS currency_id,
+                    actually_tracked_address.id AS tracked_address_id,
+                    ucg_currency.sync_from_block_number AS synced_from_block_number,
+                    arg.block_number AS synced_to_block_number
+                FROM
+                    arg,
+                    -- Take all currencies...
+                    ucg_currency
+                        -- ... and all tracked addresses...
+                    CROSS JOIN actually_tracked_address
+                        -- cta_progress.id will be NULL if such pair of (currency_id, tracked_address_id)
+                        -- is not added yet.
+                    LEFT JOIN ucg_currency_tracked_address_progress AS cta_progress
+                              ON ucg_currency.id = cta_progress.currency_id AND
+                                 actually_tracked_address.id = cta_progress.tracked_address_id
+                WHERE
+                    -- This pair is not added yet
+                    cta_progress.id IS NULL AND
+                    -- We add a new record ONLY if the just-synced block number is equal
+                    -- to synced_from field for a currency
+                    arg.block_number = ucg_currency.sync_from_block_number
+            )
+        INSERT INTO ucg_currency_tracked_address_progress(
+          currency_id,
+          tracked_address_id,
+          synced_from_block_number,
+          synced_to_block_number
+        )
+        SELECT *
+        FROM data_to_insert
+        """.execute.apply
+      }
+
+      // 2. Update ucg_currency_tracked_address_progress records
+      //    where they existed before;
+      //    and where the syncedBlockNumber advanced by one.
+      {
+        sql"""
+        WITH
+            arg(block_number) AS (
+                SELECT $syncedBlockNumber
+            ),
+            actually_tracked_address_arg(address) AS (
+                SELECT unnest(ARRAY[$trackedAddresses])
+            ),
+            actually_tracked_address(id, address) AS (
+                SELECT
+                    ucg_tracked_address.id,
+                    ucg_tracked_address.address
+                FROM
+                    actually_tracked_address_arg
+                    INNER JOIN ucg_tracked_address
+                               USING (address)
+            ),
+            data_to_update (currency_id, tracked_address_id, synced_to_block_number) AS (
+                SELECT
+                    ucg_currency.id AS currency_id,
+                    actually_tracked_address.id AS tracked_address_id,
+                    arg.block_number AS synced_to_block_number
+                FROM
+                    arg,
+                    -- Take all currencies...
+                    ucg_currency
+                        -- ... and all tracked addresses...
+                    CROSS JOIN actually_tracked_address
+                        -- cta_progress.id will be NOT NULL if such pair of (currency_id, tracked_address_id)
+                        -- already exists
+                    LEFT JOIN ucg_currency_tracked_address_progress AS cta_progress
+                              ON ucg_currency.id = cta_progress.currency_id AND
+                                 actually_tracked_address.id = cta_progress.tracked_address_id
+                WHERE
+                    -- This pair exists already
+                    cta_progress.id IS NOT NULL AND
+                    -- We update a record ONLY if the just-synced block number is equal
+                    -- to existing block number + 1
+                        arg.block_number = cta_progress.synced_to_block_number + 1
+            )
+        UPDATE ucg_currency_tracked_address_progress AS upd_cta_progress
+        SET
+            synced_to_block_number = data_to_update.synced_to_block_number
+        FROM data_to_update
+        WHERE
+            upd_cta_progress.currency_id = data_to_update.currency_id AND
+            upd_cta_progress.tracked_address_id = data_to_update.tracked_address_id;
+        """.execute.apply
+      }
+
+      // 3. Update ucg_state finally.
+      {
+        sql"""
+        WITH
+            arg(block_number) AS (
+                SELECT $syncedBlockNumber
+            )
+        UPDATE ucg_state
+        SET
+            synced_to_block_number = arg.block_number
+        FROM arg
+        WHERE
+            -- Either this is a very first successfully synced block, then we just accept this number,..
+            (synced_to_block_number IS NULL) OR
+            -- ... or this is some future syncing iteration;
+            -- but then we can only increment the synced_to_block_number by one.
+            (arg.block_number = ucg_state.synced_to_block_number + 1);
+        """.execute.apply
+      }
     }
   }
 
@@ -378,22 +532,22 @@ class PostgreSQLStorage(jdbcUrl: String,
 
       try {
         sql"""
-      INSERT INTO ucg_tracked_address(
-        address,
-        ucg_comment,
-        synced_from_block_number)
-      VALUES (
-        $address,
-        $comment,
-        CASE ${mode.toString}
-          WHEN 'FROM_BLOCK' THEN $fromBlock
-          WHEN 'LATEST_KNOWN_BLOCK' THEN (SELECT eth_node_highest_block FROM ucg_state)
-          WHEN 'LATEST_NODE_SYNCED_BLOCK' THEN (SELECT eth_node_current_block FROM ucg_state)
-          WHEN 'LATEST_CHERRYGARDEN_SYNCED_BLOCK' THEN (SELECT synced_to_block_number FROM ucg_state)
-          ELSE NULL -- should fail
-        END
-      );
-      """.execute.apply
+        INSERT INTO ucg_tracked_address(
+          address,
+          ucg_comment,
+          synced_from_block_number)
+        VALUES (
+          $address,
+          $comment,
+          CASE ${mode.toString}
+            WHEN 'FROM_BLOCK' THEN $fromBlock
+            WHEN 'LATEST_KNOWN_BLOCK' THEN (SELECT eth_node_highest_block FROM ucg_state)
+            WHEN 'LATEST_NODE_SYNCED_BLOCK' THEN (SELECT eth_node_current_block FROM ucg_state)
+            WHEN 'LATEST_CHERRYGARDEN_SYNCED_BLOCK' THEN (SELECT synced_to_block_number FROM ucg_state)
+            ELSE NULL -- should fail
+          END
+        );
+        """.execute.apply
         true
       } catch {
         case ex: SQLException => {
@@ -449,10 +603,11 @@ class PostgreSQLStorage(jdbcUrl: String,
   /** Access `ucg_transaction` table. */
   class Transactions {
 
-    def addTransaction(tx: dlt.EthereumMinedTransaction,
-                       // The transaction already has the block number, but, passing the block hash,
-                       // we ensure that the block hasn’t been reorganized
-                       blockHash: String,
+    def addTransaction(
+                        tx: dlt.EthereumMinedTransaction,
+                        // The transaction already has the block number, but, passing the block hash,
+                        // we ensure that the block hasn’t been reorganized
+                        blockHash: String,
                       )(implicit
                         session: DBSession = AutoSession
                       ) {
@@ -466,13 +621,28 @@ class PostgreSQLStorage(jdbcUrl: String,
         gas_used, nonce, transaction_index, gas,
         value, effective_gas_price, cumulative_gas_used
       )
-      VALUES(
+      VALUES (
         (SELECT number FROM ucg_block WHERE hash = $blockHash),
         ${tx.txhash}, ${tx.from}, ${tx.to},
         ${tx.status}, ${tx.isStatusOk}, NULL, ${tx.gasPrice},
         ${tx.gasUsed}, ${tx.nonce}, ${tx.transactionIndex}, ${tx.gas},
         ${tx.value}, ${tx.effectiveGasPrice}, ${tx.cumulativeGasUsed}
       )
+      ON CONFLICT (txhash) DO UPDATE SET
+        block_number = EXCLUDED.block_number,
+        from_hash = EXCLUDED.from_hash,
+        to_hash = EXCLUDED.to_hash,
+        status = EXCLUDED.status,
+        is_status_ok = EXCLUDED.is_status_ok,
+        ucg_comment = EXCLUDED.ucg_comment,
+        gas_price = EXCLUDED.gas_price,
+        gas_used = EXCLUDED.gas_used,
+        nonce = EXCLUDED.nonce,
+        transaction_index = EXCLUDED.transaction_index,
+        gas = EXCLUDED.gas,
+        value = EXCLUDED.value,
+        effective_gas_price = EXCLUDED.effective_gas_price,
+        cumulative_gas_used = EXCLUDED.cumulative_gas_used
       """.execute.apply
     }
   }
@@ -482,6 +652,7 @@ class PostgreSQLStorage(jdbcUrl: String,
   /** Access `ucg_tx_log` table. */
   class TxLogs {
 
+    /** Add a pack of Ethereum TX logs, all at once (atomically). */
     def addTxLogs(
                    blockNumber: Int,
                    transactionHash: String,
@@ -511,6 +682,10 @@ class PostgreSQLStorage(jdbcUrl: String,
         ?,
         ?
       )
+      ON CONFLICT (block_number, log_index) DO UPDATE SET
+        transaction_id = EXCLUDED.transaction_id,
+        topics = EXCLUDED.topics,
+        data = EXCLUDED.data
       """
         .batch(batchParams: _*)
         .apply()(session, implicitly[Factory[Int, Seq[Int]]])
