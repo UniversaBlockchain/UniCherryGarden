@@ -5,6 +5,7 @@ import java.util.concurrent.TimeUnit
 import akka.actor.typed.Behavior
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
+import com.myodov.unicherrygarden.ReiterateDelays.ReiterateDelay
 import com.myodov.unicherrygarden.api.types.{BlockchainSyncStatus, MinedTransfer}
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
@@ -12,7 +13,7 @@ import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.Resp
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses, GetTransfers}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.typesafe.scalalogging.LazyLogging
-import scalikejdbc.DB
+import scalikejdbc.{DB, DBSession}
 
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
@@ -24,150 +25,194 @@ import scala.util.control.NonFatal
 class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
                    protected[this] val ethereumConnector: EthereumRpcSingleConnector) extends LazyLogging {
 
+  /** Run next iteration; and reschedule it. */
+  def nextIteration(): ReiterateDelay = {
+    val result =
+      try {
+        insideEachIteration()
+      } catch {
+        case NonFatal(e) => logger.error("On iteration, got a error", e)
+          ReiterateDelays.ReiterateAfterTimer
+      }
+
+    pgStorage.state.setLastHeartbeatAt
+    result
+  }
+
   /** What should happen within each iteration. */
-  private[this] def insideEachIteration(): Unit = {
+  private[this] def insideEachIteration(): ReiterateDelay = {
     // It is `synchronized`, so that if some iteration takes too long, the next iteration won’t intervene
     // and work on the partially-updated state.
     this.synchronized {
       logger.debug("Iteration...")
       val startTime = System.nanoTime
-
       // First, let's ask the Ethereum node what's the status of the syncing process
 
       val syncingStatusOpt = ethereumConnector.syncingStatus
       val blockNumberOpt = ethereumConnector.latestSyncedBlockNumber
 
-      if (syncingStatusOpt.isEmpty || blockNumberOpt.isEmpty) {
-        logger.error(s"Cannot get eth.syncing ($syncingStatusOpt) / eth.blockNumber ($blockNumberOpt)!")
-        pgStorage.state.setSyncState("Cannot connect to Ethereum node!")
-      } else {
-        val ethSyncing = syncingStatusOpt.get
-        val ethBlockNumber: Int = blockNumberOpt.get.bigInteger.intValueExact
+      val reiterateAfter: ReiterateDelay =
+        if (syncingStatusOpt.isEmpty || blockNumberOpt.isEmpty) {
+          logger.error(s"Cannot get eth.syncing ($syncingStatusOpt) / eth.blockNumber ($blockNumberOpt)!")
+          pgStorage.state.setSyncState("Cannot connect to Ethereum node!")
+          ReiterateDelays.ReiterateAfterTimer
+        } else {
+          val ethSyncing = syncingStatusOpt.get
+          val ethBlockNumber: Int = blockNumberOpt.get.bigInteger.intValueExact
 
-        logger.debug(s"Found eth.syncing ($ethSyncing) / eth.blockNumber ($ethBlockNumber)!")
+          logger.debug(s"Found eth.syncing ($ethSyncing) / eth.blockNumber ($ethBlockNumber)!")
 
-        // If eth.syncing returned False, i.e. we are not syncing – we should assume currentBlock and highestBlock
-        // are equal to eth.blockNumber
-        val (currentBlock, highestBlock) = {
-          if (ethSyncing.isStillSyncing)
-            (ethSyncing.currentBlock, ethSyncing.highestBlock)
-          else
-            (ethBlockNumber, ethBlockNumber)
-        }
+          // If eth.syncing returned False, i.e. we are not syncing – we should assume currentBlock and highestBlock
+          // are equal to eth.blockNumber
+          val (currentBlock, highestBlock) = {
+            if (ethSyncing.isStillSyncing)
+              (ethSyncing.currentBlock, ethSyncing.highestBlock)
+            else
+              (ethBlockNumber, ethBlockNumber)
+          }
 
-        pgStorage.state.setEthNodeData(ethBlockNumber, currentBlock, highestBlock)
+          pgStorage.state.setEthNodeData(ethBlockNumber, currentBlock, highestBlock)
 
-        // Since this moment, we may want to use DB in a single atomic DB transaction;
-        // even though this will involve querying the Ethereum node, maybe even multiple times.
-        DB localTx { implicit session =>
-          val optProgress = pgStorage.progress.getProgress
-          lazy val progress = optProgress.get
-          lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
+          // Since this moment, we may want to use DB in a single atomic DB transaction;
+          // even though this will involve querying the Ethereum node, maybe even multiple times.
+          DB localTx { implicit session =>
+            val optProgress = pgStorage.progress.getProgress
+            lazy val progress = optProgress.get
+            lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
 
-          if (optProgress.isEmpty) {
-            logger.error("Cannot get the progress, something failed!")
-            pgStorage.state.setSyncState("Cannot get the progress state!")
-          } else if (progress.overall.from.isEmpty) {
-            logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!");
-          } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
-            logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
-              s"is ${progress.currencies.minSyncFrom.get}; " +
-              s"it should not be lower than $overallFrom!")
-          } else if (progress.trackedAddresses.minFrom < overallFrom) {
-            logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
-              s"is ${progress.trackedAddresses.minFrom}; " +
-              s"it should not be lower than $overallFrom!")
-          } else {
-            // optProgress is not Empty
-            // progress.overall.from is not Empty
+            if (optProgress.isEmpty) {
+              logger.error("Cannot get the progress, something failed!")
+              pgStorage.state.setSyncState("Cannot get the progress state!")
+              ReiterateDelays.ReiterateAfterTimer
+            } else if (progress.overall.from.isEmpty) {
+              logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!");
+              ReiterateDelays.ReiterateAfterTimer
+            } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
+              logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
+                s"is ${progress.currencies.minSyncFrom.get}; " +
+                s"it should not be lower than $overallFrom!")
+              ReiterateDelays.ReiterateAfterTimer
+            } else if (progress.trackedAddresses.minFrom < overallFrom) {
+              logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
+                s"is ${progress.trackedAddresses.minFrom}; " +
+                s"it should not be lower than $overallFrom!")
+              ReiterateDelays.ReiterateAfterTimer
+              //
+              // Since this point start all the options where the iteration should actually happen
+              //
+            } else if (progress.trackedAddresses.toHasNulls || progress.perCurrencyTrackedAddresses.toHasNulls) {
+              // optProgress is not Empty
+              // progress.overall.from is not Empty
 
-            if (progress.trackedAddresses.toHasNulls || progress.perCurrencyTrackedAddresses.toHasNulls) {
               // Some of tracked_addresses (or currency/tracked address M2Ms) have never been synced.
               // Find the earliest of them and sync.
               logger.debug(s"Progress is: $progress")
 
               pgStorage.progress.getFirstBlockResolvingSomeUnsyncedCTAddress match {
-                case None => logger.error(s"Progress is $progress and some tracked addresses are untouched, but could not find them")
+                case None =>
+                  logger.error(s"Progress is $progress and some tracked addresses are untouched, " +
+                    "but could not find them")
+                  ReiterateDelays.ReiterateAfterTimer
                 case Some(blockToSync) => {
                   pgStorage.state.setSyncState(s"Resyncing untouched addresses: block $blockToSync")
 
-                  val trackedAddresses: Set[String] = pgStorage.trackedAddresses.getJustAddresses
-
-                  logger.debug(s"processing block $blockToSync " +
-                    s"with tracked addresses $trackedAddresses")
-
-                  ethereumConnector.readBlock(blockToSync, trackedAddresses) match {
-                    case None => logger.error(s"Cannot read block $blockToSync")
-                    case Some((block, transactions)) => {
-                      logger.debug(s"Reading block $block:" +
-                        s"txes $transactions")
-
-                      val thisBlockInDbOpt = pgStorage.blocks.getBlockByNumber(block.number)
-                      val prevBlockInDbOpt = pgStorage.blocks.getBlockByNumber(block.number - 1)
-
-                      logger.debug(s"Storing block: $block; " +
-                        s"block may be present as $thisBlockInDbOpt, " +
-                        s"parent may be present as $prevBlockInDbOpt")
-
-                      (thisBlockInDbOpt, prevBlockInDbOpt) match {
-                        case (None, None) => {
-                          // This is the simplest case: this is probably the very first block in the DB
-                          logger.debug(s"Adding first block ${block.number}: " +
-                            s"neither it nor previous block exist in the DB")
-                          pgStorage.blocks.addBlock(block.withoutParentHash)
-                        }
-                        case (None, Some(prevBlockInDb)) if prevBlockInDb.hash == block.parentHash.get => {
-                          // Another simplest case: second and further blocks in the DB.
-                          // Very new block, and its parent matches the existing one
-                          logger.debug(s"Adding new block ${block.number}; parent block ${block.number - 1} " +
-                            s"exists already with proper hash")
-                          pgStorage.blocks.addBlock(block)
-                        }
-                        case (Some(thisBlockInDb), _) if thisBlockInDb.hash == block.hash => {
-                          logger.debug(s"Block ${block.number} exists already in the DB with the same hash ${block.hash}; " +
-                            s"no need to readd the block itself")
-                        }
-                        case (Some(thisBlockInDb), _) if thisBlockInDb.hash != block.hash => {
-                          logger.debug(s"Block ${block.number} exists already in the DB but with ${thisBlockInDb.hash} " +
-                            s"rather than ${block.hash}; need to wipe some blocks!")
-                          throw new RuntimeException("TODO")
-                        }
-                        case (None, Some(prevBlockInDb)) if prevBlockInDb.hash != block.parentHash.get => {
-                          logger.debug(s"Adding new block ${block.number}: " +
-                            s"expecting parent block to be ${prevBlockInDb.hash} but it is ${block.parentHash.get}; " +
-                            s"need to wipe some blocks!")
-                          throw new RuntimeException("TODO")
-                        }
-                      }
-                      logger.debug(s"Now trying to store the transactions: $transactions")
-                      for (tx <- transactions) {
-                        pgStorage.transactions.addTransaction(tx, block.hash)
-                        pgStorage.txlogs.addTxLogs(block.number, tx.txhash, tx.txLogs)
-                      }
-                      pgStorage.state.advanceProgress(block.number, trackedAddresses)
-                    }
-                  }
+                  iterateBlock(blockToSync)
+                  ReiterateDelays.ReiterateImmediately
                 }
               }
+            } else {
+              logger.warn(s"Some other progress case: $progress")
+              ReiterateDelays.ReiterateAfterTimer
             }
-          }
-        } // DB localTx
-      }
+          } // DB localTx
+        }
 
       val duration = Duration(System.nanoTime - startTime, TimeUnit.NANOSECONDS)
       logger.debug(s"Iteration completed in ${duration.toMillis} ms.")
+      reiterateAfter
     }
   }
 
-  /** Run next iteration; and reschedule it. */
-  def nextIteration(): Unit = {
-    try {
-      insideEachIteration()
-    } catch {
-      case NonFatal(e) => logger.error("On iteration, got a error", e)
-    }
+  /** Perform the regular iteration for a specific block number. */
+  private[this] def iterateBlock(blockToSync: Int)(implicit session: DBSession): Unit = {
+    val trackedAddresses: Set[String] = pgStorage.trackedAddresses.getJustAddresses
 
-    pgStorage.state.setLastHeartbeatAt
+    logger.debug(s"processing block $blockToSync " +
+      s"with tracked addresses $trackedAddresses")
+
+    ethereumConnector.readBlock(blockToSync, trackedAddresses) match {
+      case None => logger.error(s"Cannot read block $blockToSync")
+      case Some((block, transactions)) => {
+        logger.debug(s"Reading block $block:" +
+          s"txes $transactions")
+
+        val thisBlockInDbOpt = pgStorage.blocks.getBlockByNumber(block.number)
+        val prevBlockInDbOpt = pgStorage.blocks.getBlockByNumber(block.number - 1)
+
+        logger.debug(s"Storing block: $block; " +
+          s"block may be present as $thisBlockInDbOpt, " +
+          s"parent may be present as $prevBlockInDbOpt")
+
+        (thisBlockInDbOpt, prevBlockInDbOpt) match {
+          case (None, None) => {
+            // This is the simplest case: this is probably the very first block in the DB
+            logger.debug(s"Adding first block ${
+              block.number
+            }: " +
+              s"neither it nor previous block exist in the DB")
+            pgStorage.blocks.addBlock(block.withoutParentHash)
+          }
+          case (None, Some(prevBlockInDb)) if prevBlockInDb.hash == block.parentHash.get => {
+            // Another simplest case: second and further blocks in the DB.
+            // Very new block, and its parent matches the existing one
+            logger.debug(s"Adding new block ${
+              block.number
+            }; parent block ${
+              block.number - 1
+            } " +
+              s"exists already with proper hash")
+            pgStorage.blocks.addBlock(block)
+          }
+          case (Some(thisBlockInDb), _) if thisBlockInDb.hash == block.hash => {
+            logger.debug(s"Block ${
+              block.number
+            } exists already in the DB with the same hash ${
+              block.hash
+            }; " +
+              s"no need to readd the block itself")
+          }
+          case (Some(thisBlockInDb), _) if thisBlockInDb.hash != block.hash => {
+            logger.debug(s"Block ${
+              block.number
+            } exists already in the DB but with ${
+              thisBlockInDb.hash
+            } " +
+              s"rather than ${
+                block.hash
+              }; need to wipe some blocks!")
+            throw new RuntimeException("TODO")
+          }
+          case (None, Some(prevBlockInDb)) if prevBlockInDb.hash != block.parentHash.get => {
+            logger.debug(s"Adding new block ${
+              block.number
+            }: " +
+              s"expecting parent block to be ${
+                prevBlockInDb.hash
+              } but it is ${
+                block.parentHash.get
+              }; " +
+              s"need to wipe some blocks!")
+            throw new RuntimeException("TODO")
+          }
+        }
+        logger.debug(s"Now trying to store the transactions: $transactions")
+        for (tx <- transactions) {
+          pgStorage.transactions.addTransaction(tx, block.hash)
+          pgStorage.txlogs.addTxLogs(block.number, tx.txhash, tx.txLogs)
+        }
+        pgStorage.state.advanceProgress(block.number, trackedAddresses)
+      }
+    }
   }
 }
 
@@ -214,8 +259,14 @@ object CherryPicker extends LazyLogging {
 
         Behaviors.receiveMessage {
           case Iterate() => {
-            picker.nextIteration()
-            timers.startSingleTimer(Iterate(), ITERATION_PERIOD)
+            picker.nextIteration() match {
+              case ReiterateDelays.ReiterateImmediately =>
+                logger.debug("After iteration, next iteration will happen immediately")
+                context.self ! Iterate()
+              case ReiterateDelays.ReiterateAfterTimer =>
+                logger.debug("After iteration, next iteration will happen after timer")
+                timers.startSingleTimer(Iterate(), ITERATION_PERIOD)
+            }
             Behaviors.same
           }
           case message: GetTrackedAddresses.Request => {
@@ -357,4 +408,15 @@ object CherryPicker extends LazyLogging {
       })
     }
   }
+}
+
+/** How long to delay between reiterations.
+ *
+ * Use `Immediate` to reiterate immediately.
+ * Use `Pause` to reiterate after a regular pause.
+ */
+object ReiterateDelays extends Enumeration {
+  type ReiterateDelay = Value
+
+  val ReiterateImmediately, ReiterateAfterTimer = Value
 }
