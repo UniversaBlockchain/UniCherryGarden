@@ -6,7 +6,7 @@ import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
-import com.typesafe.scalalogging.{LazyLogging, Logger}
+import com.typesafe.scalalogging.LazyLogging
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.{CleanResult, MigrateResult}
 import scalikejdbc._
@@ -313,7 +313,7 @@ class PostgreSQLStorage(jdbcUrl: String,
 
       // 2. Update ucg_currency_tracked_address_progress records
       //    where they existed before;
-      //    and where the syncedBlockNumber advanced by one.
+      //    and where the syncedBlockNumber has advanced by one.
       {
         sql"""
         WITH
@@ -365,7 +365,60 @@ class PostgreSQLStorage(jdbcUrl: String,
         """.execute.apply
       }
 
-      // 3. Update ucg_state finally.
+      // 3. Update ucg_tracked_address records;
+      //    where the syncedBlockNumber has advanced by one or was NULL.
+      {
+        sql"""
+        WITH
+            arg(block_number) AS (
+                SELECT $syncedBlockNumber
+            ),
+            actually_tracked_address_arg(address) AS (
+                SELECT unnest(ARRAY [$trackedAddresses])
+            ),
+            actually_tracked_address(id, address) AS (
+                SELECT
+                    ucg_tracked_address.id,
+                    ucg_tracked_address.address
+                FROM
+                    actually_tracked_address_arg
+                    INNER JOIN ucg_tracked_address
+                               USING (address)
+            ),
+            data_to_update (id, synced_to_block_number) AS (
+                SELECT
+                    ucg_tracked_address.id,
+                    arg.block_number AS synced_to_block_number
+                FROM
+                    arg,
+                    ucg_tracked_address
+                    INNER JOIN actually_tracked_address
+                               USING (id)
+                WHERE
+                    -- We update the ucg_tracked_address rows differently depending on
+                    -- whether synced_to_block_number IS NULL or not
+                    (
+                        CASE synced_to_block_number IS NULL
+                            WHEN TRUE THEN -- synced_to_block_number IS NOT NULL:
+                            -- We change the NULL to_block_number to non-NULL
+                            -- only if it the current block matches the synced_from_block_number
+                                arg.block_number = synced_from_block_number
+                            ELSE -- synced_to_block_number IS NOT NULL:
+                            -- Non-NULL to_block_number can only be incremented.
+                                arg.block_number = synced_to_block_number + 1
+                        END
+                    )
+            )
+        UPDATE ucg_tracked_address
+        SET
+            synced_to_block_number = data_to_update.synced_to_block_number
+        FROM data_to_update
+        WHERE
+            ucg_tracked_address.id = data_to_update.id;
+        """.execute.apply
+      }
+
+      // 4. Update ucg_state finally.
       {
         sql"""
         WITH
