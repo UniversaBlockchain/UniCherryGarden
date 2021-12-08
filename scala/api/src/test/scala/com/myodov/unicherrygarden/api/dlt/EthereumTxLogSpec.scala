@@ -5,9 +5,18 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 class EthereumTxLogSpec extends AnyFlatSpec {
   "TxLog" should "validate nulls" in {
+    assertThrows[IllegalArgumentException](
+      EthereumTxLog(
+        0,
+        null,
+        List.empty,
+        ""),
+      "Address cannot be null"
+    )
     assertThrows[NullPointerException](
       EthereumTxLog(
         0,
+        "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
         null,
         ""),
       "Topics cannot be null"
@@ -15,6 +24,7 @@ class EthereumTxLogSpec extends AnyFlatSpec {
     assertThrows[NullPointerException](
       EthereumTxLog(
         0,
+        "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
         List(null),
         ""),
       "Topics cannot contain null"
@@ -22,15 +32,42 @@ class EthereumTxLogSpec extends AnyFlatSpec {
     assertThrows[IllegalArgumentException](
       EthereumTxLog(
         0,
+        "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
         List[Seq[Byte]](),
         null),
       "Data cannot be null"
     )
   }
+  it should "validate improper address" in {
+    assertThrows[IllegalArgumentException](
+      EthereumTxLog(
+        0,
+        "",
+        List(
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "0x000000000000000000000000d701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+          "0x0000000000000000000000001df163ef8699c9b9c16236e6ff016c7834206304"),
+        "0x00000000000000000000000000000000000000000000054c2c9e1a40db440000"),
+      "Address should not be empty"
+    )
+    assertThrows[IllegalArgumentException](
+      EthereumTxLog(
+        0,
+        "0x9e3319636e2126e3c0bc9e3134aec5e1508a46",
+        List(
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "0x000000000000000000000000d701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+          "0x0000000000000000000000001df163ef8699c9b9c16236e6ff016c7834206304"),
+        "0x00000000000000000000000000000000000000000000054c2c9e1a40db440000"),
+      "Address should be 42 symbols long proper hexadecimal"
+    )
+  }
+
   it should "validate logs of improper length" in {
     assertThrows[IllegalArgumentException](
       EthereumTxLog(
         0,
+        "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
         List("0x1234"),
         ""),
       "Logs should be 66 symbols long"
@@ -38,6 +75,7 @@ class EthereumTxLogSpec extends AnyFlatSpec {
     assertThrows[IllegalArgumentException](
       EthereumTxLog(
         0,
+        "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
         List("001234567890123456789012345678901234567890123456789012345678901234"),
         ""),
       "Logs should be 66 symbols long proper hexadecimal"
@@ -48,6 +86,7 @@ class EthereumTxLogSpec extends AnyFlatSpec {
       null !=
         EthereumTxLog(
           0,
+          "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
           List(),
           ""),
       "Minimal empty log is okay"
@@ -56,6 +95,7 @@ class EthereumTxLogSpec extends AnyFlatSpec {
       null !=
         EthereumTxLog(
           0,
+          "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
           List(),
           "0x1234"),
       "Some data is okay"
@@ -64,6 +104,7 @@ class EthereumTxLogSpec extends AnyFlatSpec {
       null !=
         EthereumTxLog(
           0,
+          "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
           List("0x0000000000000000000000001df163ef8699c9b9c16236e6ff016c7834206304"),
           ""),
       "Some topics is okay"
@@ -72,6 +113,7 @@ class EthereumTxLogSpec extends AnyFlatSpec {
       null !=
         EthereumTxLog(
           0,
+          "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
           List("0x0000000000000000000000001df163ef8699c9b9c16236e6ff016c7834206304"),
           "0x1234"),
       "Some topics and data altogether is okay"
@@ -81,6 +123,7 @@ class EthereumTxLogSpec extends AnyFlatSpec {
     assert(
       EthereumTxLog(
         0,
+        "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
         List(
           "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
           "0x000000000000000000000000d701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
@@ -97,6 +140,7 @@ class EthereumTxLogSpec extends AnyFlatSpec {
     assert(
       EthereumTxLog(
         0,
+        "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
         List(
           "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
           "0x0000000000000000000000004b35c092772f6187b1cd2a26c4f537292ce68b2c",
@@ -115,6 +159,7 @@ class EthereumTxLogSpec extends AnyFlatSpec {
     assert(
       EthereumTxLog(
         0,
+        "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
         List(
           "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
           "0x000000000000000000000000cc46bd3ecd8e57edfe9019e2d0de835379424196",

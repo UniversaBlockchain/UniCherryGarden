@@ -13,16 +13,18 @@ import org.web3j.utils.Numeric.{hexStringToByteArray, toHexString}
  * Each single log contains an information about a single event emitted.
  */
 class EthereumTxLog(val logIndex: Int,
+                    val address: String,
                     val topics: Seq[Seq[Byte]],
                     val data: Seq[Byte]
                    ) extends LazyLogging {
   require(logIndex >= 0, logIndex)
   //  require(topics != null && topics.forall(EthUtils.isValidHexString(_, 66)), topics)
+  require(address != null && EthUtils.Addresses.isValidLowercasedAddress(address), address)
   require(topics != null && topics.forall(_.size == 32), (topics, topics.map(_.size)))
   //  require(data != null && (data.equals("") || data.equals("0x") || EthUtils.isValidHexString(data)), data)
   require(data != null, topics)
 
-  override def toString = s"EthereumTxLog(logIndex=$logIndex, topics=$topics, data=$data)"
+  override def toString = s"EthereumTxLog(address=$address, logIndex=$logIndex, topics=$topics, data=$data)"
 
   def canEqual(other: Any): Boolean = other.isInstanceOf[EthereumTxLog]
 
@@ -72,14 +74,16 @@ class EthereumTxLog(val logIndex: Int,
 
 object EthereumTxLog {
   @inline def apply(logIndex: Int,
+                    address: String,
                     topics: Seq[Seq[Byte]],
                     data: Seq[Byte]): EthereumTxLog = {
-    new EthereumTxLog(logIndex, topics, data)
+    new EthereumTxLog(logIndex, address, topics, data)
   }
 
   @inline def apply(logIndex: Int,
+                    address: String,
                     topics: Seq[String],
                     data: String): EthereumTxLog = {
-    new EthereumTxLog(logIndex, topics.map(hexStringToByteArray), hexStringToByteArray(data))
+    new EthereumTxLog(logIndex, address, topics.map(hexStringToByteArray), hexStringToByteArray(data))
   }
 }

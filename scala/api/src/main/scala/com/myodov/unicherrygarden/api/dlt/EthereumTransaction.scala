@@ -115,9 +115,18 @@ class EthereumMinedTransaction( // Transaction-specific
   require(effectiveGasPrice >= 0, effectiveGasPrice)
   require(cumulativeGasUsed >= 0, cumulativeGasUsed)
 
-  override def toString = s"EthereumMinedTransaction(" +
-    s"txhash=$txhash, from=$from, to=$to, nonce=$nonce, value=$value; " +
-    s"status=$status, blockNumber=$blockNumber)"
+  private final val _DEBUG_DETAILED_TOSTRING = false
+
+  override def toString = if (_DEBUG_DETAILED_TOSTRING)
+    s"EthereumMinedTransaction(" +
+      s"txhash=$txhash, from=$from, to=$to, gas=$gas, gasPrice=$gasPrice, nonce=$nonce, value=$value; " +
+      s"status=$status, blockNumber=$blockNumber, transactionIndex=$transactionIndex, " +
+      s"gasUsed=$gasUsed, effectiveGasPrice=$effectiveGasPrice, cumulativeGasUsed=$cumulativeGasUsed, " +
+      s"txLogs=$txLogs"
+  else
+    s"EthereumMinedTransaction(" +
+      s"txhash=$txhash, from=$from, to=$to, nonce=$nonce, value=$value; " +
+      s"status=$status, blockNumber=$blockNumber; txLogs=List(${txLogs.size} items))"
 
   override def canEqual(other: Any): Boolean = other.isInstanceOf[EthereumMinedTransaction]
 

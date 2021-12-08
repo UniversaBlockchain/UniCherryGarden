@@ -209,7 +209,6 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
     )
   }
 
-
   it should "read and parse some heavily used block (with some filters)" in {
     assertResult(
       Some( // Option of Tuple
@@ -238,12 +237,13 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
               txLogs = List(
                 EthereumTxLog(
                   logIndex = 245,
+                  address = "0x26a5b7c23e86f237ff14b9992ce5dafd72057267",
                   topics = List(
                     "0x606834f57405380c4fb88d1f4850326ad3885f014bab3b568dfbf7a041eef738",
                     "0x00000000000000000000000000000000000000000000000030c3635270335800",
                     "0x00000000000000000000000028bacfa4fc8b8ed6f50cbd0eb1d58bc508eb8e15"
                   ),
-                   data = "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+                  data = "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
                 )
               )
             )
@@ -254,6 +254,94 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
       sharedConnector.readBlock(
         blockNumber = 11906373,
         addressesOfInterest = Set("0x28bacfa4fc8b8ed6f50cbd0eb1d58bc508eb8e15"))
+    )
+  }
+
+  "readBlock(10381084)" should "find a transaction generating (5) ERC20 Transfer events from smart contract" in {
+    assertResult(
+      Some( // Option of Tuple
+        (
+          EthereumBlock(
+            10381084,
+            hash = "0x703aaebacb5abb97043cf22d806e0ff1b947b8f09673e8539b1abb78f737b707",
+            parentHash = Some("0x3cee0f907ad3d303a32759d513eb538d58a56e2eb78985edb81841e707b1bde2"),
+            Instant.parse("2020-07-02T16:30:14Z")
+          ),
+          List(
+            EthereumMinedTransaction(
+              txhash = "0xe522cdccd9c83e49a6d2b5f08b02be9c79e057b3deb827eba8944ad44f4da277",
+              from = "0xff571a46c8f4e740952b38b3cd82443ed7b28624",
+              to = Some("0x3452519f4711703e13ea0863487eb8401bd6ae57"),
+              nonce = 119,
+              value = 0,
+              status = Some(1),
+              blockNumber = BigInt(10381084l),
+              gas = BigInt(5000000),
+              gasPrice = BigInt(43000000000l),
+              transactionIndex = 38,
+              gasUsed = BigInt(154501),
+              effectiveGasPrice = BigInt(43000000000l),
+              cumulativeGasUsed = BigInt(3121857),
+              txLogs = List(
+                EthereumTxLog(
+                  logIndex = 82,
+                  address = "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                  topics = List(
+                    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+                    "0x0000000000000000000000003452519f4711703e13ea0863487eb8401bd6ae57",
+                    "0x000000000000000000000000c5d799861ad5f86d11ec88f96628cc0fffc6d913"
+                  ),
+                  data = "0x0000000000000000000000000000000000000000000a3e2bb9929af503de0000"
+                ),
+                EthereumTxLog(
+                  logIndex = 83,
+                  address = "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                  topics = List(
+                    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+                    "0x0000000000000000000000003452519f4711703e13ea0863487eb8401bd6ae57",
+                    "0x0000000000000000000000006a227ac2bbadb8c13876c013af13af418b783b35"
+                  ),
+                  data = "0x0000000000000000000000000000000000000000000002a8563cab4010580000"
+                ),
+                EthereumTxLog(
+                  logIndex = 84,
+                  address = "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                  topics = List(
+                    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+                    "0x0000000000000000000000003452519f4711703e13ea0863487eb8401bd6ae57",
+                    "0x0000000000000000000000001750abab0d4b10f3d522823df7f5f7d53db21071"
+                  ),
+                  data = "0x000000000000000000000000000000000000000000000002b5e3af16b1880000"
+                ),
+                EthereumTxLog(
+                  logIndex = 85,
+                  address = "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                  topics = List(
+                    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+                    "0x0000000000000000000000003452519f4711703e13ea0863487eb8401bd6ae57",
+                    "0x00000000000000000000000093fa98f55a6bd5582f8a2d37bd04de01cb8f5a9f"
+                  ),
+                  data = "0x000000000000000000000000000000000000000000000002b5e3af16b1880000"
+                ),
+                EthereumTxLog(
+                  logIndex = 86,
+                  address = "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                  topics = List(
+                    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+                    "0x0000000000000000000000003452519f4711703e13ea0863487eb8401bd6ae57",
+                    "0x00000000000000000000000093fa98f55a6bd5582f8a2d37bd04de01cb8f5a9f"
+                  ),
+                  data = "0x000000000000000000000000000000000000000000000002b5e3af16b1880000"
+                )
+              )
+            )
+          )
+        )
+      )
+    )(
+      sharedConnector.readBlock(
+        blockNumber = 10381084,
+        addressesOfInterest = Set("0x3452519f4711703e13ea0863487eb8401bd6ae57"))
     )
   }
 }

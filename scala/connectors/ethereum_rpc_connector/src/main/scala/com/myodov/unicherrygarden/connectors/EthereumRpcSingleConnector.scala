@@ -486,6 +486,7 @@ object EthereumRpcSingleConnector {
     .asScala
     .map((l: Log) => dlt.EthereumTxLog(
       l.getLogIndex.intValueExact,
+      l.getAddress,
       l.getTopics.asScala.toList,
       l.getData
     )).toList

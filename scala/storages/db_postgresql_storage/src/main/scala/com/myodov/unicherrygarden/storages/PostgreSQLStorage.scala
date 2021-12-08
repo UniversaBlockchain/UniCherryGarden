@@ -170,7 +170,9 @@ class PostgreSQLStorage(jdbcUrl: String,
                     ON currency.id = cta_progress.currency_id AND
                        address.id = cta_progress.tracked_address_id
       WHERE
-          cta_progress.id IS NULL;
+          cta_progress.id IS NULL
+      ORDER BY least_sync_from_block_number
+      LIMIT 1;
       """.map(_.intOpt("least_sync_from_block_number")) // may be null if no such records
         .single
         .apply
@@ -195,7 +197,9 @@ class PostgreSQLStorage(jdbcUrl: String,
                     ON currency.id = cta_progress.currency_id AND
                        address.id = cta_progress.tracked_address_id
       WHERE
-          cta_progress.synced_to_block_number IS NULL;
+          cta_progress.synced_to_block_number IS NULL
+      ORDER BY least_sync_from_block_number
+      LIMIT 1;
       """.map(_.intOpt("least_sync_from_block_number")) // may be null
         .single
         .apply
@@ -284,7 +288,8 @@ class PostgreSQLStorage(jdbcUrl: String,
 
       // 1. Insert ucg_currency_tracked_address_progress records
       //    where they didn’t exist before;
-      //    and where the syncedBlockNumber matches the start block number of a currency.
+      //    and where the syncedBlockNumber matches the start block number of either a currency or a tracked address
+      //    (whichever is lower).
       {
         sql"""
         WITH
@@ -297,10 +302,11 @@ class PostgreSQLStorage(jdbcUrl: String,
                 SELECT unnest(ARRAY[$trackedAddresses])
             ),
             -- Preprocess the function argument and find the IDs of tracked addresses
-            actually_tracked_address(id, address) AS (
+            actually_tracked_address(id, address, synced_from_block_number) AS (
                 SELECT
                     ucg_tracked_address.id,
-                    ucg_tracked_address.address
+                    ucg_tracked_address.address,
+                    ucg_tracked_address.synced_from_block_number
                 FROM
                     actually_tracked_address_arg
                     INNER JOIN ucg_tracked_address
@@ -308,27 +314,29 @@ class PostgreSQLStorage(jdbcUrl: String,
             ),
             data_to_insert(currency_id, tracked_address_id, synced_from_block_number, synced_to_block_number) AS (
                 SELECT
-                    ucg_currency.id AS currency_id,
-                    actually_tracked_address.id AS tracked_address_id,
-                    ucg_currency.sync_from_block_number AS synced_from_block_number,
+                    currency.id AS currency_id,
+                    address.id AS tracked_address_id,
+                    LEAST(currency.sync_from_block_number,
+                          address.synced_from_block_number) AS synced_from_block_number,
                     arg.block_number AS synced_to_block_number
                 FROM
                     arg,
                     -- Take all currencies...
-                    ucg_currency
+                    ucg_currency currency
                         -- ... and all tracked addresses...
-                    CROSS JOIN actually_tracked_address
+                    CROSS JOIN actually_tracked_address address
                         -- cta_progress.id will be NULL if such pair of (currency_id, tracked_address_id)
                         -- is not added yet.
                     LEFT JOIN ucg_currency_tracked_address_progress AS cta_progress
-                              ON ucg_currency.id = cta_progress.currency_id AND
-                                 actually_tracked_address.id = cta_progress.tracked_address_id
+                              ON currency.id = cta_progress.currency_id AND
+                                 address.id = cta_progress.tracked_address_id
                 WHERE
                     -- This pair is not added yet
                     cta_progress.id IS NULL AND
                     -- We add a new record ONLY if the just-synced block number is equal
-                    -- to synced_from field for a currency
-                    arg.block_number = ucg_currency.sync_from_block_number
+                    -- to the cta.synced_from (which is the smaller of currency.from and address.from).
+                    arg.block_number = LEAST(currency.sync_from_block_number,
+                                             address.synced_from_block_number)
             )
         INSERT INTO ucg_currency_tracked_address_progress(
           currency_id,
@@ -353,10 +361,11 @@ class PostgreSQLStorage(jdbcUrl: String,
             actually_tracked_address_arg(address) AS (
                 SELECT unnest(ARRAY[$trackedAddresses])
             ),
-            actually_tracked_address(id, address) AS (
+            actually_tracked_address(id, address, synced_from_block_number) AS (
                 SELECT
                     ucg_tracked_address.id,
-                    ucg_tracked_address.address
+                    ucg_tracked_address.address,
+                    ucg_tracked_address.synced_from_block_number
                 FROM
                     actually_tracked_address_arg
                     INNER JOIN ucg_tracked_address
@@ -364,20 +373,20 @@ class PostgreSQLStorage(jdbcUrl: String,
             ),
             data_to_update (currency_id, tracked_address_id, synced_to_block_number) AS (
                 SELECT
-                    ucg_currency.id AS currency_id,
-                    actually_tracked_address.id AS tracked_address_id,
+                    currency.id AS currency_id,
+                    address.id AS tracked_address_id,
                     arg.block_number AS synced_to_block_number
                 FROM
                     arg,
                     -- Take all currencies...
-                    ucg_currency
+                    ucg_currency currency
                         -- ... and all tracked addresses...
-                    CROSS JOIN actually_tracked_address
+                    CROSS JOIN actually_tracked_address address
                         -- cta_progress.id will be NOT NULL if such pair of (currency_id, tracked_address_id)
                         -- already exists
                     LEFT JOIN ucg_currency_tracked_address_progress AS cta_progress
-                              ON ucg_currency.id = cta_progress.currency_id AND
-                                 actually_tracked_address.id = cta_progress.tracked_address_id
+                              ON currency.id = cta_progress.currency_id AND
+                                 address.id = cta_progress.tracked_address_id
                 WHERE
                     -- This pair exists already
                     cta_progress.id IS NOT NULL AND
@@ -385,8 +394,12 @@ class PostgreSQLStorage(jdbcUrl: String,
                     -- whether synced_to_block_number IS NULL or not.
                     (
                       -- We change the NULL to_block_number to non-NULL
-                      -- only if it the current block matches the synced_from_block_number
-                      (synced_to_block_number IS NULL AND arg.block_number = synced_from_block_number) OR
+                      -- only if it the current block matches the good synced_from_block_number
+                      (
+                        synced_to_block_number IS NULL AND
+                        arg.block_number = LEAST(currency.sync_from_block_number,
+                                                 address.synced_from_block_number)
+                      ) OR
                       -- When synced_to_block_number IS NOT NULL:
                       -- Non-NULL to_block_number can only be incremented.
                       (arg.block_number = synced_to_block_number + 1)
@@ -413,10 +426,12 @@ class PostgreSQLStorage(jdbcUrl: String,
             actually_tracked_address_arg(address) AS (
                 SELECT unnest(ARRAY [$trackedAddresses])
             ),
-            actually_tracked_address(id, address) AS (
+            actually_tracked_address(id, address, synced_from_block_number, synced_to_block_number) AS (
                 SELECT
                     ucg_tracked_address.id,
-                    ucg_tracked_address.address
+                    ucg_tracked_address.address,
+                    ucg_tracked_address.synced_from_block_number,
+                    ucg_tracked_address.synced_to_block_number
                 FROM
                     actually_tracked_address_arg
                     INNER JOIN ucg_tracked_address
@@ -424,20 +439,22 @@ class PostgreSQLStorage(jdbcUrl: String,
             ),
             data_to_update (id, synced_to_block_number) AS (
                 SELECT
-                    ucg_tracked_address.id,
+                    address.id,
                     arg.block_number AS synced_to_block_number
                 FROM
                     arg,
-                    ucg_tracked_address
-                    INNER JOIN actually_tracked_address
-                               USING (id)
+                    actually_tracked_address address
                 WHERE
                     -- We update the record differently depending on
                     -- whether synced_to_block_number IS NULL or not.
                     (
                       -- We change the NULL to_block_number to non-NULL
                       -- only if it the current block matches the synced_from_block_number
-                      (synced_to_block_number IS NULL AND arg.block_number = synced_from_block_number) OR
+                      -- for this specific address.
+                      (
+                        address.synced_to_block_number IS NULL AND
+                        arg.block_number = address.synced_from_block_number
+                      ) OR
                       -- When synced_to_block_number IS NOT NULL:
                       -- Non-NULL to_block_number can only be incremented.
                       (arg.block_number = synced_to_block_number + 1)
@@ -751,6 +768,7 @@ class PostgreSQLStorage(jdbcUrl: String,
         transactionHash,
         blockNumber,
         t.logIndex,
+        t.address,
         t.topics.map(_.toArray).toArray,
         t.data.toArray
       ))
@@ -759,6 +777,7 @@ class PostgreSQLStorage(jdbcUrl: String,
         transaction_id,
         block_number,
         log_index,
+        address,
         topics,
         data
       )
@@ -767,10 +786,12 @@ class PostgreSQLStorage(jdbcUrl: String,
         ?,
         ?,
         ?,
+        ?,
         ?
       )
       ON CONFLICT (block_number, log_index) DO UPDATE SET
         transaction_id = EXCLUDED.transaction_id,
+        address = EXCLUDED.address,
         topics = EXCLUDED.topics,
         data = EXCLUDED.data
       """
