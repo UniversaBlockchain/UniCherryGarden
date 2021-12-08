@@ -152,21 +152,51 @@ class PostgreSQLStorage(jdbcUrl: String,
         .apply
     }
 
-    /** If we have any Currency Tracked Addresses (CT Addresses) which have never been synced,
+    /** If we have any Currency Tracked Addresses (CT Addresses) which have never been started to sync,
+     * find a (earliest possible) block to sync any of them.
+     *
+     * @return: [[Option]] with the first never-yet-started CT address;
+     *          Option is empty if there is no such address found.
+     */
+    def getFirstBlockResolvingSomeNeverStartedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
+      sql"""
+      SELECT
+          LEAST(currency.sync_from_block_number, address.synced_from_block_number)
+            AS least_sync_from_block_number
+      FROM
+          ucg_currency currency
+          CROSS JOIN ucg_tracked_address address
+          LEFT JOIN ucg_currency_tracked_address_progress cta_progress
+                    ON currency.id = cta_progress.currency_id AND
+                       address.id = cta_progress.tracked_address_id
+      WHERE
+          cta_progress.id IS NULL;
+      """.map(_.intOpt("least_sync_from_block_number")) // may be null if no such records
+        .single
+        .apply
+        .flatten // Option[Option[Int]] to Option[Int]
+    }
+
+    /** If we have any Currency Tracked Addresses (CT Addresses) which have never been synced till the end,
      * find a (earliest possible) block to sync any of them.
      *
      * @return: [[Option]] with the first unsynced PCT address;
      *          Option is empty if there is no such address found.
      */
-    def getFirstBlockResolvingSomeUnsyncedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
+    def getFirstBlockResolvingSomeNeverSyncedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
       sql"""
-      SELECT MIN(ucg_currency.sync_from_block_number) AS min_sync_from_block_number
+      SELECT
+          LEAST(currency.sync_from_block_number, address.synced_from_block_number)
+            AS least_sync_from_block_number
       FROM
-          ucg_currency
+          ucg_currency currency
+          CROSS JOIN ucg_tracked_address address
           LEFT JOIN ucg_currency_tracked_address_progress cta_progress
-                    ON ucg_currency.id = cta_progress.currency_id
-      WHERE cta_progress.synced_from_block_number IS NULL;
-      """.map(_.intOpt("min_sync_from_block_number")) // may be null
+                    ON currency.id = cta_progress.currency_id AND
+                       address.id = cta_progress.tracked_address_id
+      WHERE
+          cta_progress.synced_to_block_number IS NULL;
+      """.map(_.intOpt("least_sync_from_block_number")) // may be null
         .single
         .apply
         .flatten // Option[Option[Int]] to Option[Int]
@@ -351,9 +381,16 @@ class PostgreSQLStorage(jdbcUrl: String,
                 WHERE
                     -- This pair exists already
                     cta_progress.id IS NOT NULL AND
-                    -- We update a record ONLY if the just-synced block number is equal
-                    -- to existing block number + 1
-                        arg.block_number = cta_progress.synced_to_block_number + 1
+                    -- We update the record differently depending on
+                    -- whether synced_to_block_number IS NULL or not.
+                    (
+                      -- We change the NULL to_block_number to non-NULL
+                      -- only if it the current block matches the synced_from_block_number
+                      (synced_to_block_number IS NULL AND arg.block_number = synced_from_block_number) OR
+                      -- When synced_to_block_number IS NOT NULL:
+                      -- Non-NULL to_block_number can only be incremented.
+                      (arg.block_number = synced_to_block_number + 1)
+                    )
             )
         UPDATE ucg_currency_tracked_address_progress AS upd_cta_progress
         SET
@@ -395,18 +432,15 @@ class PostgreSQLStorage(jdbcUrl: String,
                     INNER JOIN actually_tracked_address
                                USING (id)
                 WHERE
-                    -- We update the ucg_tracked_address rows differently depending on
-                    -- whether synced_to_block_number IS NULL or not
+                    -- We update the record differently depending on
+                    -- whether synced_to_block_number IS NULL or not.
                     (
-                        CASE synced_to_block_number IS NULL
-                            WHEN TRUE THEN -- synced_to_block_number IS NOT NULL:
-                            -- We change the NULL to_block_number to non-NULL
-                            -- only if it the current block matches the synced_from_block_number
-                                arg.block_number = synced_from_block_number
-                            ELSE -- synced_to_block_number IS NOT NULL:
-                            -- Non-NULL to_block_number can only be incremented.
-                                arg.block_number = synced_to_block_number + 1
-                        END
+                      -- We change the NULL to_block_number to non-NULL
+                      -- only if it the current block matches the synced_from_block_number
+                      (synced_to_block_number IS NULL AND arg.block_number = synced_from_block_number) OR
+                      -- When synced_to_block_number IS NOT NULL:
+                      -- Non-NULL to_block_number can only be incremented.
+                      (arg.block_number = synced_to_block_number + 1)
                     )
             )
         UPDATE ucg_tracked_address

@@ -177,16 +177,16 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
           validReceipts.iterator.map(v => v.getTransactionHash -> v).toMap
         require(receiptsByTrHash.size == validReceipts.size, (receiptsByTrHash.size, validReceipts.size))
 
-        logger.debug("Transactions:")
-        for (tr <- transactions) {
-          val value = EthUtils.Wei.valueFromWeis(tr.getValue)
-          logger.debug(s"Transaction: Hash ${tr.getHash}: value $value, gas ${tr.getGas}, gas price ${tr.getGasPrice}")
-        }
+//        logger.debug("Transactions:")
+//        for (tr <- transactions) {
+//          val value = EthUtils.Wei.valueFromWeis(tr.getValue)
+//          logger.debug(s"Transaction: Hash ${tr.getHash}: value $value, gas ${tr.getGas}, gas price ${tr.getGasPrice}")
+//        }
 
-        logger.debug(s"Transaction receipts (very detailed): $receiptsByTrHash")
-        for ((key, trRec) <- receiptsByTrHash) {
-          logger.debug(s"TR receipt ($key): $trRec")
-        }
+//        logger.debug(s"Transaction receipts (very detailed): $receiptsByTrHash")
+//        for ((key, trRec) <- receiptsByTrHash) {
+//          logger.debug(s"TR receipt ($key): $trRec")
+//        }
 
         val duration = Duration(System.nanoTime - startTime, TimeUnit.NANOSECONDS)
         logger.debug(s"Duration ${duration.toMillis} ms")
@@ -256,9 +256,6 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
             val trHash = w3jTr.getHash
             val w3jTrReceipt = w3jReceiptsByTrHash(trHash) // it must exist
             assert(trHash == w3jTrReceipt.getTransactionHash, (trHash, w3jTrReceipt.getTransactionHash))
-
-            logger.debug(s"Building tx $trHash")
-            logger.debug(s"Status? ${w3jTrReceipt.getStatus}")
 
             dlt.EthereumMinedTransaction(
               // *** Before-mined transaction ***

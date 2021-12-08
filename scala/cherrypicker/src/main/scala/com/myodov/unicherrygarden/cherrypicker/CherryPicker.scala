@@ -97,32 +97,54 @@ class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
                 s"is ${progress.trackedAddresses.minFrom}; " +
                 s"it should not be lower than $overallFrom!")
               ReiterateDelays.ReiterateAfterTimer
-              //
-              // Since this point start all the options where the iteration should actually happen
-              //
-            } else if (progress.trackedAddresses.toHasNulls || progress.perCurrencyTrackedAddresses.toHasNulls) {
-              // optProgress is not Empty
+              // ------------------------------------------------------------------------------
+              // Since this point go all the options where the iteration should actually happen
+              // ------------------------------------------------------------------------------
+            } else if (progress.blocks.from.isEmpty) {
+              // progress.overall.from is not Empty
+              val blockToSync = progress.overall.from.get
+              logger.info(s"Starting from the very first block ($blockToSync)...")
+              iterateBlock(blockToSync)
+              ReiterateDelays.ReiterateImmediately
+            } else { // Fast sync
               // progress.overall.from is not Empty
 
-              // Some of tracked_addresses (or currency/tracked address M2Ms) have never been synced.
-              // Find the earliest of them and sync.
-              logger.debug(s"Progress is: $progress")
-
-              pgStorage.progress.getFirstBlockResolvingSomeUnsyncedCTAddress match {
-                case None =>
-                  logger.error(s"Progress is $progress and some tracked addresses are untouched, " +
-                    "but could not find them")
-                  ReiterateDelays.ReiterateAfterTimer
-                case Some(blockToSync) => {
-                  pgStorage.state.setSyncState(s"Resyncing untouched addresses: block $blockToSync")
-
-                  iterateBlock(blockToSync)
-                  ReiterateDelays.ReiterateImmediately
-                }
+              // There may be multiple options of blocks to choose:
+              // 1. Just the next block to read.
+              val firstUnreadBlock: Option[Int] = progress.blocks.to.map(_ + 1)
+              // 2. We never started some (currency, tracked address) pair?
+              // Use the least from_block (from either currency or tracked address).
+              val firstNeverCTAStartedBlock: Option[Int] =
+              pgStorage.progress.getFirstBlockResolvingSomeNeverStartedCTAddress
+              // 3. We never completed some (currency, tracked address) pair?
+              // Use the least from_block (from either currency or tracked address).
+              val firstNeverCTASyncedBlock: Option[Int] =
+              pgStorage.progress.getFirstBlockResolvingSomeNeverSyncedCTAddress
+              // 4. Some of CTA to-blocks is smaller than others?
+              // Use it.
+              val firstMismatchingCTAToBlock: Option[Int] =
+              (progress.perCurrencyTrackedAddresses.minTo, progress.perCurrencyTrackedAddresses.maxTo) match {
+                case (Some(minTo), Some(maxTo)) if minTo < maxTo =>
+                  Some(minTo + 1)
+                case _ =>
+                  None
               }
-            } else {
-              logger.warn(s"Some other progress case: $progress")
-              ReiterateDelays.ReiterateAfterTimer
+
+              val blocksToCompare = List(
+                firstUnreadBlock,
+                firstNeverCTAStartedBlock,
+                firstNeverCTASyncedBlock,
+                firstMismatchingCTAToBlock
+              )
+
+              logger.debug(s"Progress is $progress: " +
+                s"choosing between $blocksToCompare")
+
+              val blockToSync = blocksToCompare.flatten.min
+
+              logger.info(s"Fast-syncing $blockToSync block")
+              iterateBlock(blockToSync)
+              ReiterateDelays.ReiterateImmediately
             }
           } // DB localTx
         }

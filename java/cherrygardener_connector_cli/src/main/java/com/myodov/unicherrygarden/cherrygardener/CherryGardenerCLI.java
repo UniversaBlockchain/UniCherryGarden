@@ -322,7 +322,7 @@ public class CherryGardenerCLI {
          */
         static TrackFromBlockOption fromSpecificBlock(int block) {
             assert block >= 0 : block;
-            return new TrackFromBlockOption(AddTrackedAddresses.StartTrackingAddressMode.LATEST_KNOWN_BLOCK, block);
+            return new TrackFromBlockOption(AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK, block);
         }
 
         /**
