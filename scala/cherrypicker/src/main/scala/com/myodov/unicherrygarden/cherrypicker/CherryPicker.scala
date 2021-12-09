@@ -1,5 +1,7 @@
 package com.myodov.unicherrygarden
 
+import java.time
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 import akka.actor.typed.Behavior
@@ -22,11 +24,199 @@ import scala.util.control.NonFatal
 
 
 /** The main actor “cherry-picking” the data from the Ethereum blockchain into the DB. */
-class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
-                   protected[this] val ethereumConnector: EthereumRpcSingleConnector) extends LazyLogging {
+private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
+                           protected[this] val ethereumConnector: EthereumRpcSingleConnector)
+  extends LazyLogging {
+
+  import CherryPicker.{ITERATION_PERIOD, Iterate, propBuildTimestampStr, propVersionStr}
+
+  private[this] var fastSyncStats: Option[FastSyncStats] = None
+
+  /** First state: when just launching the CherryPicker after shutdown/restart. */
+  private def launch(): Behavior[CherryPickerRequest] = {
+    Behaviors.setup { context =>
+      logger.info(s"Launching CherryPicker: v. $propVersionStr, built at $propBuildTimestampStr")
+
+      // Register all service keys
+      List(
+        GetTrackedAddresses.SERVICE_KEY,
+        AddTrackedAddresses.SERVICE_KEY,
+        GetBalances.SERVICE_KEY,
+        GetTransfers.SERVICE_KEY
+      ).foreach(context.system.receptionist ! Receptionist.Register(_, context.self))
+
+      logger.debug("Setting up CherryPicker actor with timers")
+      Behaviors.withTimers(timers => {
+        // On startup, schedule a single iteration;
+        // It will re-schedule itself when/if needed.
+        // We don’t setup a “regular” timer because sometimes a new iteration should happen without a pause;
+        // and sometimes a new iteration should happen not 5 (or so) seconds after the previous iteration *started*,
+        // but 5 seconds after a previous iteration *completed*.
+        // The latter though can be resolved by scheduleWithFixedDelay.
+        logger.error("Running first iteration of CherryPicker...")
+        context.self ! Iterate() // TODO: enable to start iterations
+
+        Behaviors.receiveMessage {
+          case Iterate() => {
+            nextIteration() match {
+              case ReiterateDelays.ReiterateImmediately =>
+                logger.debug("After iteration, next iteration will happen immediately")
+
+                fastSyncStats =
+                  if (fastSyncStats.isEmpty) Some(FastSyncStats())
+                  else fastSyncStats map (_.incrementBlocks)
+
+                logger.debug(s"Fast sync performance: ${fastSyncStats.get}")
+
+                context.self ! Iterate()
+              case ReiterateDelays.ReiterateAfterTimer =>
+                logger.debug("After iteration, next iteration will happen after timer")
+                timers.startSingleTimer(Iterate(), ITERATION_PERIOD)
+            }
+            Behaviors.same
+          }
+          case message: GetTrackedAddresses.Request => {
+            logger.debug(s"Receiving GetTrackedAddresses message: $message")
+            val payload: GetTrackedAddresses.GTARequestPayload = message.payload
+
+            val results: List[Response.TrackedAddressInformation] = pgStorage
+              .trackedAddresses
+              .getTrackedAddresses(
+                payload.includeComment,
+                payload.includeSyncedFrom,
+                payload.includeSyncedTo)
+              .map(item => new Response.TrackedAddressInformation(
+                item.address,
+                // The subsequent items may be Java-nullable
+                item.comment.orNull,
+                // Converting the Option[Int] to nullable Java Integers needs some cunning
+                item.syncedFrom.map(Integer.valueOf).orNull,
+                item.syncedTo.map(Integer.valueOf).orNull)
+              )
+
+            val response = new GetTrackedAddresses.Response(
+              results.asJava,
+              payload.includeComment,
+              payload.includeSyncedFrom,
+              payload.includeSyncedTo
+            )
+            logger.debug(s"Replying with $response")
+            message.replyTo ! response
+            Behaviors.same
+          }
+          case message: AddTrackedAddresses.Request => {
+            logger.debug(s"Receiving AddTrackedAddresses message: $message")
+            val payload: AddTrackedAddresses.ATARequestPayload = message.payload
+
+            // Here goes the list of all added addresses
+            // (as Options; with `None` instead of any address that failed to add)
+            val addressesMaybeAdded: List[Option[String]] = (
+              for (addr: AddTrackedAddresses.AddressDataToTrack <- payload.addressesToTrack.asScala.toList)
+                yield {
+                  if (pgStorage.trackedAddresses.addTrackedAddress(
+                    addr.address,
+                    Option(addr.comment), // nullable
+                    payload.trackingMode,
+                    // The next line needs cunning processing of java.lang.Integer,
+                    // as otherwise Option(null:Integer): Option[Int]
+                    // will be evaluated as Some(0)
+                    Option(payload.fromBlock).map(_.toInt) // nullable
+                  )) {
+                    Some(addr.address)
+                  } else {
+                    None
+                  }
+                }
+              )
+
+            // Flatten it to just the added elements
+            val addressesActuallyAdded: Set[String] = addressesMaybeAdded.flatten.toSet
+            logger.debug(s"Actually added the following addresses to watch: $addressesActuallyAdded")
+
+            val response = new AddTrackedAddresses.Response(
+              addressesActuallyAdded.asJava
+            )
+            logger.debug(s"Replying with $response")
+            message.replyTo ! response
+            Behaviors.same
+          }
+          case message: GetBalances.Request => {
+            logger.debug(s"Receiving GetBalances message: $message")
+            message.replyTo ! new GetBalances.Response(
+              new GetBalances.BalanceRequestResult(
+                false,
+                0,
+                //                List[CurrencyBalanceFact](
+                //                  new CurrencyBalanceFact(
+                //                    Currency.newEthCurrency(),
+                //                    BigDecimal(123.45).underlying(),
+                //                    BalanceRequestResult.CurrencyBalanceFact.BalanceSyncState.SYNCED_TO_LATEST_UNICHERRYGARDEN_TOKEN_STATE,
+                //                    15
+                //                  )
+                //                ).asJava,
+                List.empty[GetBalances.BalanceRequestResult.CurrencyBalanceFact].asJava,
+                new BlockchainSyncStatus(0, 0, 0))
+            )
+            Behaviors.same
+          }
+          case message: GetTransfers.Request => {
+            logger.debug(s"Receiving GetTransfers message: $message")
+            message.replyTo ! new GetTransfers.Response(
+              new GetTransfers.TransfersRequestResult(
+                true,
+                0,
+                // List(
+                //   new MinedTransfer(
+                //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+                //     "0xedcc6f8f20962e6747369a71a5b89256289da87f",
+                //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                //     BigDecimal("10045.6909000003").underlying,
+                //     new MinedTx(
+                //       "0x9cb54df2444658891df0c8165fecaecb4a2f1197ebe7b175dda1130b91ea4c9f",
+                //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+                //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                //       new Block(
+                //         13628884,
+                //         "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
+                //         Instant.ofEpochSecond(1637096843)),
+                //       111
+                //     ),
+                //     144),
+                //   // UTNP out #6
+                //   new MinedTransfer(
+                //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+                //     "0x74644fd700c11dcc262eed1c59715ee874f65251",
+                //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                //     BigDecimal("30000").underlying,
+                //     new MinedTx(
+                //       "0x3f0c1e4f1e903381c1e8ad2ad909482db20a747e212fbc32a4c626cad6bb14ab",
+                //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+                //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+                //       new Block(
+                //         13631007,
+                //         "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
+                //         Instant.ofEpochSecond(1637125704)),
+                //       133
+                //     ),
+                //     173)
+                // ).asJava,
+                List.empty[MinedTransfer].asJava,
+                new BlockchainSyncStatus(0, 0, 0)
+              )
+            )
+            Behaviors.same
+          }
+          case unknownMessage => {
+            logger.error(s"Unexpected message $unknownMessage")
+            Behaviors.unhandled
+          }
+        }
+      })
+    }
+  }
 
   /** Run next iteration; and reschedule it. */
-  def nextIteration(): ReiterateDelay = {
+  private def nextIteration(): ReiterateDelay = {
     val result =
       try {
         insideEachIteration()
@@ -253,183 +443,8 @@ object CherryPicker extends LazyLogging {
 
   /** Object constructor. */
   def apply(pgStorage: PostgreSQLStorage,
-            ethereumConnector: EthereumRpcSingleConnector): Behavior[CherryPickerRequest] = {
-
-    val picker = new CherryPicker(pgStorage, ethereumConnector)
-
-    Behaviors.setup { context =>
-      logger.info(s"Launching CherryPicker: v. $propVersionStr, built at $propBuildTimestampStr")
-
-      // Register all service keys
-      List(
-        GetTrackedAddresses.SERVICE_KEY,
-        AddTrackedAddresses.SERVICE_KEY,
-        GetBalances.SERVICE_KEY,
-        GetTransfers.SERVICE_KEY
-      ).foreach(context.system.receptionist ! Receptionist.Register(_, context.self))
-
-      logger.debug("Setting up CherryPicker actor with timers")
-      Behaviors.withTimers(timers => {
-        // On startup, schedule a single iteration;
-        // It will re-schedule itself when/if needed.
-        // We don’t setup a “regular” timer because sometimes a new iteration should happen without a pause;
-        // and sometimes a new iteration should happen not 5 (or so) seconds after the previous iteration *started*,
-        // but 5 seconds after a previous iteration *completed*.
-        // The latter though can be resolved by scheduleWithFixedDelay.
-        logger.error("Running first iteration of CherryPicker...")
-        context.self ! Iterate() // TODO: enable to start iterations
-
-        Behaviors.receiveMessage {
-          case Iterate() => {
-            picker.nextIteration() match {
-              case ReiterateDelays.ReiterateImmediately =>
-                logger.debug("After iteration, next iteration will happen immediately")
-                context.self ! Iterate()
-              case ReiterateDelays.ReiterateAfterTimer =>
-                logger.debug("After iteration, next iteration will happen after timer")
-                timers.startSingleTimer(Iterate(), ITERATION_PERIOD)
-            }
-            Behaviors.same
-          }
-          case message: GetTrackedAddresses.Request => {
-            logger.debug(s"Receiving GetTrackedAddresses message: $message")
-            val payload: GetTrackedAddresses.GTARequestPayload = message.payload
-
-            val results: List[Response.TrackedAddressInformation] = pgStorage
-              .trackedAddresses
-              .getTrackedAddresses(
-                payload.includeComment,
-                payload.includeSyncedFrom,
-                payload.includeSyncedTo)
-              .map(item => new Response.TrackedAddressInformation(
-                item.address,
-                // The subsequent items may be Java-nullable
-                item.comment.orNull,
-                // Converting the Option[Int] to nullable Java Integers needs some cunning
-                item.syncedFrom.map(Integer.valueOf).orNull,
-                item.syncedTo.map(Integer.valueOf).orNull)
-              )
-
-            val response = new GetTrackedAddresses.Response(
-              results.asJava,
-              payload.includeComment,
-              payload.includeSyncedFrom,
-              payload.includeSyncedTo
-            )
-            logger.debug(s"Replying with $response")
-            message.replyTo ! response
-            Behaviors.same
-          }
-          case message: AddTrackedAddresses.Request => {
-            logger.debug(s"Receiving AddTrackedAddresses message: $message")
-            val payload: AddTrackedAddresses.ATARequestPayload = message.payload
-
-            // Here goes the list of all added addresses
-            // (as Options; with `None` instead of any address that failed to add)
-            val addressesMaybeAdded: List[Option[String]] = (
-              for (addr: AddTrackedAddresses.AddressDataToTrack <- payload.addressesToTrack.asScala.toList)
-                yield {
-                  if (pgStorage.trackedAddresses.addTrackedAddress(
-                    addr.address,
-                    Option(addr.comment), // nullable
-                    payload.trackingMode,
-                    // The next line needs cunning processing of java.lang.Integer,
-                    // as otherwise Option(null:Integer): Option[Int]
-                    // will be evaluated as Some(0)
-                    Option(payload.fromBlock).map(_.toInt) // nullable
-                  )) {
-                    Some(addr.address)
-                  } else {
-                    None
-                  }
-                }
-              )
-
-            // Flatten it to just the added elements
-            val addressesActuallyAdded: Set[String] = addressesMaybeAdded.flatten.toSet
-            logger.debug(s"Actually added the following addresses to watch: $addressesActuallyAdded")
-
-            val response = new AddTrackedAddresses.Response(
-              addressesActuallyAdded.asJava
-            )
-            logger.debug(s"Replying with $response")
-            message.replyTo ! response
-            Behaviors.same
-          }
-          case message: GetBalances.Request => {
-            logger.debug(s"Receiving GetBalances message: $message")
-            message.replyTo ! new GetBalances.Response(
-              new GetBalances.BalanceRequestResult(
-                false,
-                0,
-                //                List[CurrencyBalanceFact](
-                //                  new CurrencyBalanceFact(
-                //                    Currency.newEthCurrency(),
-                //                    BigDecimal(123.45).underlying(),
-                //                    BalanceRequestResult.CurrencyBalanceFact.BalanceSyncState.SYNCED_TO_LATEST_UNICHERRYGARDEN_TOKEN_STATE,
-                //                    15
-                //                  )
-                //                ).asJava,
-                List.empty[GetBalances.BalanceRequestResult.CurrencyBalanceFact].asJava,
-                new BlockchainSyncStatus(0, 0, 0))
-            )
-            Behaviors.same
-          }
-          case message: GetTransfers.Request => {
-            logger.debug(s"Receiving GetTransfers message: $message")
-            message.replyTo ! new GetTransfers.Response(
-              new GetTransfers.TransfersRequestResult(
-                true,
-                0,
-                // List(
-                //   new MinedTransfer(
-                //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //     "0xedcc6f8f20962e6747369a71a5b89256289da87f",
-                //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //     BigDecimal("10045.6909000003").underlying,
-                //     new MinedTx(
-                //       "0x9cb54df2444658891df0c8165fecaecb4a2f1197ebe7b175dda1130b91ea4c9f",
-                //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //       new Block(
-                //         13628884,
-                //         "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
-                //         Instant.ofEpochSecond(1637096843)),
-                //       111
-                //     ),
-                //     144),
-                //   // UTNP out #6
-                //   new MinedTransfer(
-                //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //     "0x74644fd700c11dcc262eed1c59715ee874f65251",
-                //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //     BigDecimal("30000").underlying,
-                //     new MinedTx(
-                //       "0x3f0c1e4f1e903381c1e8ad2ad909482db20a747e212fbc32a4c626cad6bb14ab",
-                //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //       new Block(
-                //         13631007,
-                //         "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
-                //         Instant.ofEpochSecond(1637125704)),
-                //       133
-                //     ),
-                //     173)
-                // ).asJava,
-                List.empty[MinedTransfer].asJava,
-                new BlockchainSyncStatus(0, 0, 0)
-              )
-            )
-            Behaviors.same
-          }
-          case unknownMessage => {
-            logger.error(s"Unexpected message $unknownMessage")
-            Behaviors.same
-          }
-        }
-      })
-    }
-  }
+            ethereumConnector: EthereumRpcSingleConnector): Behavior[CherryPickerRequest] =
+    new CherryPicker(pgStorage, ethereumConnector).launch()
 }
 
 /** How long to delay between reiterations.
@@ -437,8 +452,26 @@ object CherryPicker extends LazyLogging {
  * Use `Immediate` to reiterate immediately.
  * Use `Pause` to reiterate after a regular pause.
  */
-object ReiterateDelays extends Enumeration {
+private object ReiterateDelays extends Enumeration {
   type ReiterateDelay = Value
 
   val ReiterateImmediately, ReiterateAfterTimer = Value
+}
+
+
+/** Performance information about the ongoing fast sync. */
+case class FastSyncStats(startedAt: Instant = Instant.now,
+                         syncedBlocks: Int = 0) {
+
+  override def toString: String =
+    s"FastSyncBenchmark(started: $startedAt, synced: $syncedBlocks, elapsed; $elapsed: " +
+      s"$blocksPerSecond bps, $secondsPerBlock s. per block)"
+
+  /** Return a new benchmark value/state, with the number of blocks increased by one. */
+  def incrementBlocks(): FastSyncStats =
+    FastSyncStats(startedAt, syncedBlocks + 1)
+
+  private[this] lazy val elapsed: time.Duration = time.Duration.between(startedAt, Instant.now)
+  lazy val blocksPerSecond = (syncedBlocks: Double) / elapsed.getSeconds
+  lazy val secondsPerBlock = 1 / blocksPerSecond
 }
