@@ -12,7 +12,7 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
 
   "latestSyncedBlockNumber()" should "return some valid number" in {
     assert(
-      sharedConnector.latestSyncedBlockNumber.get > 11500000
+      sharedConnector.ethBlockNumber.get > 11500000
     )
   }
 

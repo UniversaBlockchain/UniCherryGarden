@@ -81,7 +81,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
    * @return [[Option]] with the data about the syncing process; the Option is empty if the data could not be received
    *         (probably due to some network error).
    */
-  def syncingStatus: Option[SyncingStatusResult] = {
+  def ethSyncing: Option[SyncingStatusResult] = {
     try {
       val result: EthSyncing.Result = web3j.ethSyncing.send.getResult
       if (!result.isSyncing) {
@@ -112,7 +112,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
    * @return [[Option]] with the data about the syncing process; the Option is empty if the data could not be received
    *         (probably due to some network error).
    */
-  def latestSyncedBlockNumber: Option[BigInt] = {
+  def ethBlockNumber: Option[BigInt] = {
     try {
       Some(web3j.ethBlockNumber.send.getBlockNumber)
     } catch {
