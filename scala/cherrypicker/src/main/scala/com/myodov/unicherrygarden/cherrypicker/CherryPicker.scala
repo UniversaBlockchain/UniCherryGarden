@@ -7,7 +7,6 @@ import java.util.concurrent.TimeUnit
 import akka.actor.typed.Behavior
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
-import com.myodov.unicherrygarden.ReiterateDelays.ReiterateDelay
 import com.myodov.unicherrygarden.api.types.{BlockchainSyncStatus, MinedTransfer}
 import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
@@ -30,8 +29,6 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
 
   import CherryPicker.{ITERATION_PERIOD, Iterate, propBuildTimestampStr, propVersionStr}
 
-  private[this] var fastSyncStats: Option[FastSyncStats] = None
-
   /** First state: when just launching the CherryPicker after shutdown/restart. */
   private def launch(): Behavior[CherryPickerRequest] = {
     Behaviors.setup { context =>
@@ -45,308 +42,312 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
         GetTransfers.SERVICE_KEY
       ).foreach(context.system.receptionist ! Receptionist.Register(_, context.self))
 
-      logger.debug("Setting up CherryPicker actor with timers")
-      Behaviors.withTimers(timers => {
-        // On startup, schedule a single iteration;
-        // It will re-schedule itself when/if needed.
-        // We don’t setup a “regular” timer because sometimes a new iteration should happen without a pause;
-        // and sometimes a new iteration should happen not 5 (or so) seconds after the previous iteration *started*,
-        // but 5 seconds after a previous iteration *completed*.
-        // The latter though can be resolved by scheduleWithFixedDelay.
-        logger.error("Running first iteration of CherryPicker...")
-        context.self ! Iterate() // TODO: enable to start iterations
+      // On startup, schedule a single iteration;
+      // It will re-schedule itself when/if needed.
+      // We don’t setup a “regular” timer because sometimes a new iteration should happen without a pause;
+      // and sometimes a new iteration should happen not 5 (or so) seconds after the previous iteration *started*,
+      // but 5 seconds after a previous iteration *completed*.
+      // The latter though can be resolved by scheduleWithFixedDelay.
+      logger.error("Running first iteration of CherryPicker...")
+      context.self ! Iterate(CherryPickerState()) // TODO: enable to start iterations
 
-        Behaviors.receiveMessage {
-          case Iterate() => {
-            nextIteration() match {
-              case ReiterateDelays.ReiterateImmediately =>
-                logger.debug("After iteration, next iteration will happen immediately")
+      Behaviors.receiveMessage {
+        case Iterate(state: CherryPickerState) => {
+          nextIteration(state)
+        }
+        case message: GetTrackedAddresses.Request => {
+          logger.debug(s"Receiving GetTrackedAddresses message: $message")
+          val payload: GetTrackedAddresses.GTARequestPayload = message.payload
 
-                fastSyncStats =
-                  if (fastSyncStats.isEmpty) Some(FastSyncStats())
-                  else fastSyncStats map (_.incrementBlocks)
-
-                logger.debug(s"Fast sync performance: ${fastSyncStats.get}")
-
-                context.self ! Iterate()
-              case ReiterateDelays.ReiterateAfterTimer =>
-                logger.debug("After iteration, next iteration will happen after timer")
-                timers.startSingleTimer(Iterate(), ITERATION_PERIOD)
-            }
-            Behaviors.same
-          }
-          case message: GetTrackedAddresses.Request => {
-            logger.debug(s"Receiving GetTrackedAddresses message: $message")
-            val payload: GetTrackedAddresses.GTARequestPayload = message.payload
-
-            val results: List[Response.TrackedAddressInformation] = pgStorage
-              .trackedAddresses
-              .getTrackedAddresses(
-                payload.includeComment,
-                payload.includeSyncedFrom,
-                payload.includeSyncedTo)
-              .map(item => new Response.TrackedAddressInformation(
-                item.address,
-                // The subsequent items may be Java-nullable
-                item.comment.orNull,
-                // Converting the Option[Int] to nullable Java Integers needs some cunning
-                item.syncedFrom.map(Integer.valueOf).orNull,
-                item.syncedTo.map(Integer.valueOf).orNull)
-              )
-
-            val response = new GetTrackedAddresses.Response(
-              results.asJava,
+          val results: List[Response.TrackedAddressInformation] = pgStorage
+            .trackedAddresses
+            .getTrackedAddresses(
               payload.includeComment,
               payload.includeSyncedFrom,
-              payload.includeSyncedTo
+              payload.includeSyncedTo)
+            .map(item => new Response.TrackedAddressInformation(
+              item.address,
+              // The subsequent items may be Java-nullable
+              item.comment.orNull,
+              // Converting the Option[Int] to nullable Java Integers needs some cunning
+              item.syncedFrom.map(Integer.valueOf).orNull,
+              item.syncedTo.map(Integer.valueOf).orNull)
             )
-            logger.debug(s"Replying with $response")
-            message.replyTo ! response
-            Behaviors.same
-          }
-          case message: AddTrackedAddresses.Request => {
-            logger.debug(s"Receiving AddTrackedAddresses message: $message")
-            val payload: AddTrackedAddresses.ATARequestPayload = message.payload
 
-            // Here goes the list of all added addresses
-            // (as Options; with `None` instead of any address that failed to add)
-            val addressesMaybeAdded: List[Option[String]] = (
-              for (addr: AddTrackedAddresses.AddressDataToTrack <- payload.addressesToTrack.asScala.toList)
-                yield {
-                  if (pgStorage.trackedAddresses.addTrackedAddress(
-                    addr.address,
-                    Option(addr.comment), // nullable
-                    payload.trackingMode,
-                    // The next line needs cunning processing of java.lang.Integer,
-                    // as otherwise Option(null:Integer): Option[Int]
-                    // will be evaluated as Some(0)
-                    Option(payload.fromBlock).map(_.toInt) // nullable
-                  )) {
-                    Some(addr.address)
-                  } else {
-                    None
-                  }
-                }
-              )
-
-            // Flatten it to just the added elements
-            val addressesActuallyAdded: Set[String] = addressesMaybeAdded.flatten.toSet
-            logger.debug(s"Actually added the following addresses to watch: $addressesActuallyAdded")
-
-            val response = new AddTrackedAddresses.Response(
-              addressesActuallyAdded.asJava
-            )
-            logger.debug(s"Replying with $response")
-            message.replyTo ! response
-            Behaviors.same
-          }
-          case message: GetBalances.Request => {
-            logger.debug(s"Receiving GetBalances message: $message")
-            message.replyTo ! new GetBalances.Response(
-              new GetBalances.BalanceRequestResult(
-                false,
-                0,
-                //                List[CurrencyBalanceFact](
-                //                  new CurrencyBalanceFact(
-                //                    Currency.newEthCurrency(),
-                //                    BigDecimal(123.45).underlying(),
-                //                    BalanceRequestResult.CurrencyBalanceFact.BalanceSyncState.SYNCED_TO_LATEST_UNICHERRYGARDEN_TOKEN_STATE,
-                //                    15
-                //                  )
-                //                ).asJava,
-                List.empty[GetBalances.BalanceRequestResult.CurrencyBalanceFact].asJava,
-                new BlockchainSyncStatus(0, 0, 0))
-            )
-            Behaviors.same
-          }
-          case message: GetTransfers.Request => {
-            logger.debug(s"Receiving GetTransfers message: $message")
-            message.replyTo ! new GetTransfers.Response(
-              new GetTransfers.TransfersRequestResult(
-                true,
-                0,
-                // List(
-                //   new MinedTransfer(
-                //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //     "0xedcc6f8f20962e6747369a71a5b89256289da87f",
-                //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //     BigDecimal("10045.6909000003").underlying,
-                //     new MinedTx(
-                //       "0x9cb54df2444658891df0c8165fecaecb4a2f1197ebe7b175dda1130b91ea4c9f",
-                //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //       new Block(
-                //         13628884,
-                //         "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
-                //         Instant.ofEpochSecond(1637096843)),
-                //       111
-                //     ),
-                //     144),
-                //   // UTNP out #6
-                //   new MinedTransfer(
-                //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //     "0x74644fd700c11dcc262eed1c59715ee874f65251",
-                //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //     BigDecimal("30000").underlying,
-                //     new MinedTx(
-                //       "0x3f0c1e4f1e903381c1e8ad2ad909482db20a747e212fbc32a4c626cad6bb14ab",
-                //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //       new Block(
-                //         13631007,
-                //         "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
-                //         Instant.ofEpochSecond(1637125704)),
-                //       133
-                //     ),
-                //     173)
-                // ).asJava,
-                List.empty[MinedTransfer].asJava,
-                new BlockchainSyncStatus(0, 0, 0)
-              )
-            )
-            Behaviors.same
-          }
-          case unknownMessage => {
-            logger.error(s"Unexpected message $unknownMessage")
-            Behaviors.unhandled
-          }
+          val response = new GetTrackedAddresses.Response(
+            results.asJava,
+            payload.includeComment,
+            payload.includeSyncedFrom,
+            payload.includeSyncedTo
+          )
+          logger.debug(s"Replying with $response")
+          message.replyTo ! response
+          Behaviors.same
         }
-      })
+        case message: AddTrackedAddresses.Request => {
+          logger.debug(s"Receiving AddTrackedAddresses message: $message")
+          val payload: AddTrackedAddresses.ATARequestPayload = message.payload
+
+          // Here goes the list of all added addresses
+          // (as Options; with `None` instead of any address that failed to add)
+          val addressesMaybeAdded: List[Option[String]] = (
+            for (addr: AddTrackedAddresses.AddressDataToTrack <- payload.addressesToTrack.asScala.toList)
+              yield {
+                if (pgStorage.trackedAddresses.addTrackedAddress(
+                  addr.address,
+                  Option(addr.comment), // nullable
+                  payload.trackingMode,
+                  // The next line needs cunning processing of java.lang.Integer,
+                  // as otherwise Option(null:Integer): Option[Int]
+                  // will be evaluated as Some(0)
+                  Option(payload.fromBlock).map(_.toInt) // nullable
+                )) {
+                  Some(addr.address)
+                } else {
+                  None
+                }
+              }
+            )
+
+          // Flatten it to just the added elements
+          val addressesActuallyAdded: Set[String] = addressesMaybeAdded.flatten.toSet
+          logger.debug(s"Actually added the following addresses to watch: $addressesActuallyAdded")
+
+          val response = new AddTrackedAddresses.Response(
+            addressesActuallyAdded.asJava
+          )
+          logger.debug(s"Replying with $response")
+          message.replyTo ! response
+          Behaviors.same
+        }
+        case message: GetBalances.Request => {
+          logger.debug(s"Receiving GetBalances message: $message")
+          message.replyTo ! new GetBalances.Response(
+            new GetBalances.BalanceRequestResult(
+              false,
+              0,
+              //                List[CurrencyBalanceFact](
+              //                  new CurrencyBalanceFact(
+              //                    Currency.newEthCurrency(),
+              //                    BigDecimal(123.45).underlying(),
+              //                    BalanceRequestResult.CurrencyBalanceFact.BalanceSyncState.SYNCED_TO_LATEST_UNICHERRYGARDEN_TOKEN_STATE,
+              //                    15
+              //                  )
+              //                ).asJava,
+              List.empty[GetBalances.BalanceRequestResult.CurrencyBalanceFact].asJava,
+              new BlockchainSyncStatus(0, 0, 0))
+          )
+          Behaviors.same
+        }
+        case message: GetTransfers.Request => {
+          logger.debug(s"Receiving GetTransfers message: $message")
+          message.replyTo ! new GetTransfers.Response(
+            new GetTransfers.TransfersRequestResult(
+              true,
+              0,
+              // List(
+              //   new MinedTransfer(
+              //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+              //     "0xedcc6f8f20962e6747369a71a5b89256289da87f",
+              //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+              //     BigDecimal("10045.6909000003").underlying,
+              //     new MinedTx(
+              //       "0x9cb54df2444658891df0c8165fecaecb4a2f1197ebe7b175dda1130b91ea4c9f",
+              //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+              //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+              //       new Block(
+              //         13628884,
+              //         "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
+              //         Instant.ofEpochSecond(1637096843)),
+              //       111
+              //     ),
+              //     144),
+              //   // UTNP out #6
+              //   new MinedTransfer(
+              //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+              //     "0x74644fd700c11dcc262eed1c59715ee874f65251",
+              //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+              //     BigDecimal("30000").underlying,
+              //     new MinedTx(
+              //       "0x3f0c1e4f1e903381c1e8ad2ad909482db20a747e212fbc32a4c626cad6bb14ab",
+              //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+              //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+              //       new Block(
+              //         13631007,
+              //         "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
+              //         Instant.ofEpochSecond(1637125704)),
+              //       133
+              //     ),
+              //     173)
+              // ).asJava,
+              List.empty[MinedTransfer].asJava,
+              new BlockchainSyncStatus(0, 0, 0)
+            )
+          )
+          Behaviors.same
+        }
+        case unknownMessage => {
+          logger.error(s"Unexpected message $unknownMessage")
+          Behaviors.unhandled
+        }
+      }
     }
   }
 
-  /** Run next iteration; and reschedule it. */
-  private def nextIteration(): ReiterateDelay = {
-    val result =
-      try {
-        insideEachIteration()
-      } catch {
-        case NonFatal(e) => logger.error("On iteration, got a error", e)
-          ReiterateDelays.ReiterateAfterTimer
-      }
+  /** Switching to FSM state “and now let’s immediately run next syncing iterate”. */
+  private[this] def reiterateImmediately(state: CherryPickerState): Behavior[CherryPickerRequest] = {
+    logger.debug("Next iteration will happen immediately: fast sync!")
+    val newState = state.advanceFastSync()
 
-    pgStorage.state.setLastHeartbeatAt
-    result
+    Behaviors.setup[CherryPickerRequest] { context =>
+      context.self ! Iterate(newState)
+      Behaviors.same
+    }
   }
 
-  /** What should happen within each iteration. */
-  private[this] def insideEachIteration(): ReiterateDelay = {
-    // It is `synchronized`, so that if some iteration takes too long, the next iteration won’t intervene
-    // and work on the partially-updated state.
-    this.synchronized {
-      logger.debug("Iteration...")
-      val startTime = System.nanoTime
-      // First, let's ask the Ethereum node what's the status of the syncing process
+  /** Switching to FSM state “and now let’s run next syncing iterate after a short pause”. */
+  private[this] def reiterateAfterDelay(state: CherryPickerState): Behavior[CherryPickerRequest] = {
+    logger.debug("Next iteration will happen after timer")
+    val newState = state.stopFastSync()
 
-      val syncingStatusOpt = ethereumConnector.syncingStatus
-      val blockNumberOpt = ethereumConnector.latestSyncedBlockNumber
+    Behaviors.withTimers[CherryPickerRequest] { timers =>
+      timers.startSingleTimer(Iterate(newState), ITERATION_PERIOD)
+      Behaviors.same
+    }
+  }
 
-      val reiterateAfter: ReiterateDelay =
-        if (syncingStatusOpt.isEmpty || blockNumberOpt.isEmpty) {
-          logger.error(s"Cannot get eth.syncing ($syncingStatusOpt) / eth.blockNumber ($blockNumberOpt)!")
-          pgStorage.state.setSyncState("Cannot connect to Ethereum node!")
-          ReiterateDelays.ReiterateAfterTimer
-        } else {
-          val ethSyncing = syncingStatusOpt.get
-          val ethBlockNumber: Int = blockNumberOpt.get.bigInteger.intValueExact
+  /** Run the next iteration; and reschedule it. */
+  private[this] def nextIteration(state: CherryPickerState): Behavior[CherryPickerRequest] = {
+    try {
+      // It is `synchronized`, so that if some iteration takes too long, the next iteration won’t intervene
+      // and work on the partially-updated state.
+      this.synchronized {
+        logger.debug("Iteration...")
+        val startTime = System.nanoTime
+        // First, let's ask the Ethereum node what's the status of the syncing process
 
-          logger.debug(s"Found eth.syncing ($ethSyncing) / eth.blockNumber ($ethBlockNumber)!")
+        val syncingStatusOpt = ethereumConnector.syncingStatus
+        val blockNumberOpt = ethereumConnector.latestSyncedBlockNumber
 
-          // If eth.syncing returned False, i.e. we are not syncing – we should assume currentBlock and highestBlock
-          // are equal to eth.blockNumber
-          val (currentBlock, highestBlock) = {
-            if (ethSyncing.isStillSyncing)
-              (ethSyncing.currentBlock, ethSyncing.highestBlock)
-            else
-              (ethBlockNumber, ethBlockNumber)
+        val behavior: Behavior[CherryPickerRequest] =
+          if (syncingStatusOpt.isEmpty || blockNumberOpt.isEmpty) {
+            logger.error(s"Cannot get eth.syncing ($syncingStatusOpt) / eth.blockNumber ($blockNumberOpt)!")
+            pgStorage.state.setSyncState("Cannot connect to Ethereum node!")
+            reiterateAfterDelay(state)
+
+          } else {
+            val ethSyncing = syncingStatusOpt.get
+            val ethBlockNumber: Int = blockNumberOpt.get.bigInteger.intValueExact
+
+            logger.debug(s"Found eth.syncing ($ethSyncing) / eth.blockNumber ($ethBlockNumber)!")
+
+            // If eth.syncing returned False, i.e. we are not syncing – we should assume currentBlock and highestBlock
+            // are equal to eth.blockNumber
+            val (currentBlock, highestBlock) = {
+              if (ethSyncing.isStillSyncing)
+                (ethSyncing.currentBlock, ethSyncing.highestBlock)
+              else
+                (ethBlockNumber, ethBlockNumber)
+            }
+
+            pgStorage.state.setEthNodeData(ethBlockNumber, currentBlock, highestBlock)
+
+            // Since this moment, we may want to use DB in a single atomic DB transaction;
+            // even though this will involve querying the Ethereum node, maybe even multiple times.
+            DB localTx { implicit session =>
+              val optProgress = pgStorage.progress.getProgress
+              lazy val progress = optProgress.get
+              lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
+
+              if (optProgress.isEmpty) {
+                logger.error("Cannot get the progress, something failed!")
+                pgStorage.state.setSyncState("Cannot get the progress state!")
+                reiterateAfterDelay(state)
+
+              } else if (progress.overall.from.isEmpty) {
+                logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!");
+                reiterateAfterDelay(state)
+
+              } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
+                logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
+                  s"is ${progress.currencies.minSyncFrom.get}; " +
+                  s"it should not be lower than $overallFrom!")
+                reiterateAfterDelay(state)
+
+              } else if (progress.trackedAddresses.minFrom < overallFrom) {
+                logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
+                  s"is ${progress.trackedAddresses.minFrom}; " +
+                  s"it should not be lower than $overallFrom!")
+                reiterateAfterDelay(state)
+
+                // ------------------------------------------------------------------------------
+                // Since this point go all the options where the iteration should actually happen
+                // ------------------------------------------------------------------------------
+              } else if (progress.blocks.from.isEmpty) {
+                // progress.overall.from is not Empty
+                val blockToSync = progress.overall.from.get
+                logger.info(s"Starting from the very first block ($blockToSync)...")
+                handleSyncedBlock(blockToSync)
+                reiterateImmediately(state)
+
+              } else { // Fast sync
+                // progress.overall.from is not Empty
+
+                // There may be multiple options of blocks to choose:
+                // 1. Just the next block to read.
+                val firstUnreadBlock: Option[Int] = progress.blocks.to.map(_ + 1)
+                // 2. We never started some (currency, tracked address) pair?
+                // Use the least from_block (from either currency or tracked address).
+                val firstNeverCTAStartedBlock: Option[Int] =
+                pgStorage.progress.getFirstBlockResolvingSomeNeverStartedCTAddress
+                // 3. We never completed some (currency, tracked address) pair?
+                // Use the least from_block (from either currency or tracked address).
+                val firstNeverCTASyncedBlock: Option[Int] =
+                pgStorage.progress.getFirstBlockResolvingSomeNeverSyncedCTAddress
+                // 4. Some of CTA to-blocks is smaller than others?
+                // Use it.
+                val firstMismatchingCTAToBlock: Option[Int] =
+                (progress.perCurrencyTrackedAddresses.minTo, progress.perCurrencyTrackedAddresses.maxTo) match {
+                  case (Some(minTo), Some(maxTo)) if minTo < maxTo =>
+                    Some(minTo + 1)
+                  case _ =>
+                    None
+                }
+
+                val blocksToCompare = List(
+                  firstUnreadBlock,
+                  firstNeverCTAStartedBlock,
+                  firstNeverCTASyncedBlock,
+                  firstMismatchingCTAToBlock
+                )
+
+                logger.debug(s"Progress is $progress: " +
+                  s"choosing between $blocksToCompare")
+
+                val blockToSync = blocksToCompare.flatten.min
+
+                logger.info(s"Fast-syncing $blockToSync block")
+                handleSyncedBlock(blockToSync)
+                reiterateImmediately(state)
+
+              }
+            } // DB localTx
           }
 
-          pgStorage.state.setEthNodeData(ethBlockNumber, currentBlock, highestBlock)
-
-          // Since this moment, we may want to use DB in a single atomic DB transaction;
-          // even though this will involve querying the Ethereum node, maybe even multiple times.
-          DB localTx { implicit session =>
-            val optProgress = pgStorage.progress.getProgress
-            lazy val progress = optProgress.get
-            lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
-
-            if (optProgress.isEmpty) {
-              logger.error("Cannot get the progress, something failed!")
-              pgStorage.state.setSyncState("Cannot get the progress state!")
-              ReiterateDelays.ReiterateAfterTimer
-            } else if (progress.overall.from.isEmpty) {
-              logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!");
-              ReiterateDelays.ReiterateAfterTimer
-            } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
-              logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
-                s"is ${progress.currencies.minSyncFrom.get}; " +
-                s"it should not be lower than $overallFrom!")
-              ReiterateDelays.ReiterateAfterTimer
-            } else if (progress.trackedAddresses.minFrom < overallFrom) {
-              logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
-                s"is ${progress.trackedAddresses.minFrom}; " +
-                s"it should not be lower than $overallFrom!")
-              ReiterateDelays.ReiterateAfterTimer
-              // ------------------------------------------------------------------------------
-              // Since this point go all the options where the iteration should actually happen
-              // ------------------------------------------------------------------------------
-            } else if (progress.blocks.from.isEmpty) {
-              // progress.overall.from is not Empty
-              val blockToSync = progress.overall.from.get
-              logger.info(s"Starting from the very first block ($blockToSync)...")
-              iterateBlock(blockToSync)
-              ReiterateDelays.ReiterateImmediately
-            } else { // Fast sync
-              // progress.overall.from is not Empty
-
-              // There may be multiple options of blocks to choose:
-              // 1. Just the next block to read.
-              val firstUnreadBlock: Option[Int] = progress.blocks.to.map(_ + 1)
-              // 2. We never started some (currency, tracked address) pair?
-              // Use the least from_block (from either currency or tracked address).
-              val firstNeverCTAStartedBlock: Option[Int] =
-              pgStorage.progress.getFirstBlockResolvingSomeNeverStartedCTAddress
-              // 3. We never completed some (currency, tracked address) pair?
-              // Use the least from_block (from either currency or tracked address).
-              val firstNeverCTASyncedBlock: Option[Int] =
-              pgStorage.progress.getFirstBlockResolvingSomeNeverSyncedCTAddress
-              // 4. Some of CTA to-blocks is smaller than others?
-              // Use it.
-              val firstMismatchingCTAToBlock: Option[Int] =
-              (progress.perCurrencyTrackedAddresses.minTo, progress.perCurrencyTrackedAddresses.maxTo) match {
-                case (Some(minTo), Some(maxTo)) if minTo < maxTo =>
-                  Some(minTo + 1)
-                case _ =>
-                  None
-              }
-
-              val blocksToCompare = List(
-                firstUnreadBlock,
-                firstNeverCTAStartedBlock,
-                firstNeverCTASyncedBlock,
-                firstMismatchingCTAToBlock
-              )
-
-              logger.debug(s"Progress is $progress: " +
-                s"choosing between $blocksToCompare")
-
-              val blockToSync = blocksToCompare.flatten.min
-
-              logger.info(s"Fast-syncing $blockToSync block")
-              iterateBlock(blockToSync)
-              ReiterateDelays.ReiterateImmediately
-            }
-          } // DB localTx
-        }
-
-      val duration = Duration(System.nanoTime - startTime, TimeUnit.NANOSECONDS)
-      logger.debug(s"Iteration completed in ${duration.toMillis} ms.")
-      reiterateAfter
+        pgStorage.state.setLastHeartbeatAt
+        val duration = Duration(System.nanoTime - startTime, TimeUnit.NANOSECONDS)
+        logger.debug(s"Iteration completed in ${duration.toMillis} ms.")
+        behavior
+      }
+    } catch {
+      case NonFatal(e) =>
+        logger.error("On iteration, got a error", e)
+        reiterateAfterDelay(state)
     }
   }
 
   /** Perform the regular iteration for a specific block number. */
-  private[this] def iterateBlock(blockToSync: Int)(implicit session: DBSession): Unit = {
+  private[this] def handleSyncedBlock(blockToSync: Int)(implicit session: DBSession): Unit = {
     val trackedAddresses: Set[String] = pgStorage.trackedAddresses.getJustAddresses
 
     logger.debug(s"processing block $blockToSync " +
@@ -436,7 +437,7 @@ object CherryPicker extends LazyLogging {
   lazy val propBuildTimestampStr = props.getProperty("build_timestamp", "");
 
   /** A message informing CherryPicker it needs to run a next iteration. */
-  final case class Iterate() extends CherryPickerRequest
+  final case class Iterate(state: CherryPickerState) extends CherryPickerRequest
 
   private val ITERATION_PERIOD = 15 seconds
   //  private val ITERATION_PERIOD = 1 second
@@ -445,17 +446,6 @@ object CherryPicker extends LazyLogging {
   def apply(pgStorage: PostgreSQLStorage,
             ethereumConnector: EthereumRpcSingleConnector): Behavior[CherryPickerRequest] =
     new CherryPicker(pgStorage, ethereumConnector).launch()
-}
-
-/** How long to delay between reiterations.
- *
- * Use `Immediate` to reiterate immediately.
- * Use `Pause` to reiterate after a regular pause.
- */
-private object ReiterateDelays extends Enumeration {
-  type ReiterateDelay = Value
-
-  val ReiterateImmediately, ReiterateAfterTimer = Value
 }
 
 
@@ -474,4 +464,28 @@ case class FastSyncStats(startedAt: Instant = Instant.now,
   private[this] lazy val elapsed: time.Duration = time.Duration.between(startedAt, Instant.now)
   lazy val blocksPerSecond = (syncedBlocks: Double) / elapsed.getSeconds
   lazy val secondsPerBlock = 1 / blocksPerSecond
+}
+
+case class CherryPickerState(fastSyncStats: Option[FastSyncStats] = None) extends LazyLogging {
+  /** Return new state, assuming the fast sync advanced by one block. */
+  def advanceFastSync(): CherryPickerState = {
+    val newFastSyncStats = fastSyncStats match {
+      case None =>
+        // Starting fast sync
+        logger.debug("Starting fast sync anew")
+        FastSyncStats()
+      case Some(state) =>
+        val newStats = state.incrementBlocks
+        // Continuing fast sync
+        logger.debug(s"Fast sync performance: $newStats")
+        newStats
+    }
+    CherryPickerState(Some(newFastSyncStats))
+  }
+
+  /** Return new state, assuming the fast sync has just been stopped. */
+  def stopFastSync(): CherryPickerState = {
+    logger.debug("Stopping fast sync")
+    CherryPickerState(fastSyncStats = None)
+  }
 }
