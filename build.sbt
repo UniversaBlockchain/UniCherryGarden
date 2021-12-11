@@ -113,6 +113,7 @@ lazy val commonScalaSettings = Seq(
   ),
 )
 
+/** Settings common to any component that uses Akka for microservice/actor architecture. */
 lazy val commonAkkaMicroserviceSettings = Seq(
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
@@ -120,6 +121,13 @@ lazy val commonAkkaMicroserviceSettings = Seq(
     "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
     "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
     "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
+  ),
+)
+
+/** Settings common to anything that uses JavaAppPackaging to deploy a binary runnable package. */
+lazy val commonJavaAppPackagingSettings = Seq(
+  Universal / javaOptions ++= Seq(
+    "-Dlog4j2.formatMsgNoLookups=true",
   ),
 )
 
@@ -196,6 +204,7 @@ lazy val cherryGardenerConnectorCLI = (project in file("java/cherrygardener_conn
     commonSettings,
     commonJavaSettings,
     commonAkkaMicroserviceSettings,
+    commonJavaAppPackagingSettings,
     name := "cherrygardener_connector_cli",
     description := "UniCherryGarden: CLI tool to access the CherryGardener Connector features from command line",
     libraryDependencies ++= Seq(
@@ -348,6 +357,7 @@ lazy val launcher = (project in file("scala/launcher"))
   .settings(
     commonSettings,
     commonScalaSettings,
+    commonJavaAppPackagingSettings,
     name := "launcher",
     description := "UniCherryGarden: launcher CLI to execute the UniCherryGarden components",
     resolvers += Resolver.bintrayRepo("serioussam", "oss"),
