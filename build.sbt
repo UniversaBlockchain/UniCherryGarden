@@ -325,12 +325,10 @@ lazy val ethereum_rpc_connector = (project in file("scala/connectors/ethereum_rp
       calibanSetting(file("scala/connectors/ethereum_rpc_connector/src/main/graphql/Geth.graphql"))(
         cs => cs
           .packageName("caliban")
-//          .scalarMapping(
-//            "Timestamp" -> "java.sql.Timestamp",
-//            "DayOfWeek" -> "java.time.DayOfWeek",
-//          )
           .genView(true)
-          .imports("com.myodov.unicherrygarden.connectors.ScalarDecoder.long")
+          .imports(
+            "com.myodov.unicherrygarden.connectors.ScalarDecoder.long",
+            "com.myodov.unicherrygarden.connectors.ScalarDecoder.bigInt")
       )
     ),
     Compile / resourceGenerators += versionFileTask("unicherrygarden_ethereum_rpc_connector.properties").taskValue,

@@ -360,7 +360,7 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
       )
     )(
       sharedConnector.readBlockGraphQL(
-        blockNumber = 12345,
+        blockNumber = 10381084,
         addressesOfInterest = Set.empty)
     )
   }

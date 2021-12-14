@@ -459,7 +459,8 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
      *
      * Hash is selected for referential integrity only.
      */
-    case class BlockMinimalView(number: Long, hash: String)
+    case class BlockMinimalView(number: Long,
+                                hash: String)
     object BlockMinimal {
       /** A shorthand method to select the minimal block data;
        * use it as `{ BlockMinimal.view }`.
@@ -470,8 +471,66 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
       }.mapN(BlockMinimalView)
     }
 
+    case class AccountMinimalView(address: Address)
+    object AccountMinimal {
+      lazy val view: SelectionBuilder[Account, AccountMinimalView] = {
+        Account.address
+      }.map(AccountMinimalView)
+    }
+
+    case class TransactionBasicView(
+                                     // *** Before-mined transaction ***
+                                     hash: Bytes32,
+                                     from: AccountMinimalView,
+                                     to: Option[AccountMinimalView],
+                                     gas: Long,
+                                     gasPrice: BigInt,
+                                     nonce: Long,
+                                     value: BigInt,
+                                     // *** Mined transaction ***
+                                     status: Option[Long],
+                                     block: Option[BlockMinimalView],
+                                     index: Option[Int],
+                                     gasUsed: Option[Long],
+                                     effectiveGasPrice: Option[BigInt],
+                                     cumulativeGasUsed: Option[Long]
+                                   )
+    object TransactionBasic {
+      lazy val view = {
+        // *** Before-mined transaction ***
+        Transaction.hash ~
+          Transaction.from() {
+            AccountMinimal.view
+          } ~
+          Transaction.to() {
+            AccountMinimal.view
+          } ~
+          Transaction.gas ~
+          Transaction.gasPrice ~
+          Transaction.nonce ~
+          Transaction.value ~
+          // *** Mined transaction ***
+          // "status" – EIP 658, since Byzantium fork
+          Transaction.status ~
+          Transaction.block {
+            BlockMinimal.view // for validation only!
+          } ~
+          Transaction.index ~
+          Transaction.gasUsed ~
+          Transaction.effectiveGasPrice ~
+          Transaction.cumulativeGasUsed
+        //        txLogs = EthereumRpcSingleConnector.getLogsFromTransactionReceipt(w3jTrReceipt)
+
+      }.mapN(TransactionBasicView)
+    }
+
     /** For a Block, select all the information needed four our processing. */
-    case class BlockBasicView(number: Long, hash: String, parent: Option[BlockMinimalView], timestamp: Long)
+    case class BlockBasicView(number: Long,
+                              hash: String,
+                              parent: Option[BlockMinimalView],
+                              timestamp: Long,
+                              transactions: Option[List[TransactionBasicView]]
+                             )
     object BlockBasic {
       /** A shorthand method to select basic block data;
        * use it as `{ BlockBasic.view }`.
@@ -482,7 +541,10 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
           Block.parent {
             BlockMinimal.view
           } ~
-          Block.timestamp
+          Block.timestamp ~
+          Block.transactions {
+            TransactionBasic.view
+          }
       }.mapN(BlockBasicView)
     }
 
@@ -516,6 +578,9 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
               },
                 blockBasic)
             }
+
+            System.err.println(s"Received block $blockBasic")
+
             val block = dlt.EthereumBlock(
               number = blockBasic.number.toInt,
               hash = blockBasic.hash,
