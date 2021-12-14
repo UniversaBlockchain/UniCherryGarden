@@ -31,7 +31,9 @@ case class TransactionFullView(
                                 effectiveGasPrice: Option[BigInt],
                                 cumulativeGasUsed: Option[Long],
                                 logs: Option[List[LogFullView]]
-                              )
+                              ) {
+  lazy val asMinimalTransaction: TransactionMinimalView = TransactionMinimalView(hash)
+}
 
 object TransactionFull {
   /** A shorthand method to select the most transaction data to query. */

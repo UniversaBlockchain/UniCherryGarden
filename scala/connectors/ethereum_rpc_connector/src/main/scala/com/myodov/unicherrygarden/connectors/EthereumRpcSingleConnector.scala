@@ -492,15 +492,19 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
                   // If the transactions are not available at all – that’s legit
                   case None => true
                   // If the transactions are available - all of them must refer to the same block
-                  case Some(trList) => trList.forall { tr =>
-                    tr.block match {
-                      case Some(innerBlock) if innerBlock == blockBasic.asMinimalBlock =>
-                        true
-                      case other =>
-                        // either Option[Block] is None, i.e. the block is not mined;
-                        // or inner block (minimalData) does not match the outer block
-                        false
-                    }
+                  case Some(trs) => trs.forall { tr =>
+                    // Inner block must refer to the outer block
+                    (tr.block match {
+                      case Some(innerBlock) => innerBlock == blockBasic.asMinimalBlock
+                      case None => false
+                    }) &&
+                      // All inner logs must refer to the outer transaction
+                      (tr.logs match {
+                        // If there are no logs at all, that’s okay
+                        case None => true
+                        // But if there are some logs, all of them must refer to the same transaction
+                        case Some(logs) => logs.forall(_.transaction == tr.asMinimalTransaction)
+                      })
                   }
                 },
                 blockBasic
