@@ -5,6 +5,7 @@
 .java-version
 logs/
 .bsp
+.graphqlconfig
 
 /ansible/
 /ansible.cfg

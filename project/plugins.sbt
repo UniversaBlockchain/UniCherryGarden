@@ -7,3 +7,4 @@ logLevel := Level.Warn
 addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.3.22")
 addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.9.7")
 addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.1.2")
+addSbtPlugin("com.github.ghostdogpr" % "caliban-codegen-sbt" % "1.3.0")

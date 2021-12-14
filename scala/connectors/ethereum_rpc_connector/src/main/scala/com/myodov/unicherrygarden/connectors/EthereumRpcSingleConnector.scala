@@ -3,6 +3,7 @@ package com.myodov.unicherrygarden.connectors
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
+import caliban.client.{CalibanClientError, SelectionBuilder}
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.typesafe.scalalogging.LazyLogging
@@ -12,13 +13,16 @@ import org.web3j.protocol.core.methods.response.EthBlock.TransactionObject
 import org.web3j.protocol.core.methods.response._
 import org.web3j.protocol.http.HttpService
 import org.web3j.utils.Numeric.decodeQuantity
+import sttp.client3._
+import sttp.client3.akkahttp.AkkaHttpBackend
 
 import scala.concurrent.ExecutionContext.Implicits._
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.jdk.CollectionConverters._
 import scala.jdk.FutureConverters._
 import scala.jdk.OptionConverters._
+import scala.language.postfixOps
 import scala.util.control.NonFatal
 
 /** Connector that handles a connection to single Ethereum node via RPC, and communicates with it.
@@ -177,16 +181,16 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
           validReceipts.iterator.map(v => v.getTransactionHash -> v).toMap
         require(receiptsByTrHash.size == validReceipts.size, (receiptsByTrHash.size, validReceipts.size))
 
-//        logger.debug("Transactions:")
-//        for (tr <- transactions) {
-//          val value = EthUtils.Wei.valueFromWeis(tr.getValue)
-//          logger.debug(s"Transaction: Hash ${tr.getHash}: value $value, gas ${tr.getGas}, gas price ${tr.getGasPrice}")
-//        }
+        //        logger.debug("Transactions:")
+        //        for (tr <- transactions) {
+        //          val value = EthUtils.Wei.valueFromWeis(tr.getValue)
+        //          logger.debug(s"Transaction: Hash ${tr.getHash}: value $value, gas ${tr.getGas}, gas price ${tr.getGasPrice}")
+        //        }
 
-//        logger.debug(s"Transaction receipts (very detailed): $receiptsByTrHash")
-//        for ((key, trRec) <- receiptsByTrHash) {
-//          logger.debug(s"TR receipt ($key): $trRec")
-//        }
+        //        logger.debug(s"Transaction receipts (very detailed): $receiptsByTrHash")
+        //        for ((key, trRec) <- receiptsByTrHash) {
+        //          logger.debug(s"TR receipt ($key): $trRec")
+        //        }
 
         val duration = Duration(System.nanoTime - startTime, TimeUnit.NANOSECONDS)
         logger.debug(s"Duration ${duration.toMillis} ms")
@@ -312,7 +316,6 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
       }
     }
   }
-
 
   //    try {
   //      val block: EthBlock.Block = web3j.ethGetBlockByNumber(new DefaultBlockParameterNumber(blockNumber.bigInteger), true).send.getBlock
@@ -442,42 +445,103 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
   ////            val resultList = FunctionReturnDecoder.decode(l.getData, Erc20TransferEvent.eventNonIndexedParametersJava).asScala.toList
   ////            val transferAmountType = resultList(0)
   ////            val transferAmount = transferAmountType.getValue
-  //        }
-  //
-  //        //        val transaction = EthereumTransaction(
-  //        //          tr.getHash,
-  //        //          tr.getBlockNumber,
-  //        ////          Instant.ofEpochSecond(tr.getTime)
-  //        //
-  //        //
-  //        //
-  //        //        )
-  //        //        println(s" > $transaction")
-  //        //      Some(EthereumBlock(
-  //        //        blockNumber,
-  //        //        block.getHash,
-  //        //        Some(block.getParentHash),
-  //        //        Instant.ofEpochSecond(block.getTimestamp.longValue())
-  //        //      ))
-  //
-  //        Some((
-  //          dlt.EthereumBlock(block.getNumber.intValueExact(), block.getHash, block.getParentHash, blockTime),
-  //          List(),
-  //          List()
-  //        ))
-  //      }
-  //      catch
-  //      {
-  //        case NonFatal(e) => {
-  //          logger.error(s"Cannot run readBlock($blockNumber)!", e)
-  //          None
-  //        }
-  //      }
-  //    }
+
+  /** Using GraphQL, read the block from Ethereum node (by the block number), filtered for specific addresses.
+   *
+   * @param blockNumber         what block to read (by its number).
+   * @param addressesOfInterest list of address hashes (all lowercased); only these addresses are returned.
+   */
+  def readBlockGraphQL(blockNumber: BigInt,
+                       addressesOfInterest: Set[String]): Option[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])] = {
+    import caliban.Geth._
+
+    /** For a Block, select just its number and hash.
+     *
+     * Hash is selected for referential integrity only.
+     */
+    case class BlockMinimalView(number: Long, hash: String)
+    object BlockMinimal {
+      /** A shorthand method to select the minimal block data;
+       * use it as `{ BlockMinimal.view }`.
+       */
+      lazy val view: SelectionBuilder[Block, BlockMinimalView] = {
+        Block.number ~
+          Block.hash
+      }.mapN(BlockMinimalView)
+    }
+
+    /** For a Block, select all the information needed four our processing. */
+    case class BlockBasicView(number: Long, hash: String, parent: Option[BlockMinimalView], timestamp: Long)
+    object BlockBasic {
+      /** A shorthand method to select basic block data;
+       * use it as `{ BlockBasic.view }`.
+       */
+      lazy val view: SelectionBuilder[Block, BlockBasicView] = {
+        Block.number ~
+          Block.hash ~
+          Block.parent {
+            BlockMinimal.view
+          } ~
+          Block.timestamp
+      }.mapN(BlockBasicView)
+    }
+
+    val query = Query.block(number = Some(blockNumber.longValue)) {
+      BlockBasic.view
+    }
+
+    val rq = query.toRequest(uri"$nodeUrl/graphql")
+
+    //    val backend = AkkaHttpBackend.usingActorSystem()
+    val backend = AkkaHttpBackend()
+
+    try {
+      val value: Response[Either[CalibanClientError, Option[BlockBasicView]]] =
+        Await.result(rq.send(backend), EthereumRpcSingleConnector.NETWORK_TIMEOUT)
+
+      value.body match {
+        case Left(err) =>
+          logger.error(s"Error for GraphQL querying block $blockNumber", err)
+          None
+        case Right(optBlockBasic) =>
+          // This is a legit response; but it may have no contents.
+          // For None, return None; for Some return a result,... hey it’s a flatMap!
+          optBlockBasic.flatMap { blockBasic =>
+            // Validate block
+            {
+              // Different validations depending on whether parent is Some(block) or None
+              require(blockBasic.parent match {
+                case None => blockBasic.number == 0
+                case Some(parentBlock) => parentBlock.number == blockBasic.number - 1
+              },
+                blockBasic)
+            }
+            val block = dlt.EthereumBlock(
+              number = blockBasic.number.toInt,
+              hash = blockBasic.hash,
+              parentHash = Some(blockBasic.parent.get.hash),
+              timestamp = Instant.ofEpochSecond(blockBasic.timestamp)
+            )
+            val transactions = Seq.empty[dlt.EthereumMinedTransaction]
+            Some((block, transactions))
+          }
+          None
+        case other =>
+          logger.error(s"Unhandled GraphQL response for block $blockNumber: $other")
+          None
+      }
+    } catch {
+      case NonFatal(e) =>
+        logger.error(s"Some nonfatar error happened during GraphQL query for $blockNumber", e)
+        None
+    }
+  }
 }
 
 /** Connector that handles a connection to single Ethereum node via RPC, and communicates with it. */
 object EthereumRpcSingleConnector {
+  val NETWORK_TIMEOUT: FiniteDuration = 10 seconds
+
   @inline def apply(nodeUrl: String): EthereumRpcSingleConnector = new EthereumRpcSingleConnector(nodeUrl)
 
   /** Convert the web3j-provided [[TransactionReceipt]] to the [[Seq]] of [[dlt.EthereumTxLog]]. */

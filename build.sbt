@@ -3,18 +3,22 @@ import java.time.Instant
 import sbt.Compile
 // Versions
 
-val akkaVersion = "2.6.16"
+val akkaVersion = "2.6.17"
+val akkaHttpVersion = "10.2.7"
+val calibanVersion = "1.3.0"
 val commonsIoVersion = "2.6"
 val configLibVersion = "1.4.1"
-val scoptVersion = "4.0.0"
-val h2DatabaseVersion = "1.4.199"
 val flywayDbVersion = "7.15.0"
+val h2DatabaseVersion = "1.4.199"
 val logbackVersion = "1.2.3"
 val postgresqlVersion = "42.2.24"
 val scalaLoggingVersion = "3.9.2"
 val scalaParallelCollectionsVersion = "1.0.0"
 val scalaTestVersion = "3.1.0"
 val scalikeJdbcVersion = "4.0.0"
+val scoptVersion = "4.0.0"
+//val sttpClientVersion = "2.2.10"
+val sttpClient3Version = "3.3.18"
 val syslogAppenderVersion = "1.0.0"
 val web3jVersion = "4.8.8"
 val jacksonCoreVersion = "2.11.4" // same version as used by akka-serialization-jackson for Scala 2.13
@@ -117,9 +121,9 @@ lazy val commonScalaSettings = Seq(
 lazy val commonAkkaMicroserviceSettings = Seq(
   libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
-    //    "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
     "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
     "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
+    "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
     "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
   ),
 )
@@ -297,15 +301,43 @@ lazy val ethereum_rpc_connector = (project in file("scala/connectors/ethereum_rp
   .settings(
     commonSettings,
     commonScalaSettings,
+    commonAkkaMicroserviceSettings, // for akka-http
     name := "ethereum_rpc_connector",
     description := "UniCherryGarden: connect to Web3 (geth) nodes from Scala code via JSON-RPC",
     libraryDependencies ++= Seq(
+      // Web3/Ethereum node JSON-RPC client
       "org.web3j" % "core" % web3jVersion,
       "org.web3j" % "contracts" % web3jVersion,
+      // GraphQL client
+      "com.github.ghostdogpr" %% "caliban-client" % calibanVersion,
+      // Used by Caliban Client for outgoing queries
+
+      //      "com.softwaremill.sttp.client" %% "core" % sttpClientVersion,
+      //      "com.softwaremill.sttp.client" %% "akka-http-backend" % sttpClientVersion,
+
+      "com.softwaremill.sttp.client3" %% "core" % sttpClient3Version,
+      "com.softwaremill.sttp.client3" %% "akka-http-backend" % sttpClient3Version, // backend of choice
+      "com.typesafe.akka" %% "akka-http" % akkaHttpVersion, // needed for "akka-http-backend
+      "com.typesafe.akka" %% "akka-stream" % akkaVersion, // needed for akka-http explicitly
+
+    ),
+    Compile / caliban / calibanSettings ++= Seq(
+      calibanSetting(file("scala/connectors/ethereum_rpc_connector/src/main/graphql/Geth.graphql"))(
+        cs => cs
+          .packageName("caliban")
+//          .scalarMapping(
+//            "Timestamp" -> "java.sql.Timestamp",
+//            "DayOfWeek" -> "java.time.DayOfWeek",
+//          )
+          .genView(true)
+          .imports("com.myodov.unicherrygarden.connectors.ScalarDecoder.long")
+      )
     ),
     Compile / resourceGenerators += versionFileTask("unicherrygarden_ethereum_rpc_connector.properties").taskValue,
   )
   .dependsOn(commonScala, api, confreader % "test->compile", logging % "test->compile")
+  .enablePlugins(CalibanPlugin)
+
 
 // CherryPicker: investigates the Ethereum blockchain and cherry-picks
 // the information about the Ether/ERC20 transfers.

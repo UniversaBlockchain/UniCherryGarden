@@ -24,13 +24,37 @@ import scala.util.control.NonFatal
 
 /** The main actor “cherry-picking” the data from the Ethereum blockchain into the DB.
  *
- * Runs in an FSM-style:
+ * It has two sub-systems/sub-behaviors:  and [[CherryPicker#SlowSyncer]],
+ * which both work independently but assume the other counterpart does its job too.
+ *
+ * [[CherryPicker#FastSyncer]]:
+
+ * [[CherryPicker#SlowSyncer]]:
+ * <ul>
+ *   <li>Once per each (about) 10–15 seconds, it reads the `eth.syncing`
+ *   and `eth.blockNumber` from Ethereum node (geth).</li>
+ *   <li>If the new syncing state moved exactly by 1 block from the last block fully-synced by CherryPicker, it:
+ *     <ol>
+ *       <li>Syncs just the new block;</li>
+ *       <li>... and only after this, it stores the `eth.syncing`/`eth.blockNumber` in the DB
+ *       (so that FastSync running concurrently doesn’t clash with this block and doesn’t try to sync it).</li>
+ *       <li></li>
+ *     </ol>
+ *   </li>
+ * <ul>
+ *
+ * If the new syncing state moved further than by 1 block, it relies on fast-sync to catch up on its next iteration.
+ *
+ * TODO...
+ *
+ * <ol>
+ *   <li>:</li>
+ *   <li>:
+ *   </li>
+ * </ol>
  *
  * <ul>
  * <li>First goes `launch`.</li>
- * <li>It setups regular timer, that periodically sents `ReadEthNodeSyncState` message,
- * and also sends the same `ReadEthNodeSyncState` and `DoSyncIteration` (in this order) messages once,
- * immediately.</li>
  * <li>On each `ReadEthNodeSyncState`, it goes to `rereadEthSyncingBlockNumber()`;
  * which rereads the `eth.syncing` and `eth.blockNumber` from Ethereum node (geth).</li>
  * <li>On each `DoSyncIteration`, it goes to `nextIteration()`;
@@ -221,6 +245,18 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
     }
   }
 
+  private case class FastSyncer() {
+
+  }
+
+  /** Performs the “Slow sync” – after the fast-synced block reached
+   * the last-known-to-Ethereum-node synced block, it just starts slowly read the next block,
+   * once about 10–15 seconds.
+   */
+  private case class SlowSyncer() {
+
+  }
+
   /** FSM state: “Reread `eth.syncing` and `eth.blockNumber`”. */
   private[this] def rereadEthSyncingBlockNumber(): Behavior[CherryPickerRequest] = {
     logger.debug("Rereading eth.syncing/eth.blockNumber")
@@ -260,86 +296,86 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
         // First, let's ask the Ethereum node what's the status of the syncing process
 
         val behavior: Behavior[CherryPickerRequest] = {
-            // Since this moment, we may want to use DB in a single atomic DB transaction;
-            // even though this will involve querying the Ethereum node, maybe even multiple times.
-            DB localTx { implicit session =>
-              val optProgress = pgStorage.progress.getProgress
-              lazy val progress = optProgress.get
-              lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
+          // Since this moment, we may want to use DB in a single atomic DB transaction;
+          // even though this will involve querying the Ethereum node, maybe even multiple times.
+          DB localTx { implicit session =>
+            val optProgress = pgStorage.progress.getProgress
+            lazy val progress = optProgress.get
+            lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
 
-              if (optProgress.isEmpty) {
-                logger.error("Cannot get the progress, something failed!")
-                pgStorage.state.setSyncState("Cannot get the progress state!")
-                reiterateAfterDelay(state)
+            if (optProgress.isEmpty) {
+              logger.error("Cannot get the progress, something failed!")
+              pgStorage.state.setSyncState("Cannot get the progress state!")
+              reiterateAfterDelay(state)
 
-              } else if (progress.overall.from.isEmpty) {
-                logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!");
-                reiterateAfterDelay(state)
+            } else if (progress.overall.from.isEmpty) {
+              logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!");
+              reiterateAfterDelay(state)
 
-              } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
-                logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
-                  s"is ${progress.currencies.minSyncFrom.get}; " +
-                  s"it should not be lower than $overallFrom!")
-                reiterateAfterDelay(state)
+            } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
+              logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
+                s"is ${progress.currencies.minSyncFrom.get}; " +
+                s"it should not be lower than $overallFrom!")
+              reiterateAfterDelay(state)
 
-              } else if (progress.trackedAddresses.minFrom < overallFrom) {
-                logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
-                  s"is ${progress.trackedAddresses.minFrom}; " +
-                  s"it should not be lower than $overallFrom!")
-                reiterateAfterDelay(state)
+            } else if (progress.trackedAddresses.minFrom < overallFrom) {
+              logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
+                s"is ${progress.trackedAddresses.minFrom}; " +
+                s"it should not be lower than $overallFrom!")
+              reiterateAfterDelay(state)
 
-                // ------------------------------------------------------------------------------
-                // Since this point go all the options where the iteration should actually happen
-                // ------------------------------------------------------------------------------
-              } else if (progress.blocks.from.isEmpty) {
-                // progress.overall.from is not Empty
-                val blockToSync = progress.overall.from.get
-                logger.info(s"Starting from the very first block ($blockToSync)...")
-                handleSyncedBlock(blockToSync)
-                reiterateImmediately(state)
+              // ------------------------------------------------------------------------------
+              // Since this point go all the options where the iteration should actually happen
+              // ------------------------------------------------------------------------------
+            } else if (progress.blocks.from.isEmpty) {
+              // progress.overall.from is not Empty
+              val blockToSync = progress.overall.from.get
+              logger.info(s"Starting from the very first block ($blockToSync)...")
+              handleSyncedBlock(blockToSync)
+              reiterateImmediately(state)
 
-              } else { // Fast sync
-                // progress.overall.from is not Empty
+            } else { // Fast sync
+              // progress.overall.from is not Empty
 
-                // There may be multiple options of blocks to choose:
-                // 1. Just the next block to read.
-                val firstUnreadBlock: Option[Int] = progress.blocks.to.map(_ + 1)
-                // 2. We never started some (currency, tracked address) pair?
-                // Use the least from_block (from either currency or tracked address).
-                val firstNeverCTAStartedBlock: Option[Int] =
-                pgStorage.progress.getFirstBlockResolvingSomeNeverStartedCTAddress
-                // 3. We never completed some (currency, tracked address) pair?
-                // Use the least from_block (from either currency or tracked address).
-                val firstNeverCTASyncedBlock: Option[Int] =
-                pgStorage.progress.getFirstBlockResolvingSomeNeverSyncedCTAddress
-                // 4. Some of CTA to-blocks is smaller than others?
-                // Use it.
-                val firstMismatchingCTAToBlock: Option[Int] =
-                (progress.perCurrencyTrackedAddresses.minTo, progress.perCurrencyTrackedAddresses.maxTo) match {
-                  case (Some(minTo), Some(maxTo)) if minTo < maxTo =>
-                    Some(minTo + 1)
-                  case _ =>
-                    None
-                }
-
-                val blocksToCompare = List(
-                  firstUnreadBlock,
-                  firstNeverCTAStartedBlock,
-                  firstNeverCTASyncedBlock,
-                  firstMismatchingCTAToBlock
-                )
-
-                logger.debug(s"Progress is $progress: " +
-                  s"choosing between $blocksToCompare")
-
-                val blockToSync = blocksToCompare.flatten.min
-
-                logger.info(s"Fast-syncing $blockToSync block")
-                handleSyncedBlock(blockToSync)
-                reiterateImmediately(state)
+              // There may be multiple options of blocks to choose:
+              // 1. Just the next block to read.
+              val firstUnreadBlock: Option[Int] = progress.blocks.to.map(_ + 1)
+              // 2. We never started some (currency, tracked address) pair?
+              // Use the least from_block (from either currency or tracked address).
+              val firstNeverCTAStartedBlock: Option[Int] =
+              pgStorage.progress.getFirstBlockResolvingSomeNeverStartedCTAddress
+              // 3. We never completed some (currency, tracked address) pair?
+              // Use the least from_block (from either currency or tracked address).
+              val firstNeverCTASyncedBlock: Option[Int] =
+              pgStorage.progress.getFirstBlockResolvingSomeNeverSyncedCTAddress
+              // 4. Some of CTA to-blocks is smaller than others?
+              // Use it.
+              val firstMismatchingCTAToBlock: Option[Int] =
+              (progress.perCurrencyTrackedAddresses.minTo, progress.perCurrencyTrackedAddresses.maxTo) match {
+                case (Some(minTo), Some(maxTo)) if minTo < maxTo =>
+                  Some(minTo + 1)
+                case _ =>
+                  None
               }
-            } // DB localTx
-          }
+
+              val blocksToCompare = List(
+                firstUnreadBlock,
+                firstNeverCTAStartedBlock,
+                firstNeverCTASyncedBlock,
+                firstMismatchingCTAToBlock
+              )
+
+              logger.debug(s"Progress is $progress: " +
+                s"choosing between $blocksToCompare")
+
+              val blockToSync = blocksToCompare.flatten.min
+
+              logger.info(s"Fast-syncing $blockToSync block")
+              handleSyncedBlock(blockToSync)
+              reiterateImmediately(state)
+            }
+          } // DB localTx
+        }
 
         pgStorage.state.setLastHeartbeatAt
         val duration = Duration(System.nanoTime - startTime, TimeUnit.NANOSECONDS)
@@ -474,7 +510,7 @@ object CherryPicker extends LazyLogging {
    */
   final case class ReadEthNodeSyncState() extends CherryPickerRequest
 
-  private val ITERATION_PERIOD = 15 seconds
+  private val ITERATION_PERIOD = 10 seconds // Each block is generated about once per 13 seconds
   //  private val ITERATION_PERIOD = 1 second
 
   /** Object constructor. */
