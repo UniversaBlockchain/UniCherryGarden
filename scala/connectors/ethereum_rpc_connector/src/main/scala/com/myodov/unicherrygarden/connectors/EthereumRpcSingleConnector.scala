@@ -530,7 +530,9 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
                               parent: Option[BlockMinimalView],
                               timestamp: Long,
                               transactions: Option[List[TransactionBasicView]]
-                             )
+                             ) {
+      lazy val asMinimalBlock: BlockMinimalView = BlockMinimalView(number, hash)
+    }
     object BlockBasic {
       /** A shorthand method to select basic block data;
        * use it as `{ BlockBasic.view }`.
@@ -571,12 +573,32 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
           optBlockBasic.flatMap { blockBasic =>
             // Validate block
             {
-              // Different validations depending on whether parent is Some(block) or None
+              // Different validations depending on whether parent is Some(block) or None:
+              // “parent is absent” may happen only on the block 0;
+              // “parent is not absent” implies the parent block has number lower by one.
               require(blockBasic.parent match {
                 case None => blockBasic.number == 0
                 case Some(parentBlock) => parentBlock.number == blockBasic.number - 1
               },
                 blockBasic)
+              require(
+                blockBasic.transactions match {
+                  // If the transactions are not available at all – that’s legit
+                  case None => true
+                  // If the transactions are available - all of them must refer to the same block
+                  case Some(trList) => trList.forall { tr =>
+                    tr.block match {
+                      case Some(innerBlock) if innerBlock == blockBasic.asMinimalBlock =>
+                        true
+                      case other =>
+                        // either Option[Block] is None, i.e. the block is not mined;
+                        // or inner block (minimalData) does not match the outer block
+                        false
+                    }
+                  }
+                },
+                blockBasic
+              )
             }
 
             System.err.println(s"Received block $blockBasic")
