@@ -5,7 +5,7 @@ import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.ClusterEvent.MemberEvent
 import akka.cluster.typed.{Cluster, Subscribe}
 import com.myodov.unicherrygarden.cherrygardener.CherryGardener
-import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
+import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, EthereumSingleNodeJsonRpcConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryGardenerResponse, CherryPickerRequest, CherryPlanterRequest}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.myodov.unicherrygarden.{CherryPicker, CherryPlanter, LoggingConfigurator, UnicherrygardenVersion}
@@ -25,7 +25,7 @@ object LauncherApp extends App with LazyLogging {
   lazy val config = ConfigFactory.load()
 
   /** Command line arguments. */
-  final case class CLIConfig(mode: CLIMode.CLIMode = null)
+  sealed case class CLIConfig(mode: CLIMode.CLIMode = null)
 
   def handleCLI(args: Array[String]): Option[CLIConfig] = {
     val builder = OParser.builder[CLIConfig]
@@ -74,7 +74,7 @@ You can choose a different HOCON configuration file instead of the regular appli
     PostgreSQLStorage(jdbcUrl, dbUser, dbPassword, wipe, dbMigrations)
   }
 
-  private[this] def getEthereumConnector(): EthereumRpcSingleConnector = {
+  private[this] def getEthereumConnector(): AbstractEthereumNodeConnector with Web3ReadOperations = {
     val nodeUrls = config.getStringList("ethereum.rpc_servers")
     if (nodeUrls.size > 1) {
       logger.warn(s"There are ${nodeUrls.size} Ethereum node URLs listed; only 1 is supported yet")
@@ -85,7 +85,7 @@ You can choose a different HOCON configuration file instead of the regular appli
 
     val nodeUrl = nodeUrls.get(0)
     logger.debug(s"Using Ethereum node at $nodeUrl")
-    EthereumRpcSingleConnector(nodeUrl)
+    EthereumSingleNodeJsonRpcConnector(nodeUrl)
   }
 
   def init(wipe: Boolean): Unit = {
@@ -166,7 +166,7 @@ object LauncherActor extends LazyLogging {
 
   /** Akka message to launch CherryGardener. */
   final case class LaunchCherryGardener(pgStorage: PostgreSQLStorage,
-                                        ethereumConnector: EthereumRpcSingleConnector) extends LaunchComponent
+                                        ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations) extends LaunchComponent
 
   def apply(): Behavior[Message] =
     Behaviors.receive { (context, message) =>

@@ -80,6 +80,7 @@ inThisBuild(List(
       url = url("https://myodov.com/")
     )
   ),
+  scalacOptions ++= Seq("-unchecked", "-deprecation"), // display deprecations and warnings on compilations
 ))
 
 usePgpKeyHex("BE53ACD082329B6231C5D4F41B6C3A2684CA4538")

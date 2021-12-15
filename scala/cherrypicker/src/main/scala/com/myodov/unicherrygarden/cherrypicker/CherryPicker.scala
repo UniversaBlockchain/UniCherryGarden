@@ -7,8 +7,10 @@ import java.util.concurrent.TimeUnit
 import akka.actor.typed.Behavior
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
+import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.types.{BlockchainSyncStatus, MinedTransfer}
-import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
+import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
+import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.Response
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses, GetTransfers}
@@ -16,6 +18,7 @@ import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.typesafe.scalalogging.LazyLogging
 import scalikejdbc.{DB, DBSession}
 
+import scala.annotation.switch
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
@@ -28,30 +31,24 @@ import scala.util.control.NonFatal
  * which both work independently but assume the other counterpart does its job too.
  *
  * [[CherryPicker#FastSyncer]]:
-
+ *
  * [[CherryPicker#SlowSyncer]]:
  * <ul>
- *   <li>Once per each (about) 10–15 seconds, it reads the `eth.syncing`
- *   and `eth.blockNumber` from Ethereum node (geth).</li>
- *   <li>If the new syncing state moved exactly by 1 block from the last block fully-synced by CherryPicker, it:
- *     <ol>
- *       <li>Syncs just the new block;</li>
- *       <li>... and only after this, it stores the `eth.syncing`/`eth.blockNumber` in the DB
- *       (so that FastSync running concurrently doesn’t clash with this block and doesn’t try to sync it).</li>
- *       <li></li>
- *     </ol>
- *   </li>
+ * <li>Once per each (about) 10–15 seconds, it reads the `eth.syncing`
+ * and `eth.blockNumber` from Ethereum node (geth).</li>
+ * <li>If the new syncing state moved exactly by 1 block from the last block fully-synced by CherryPicker, it:
+ * <ol>
+ * <li>Syncs just the new block;</li>
+ * <li>... and only after this, it stores the `eth.syncing`/`eth.blockNumber` in the DB
+ * (so that FastSync running concurrently doesn’t clash with this block and doesn’t try to sync it).</li>
+ * <li></li>
+ * </ol>
+ * </li>
  * <ul>
  *
  * If the new syncing state moved further than by 1 block, it relies on fast-sync to catch up on its next iteration.
  *
  * TODO...
- *
- * <ol>
- *   <li>:</li>
- *   <li>:
- *   </li>
- * </ol>
  *
  * <ul>
  * <li>First goes `launch`.</li>
@@ -64,7 +61,7 @@ import scala.util.control.NonFatal
  * </ul>
  * */
 private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
-                           protected[this] val ethereumConnector: EthereumRpcSingleConnector)
+                           protected[this] val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
   extends LazyLogging {
 
   import CherryPicker._
@@ -261,15 +258,12 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
   private[this] def rereadEthSyncingBlockNumber(): Behavior[CherryPickerRequest] = {
     logger.debug("Rereading eth.syncing/eth.blockNumber")
 
-    val syncingStatusOpt = ethereumConnector.ethSyncing
-    val blockNumberOpt = ethereumConnector.ethBlockNumber
-
-    (syncingStatusOpt, blockNumberOpt) match {
-      case (_, None) | (None, _) =>
-        logger.error(s"Cannot get eth.syncing ($syncingStatusOpt) / eth.blockNumber ($blockNumberOpt)!")
+    (ethereumConnector.ethSyncingBlockNumber: @switch) match {
+      case None =>
+        logger.error("Cannot get eth.syncing / eth.blockNumber !")
         pgStorage.state.setSyncState("Cannot connect to Ethereum node!")
-      case (Some(ethSyncing), Some(ethBlockNumber̦BI)) =>
-        val ethBlockNumber: Int = ethBlockNumber̦BI.bigInteger.intValueExact
+      case Some((ethSyncing, ethBlockNumberBI)) =>
+        val ethBlockNumber: Int = ethBlockNumberBI.bigInteger.intValueExact
         logger.debug(s"Found eth.syncing ($ethSyncing) / eth.blockNumber ($ethBlockNumber)!")
         // If eth.syncing returned False, i.e. we are not syncing – we should assume currentBlock and highestBlock
         // are equal to eth.blockNumber
@@ -411,7 +405,6 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
     }
   }
 
-
   /** Perform the regular iteration for a specific block number. */
   private[this] def handleSyncedBlock(blockToSync: Int)(implicit session: DBSession): Unit = {
     val trackedAddresses: Set[String] = pgStorage.trackedAddresses.getJustAddresses
@@ -515,7 +508,7 @@ object CherryPicker extends LazyLogging {
 
   /** Object constructor. */
   def apply(pgStorage: PostgreSQLStorage,
-            ethereumConnector: EthereumRpcSingleConnector): Behavior[CherryPickerRequest] =
+            ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations): Behavior[CherryPickerRequest] =
     new CherryPicker(pgStorage, ethereumConnector).launch()
 }
 

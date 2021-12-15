@@ -56,21 +56,21 @@ class PostgreSQLStorage(jdbcUrl: String,
      * @param from : UniCherrypicker in general has been synced from this block (may be missing).
      * @param to   : UniCherrypicker in general has been synced to this block (may be missing).
      */
-    final case class OverallSyncStatus(from: Option[Int], to: Option[Int])
+    sealed case class OverallSyncStatus(from: Option[Int], to: Option[Int])
 
     /** Sync status of `ucg_currency` table.
      *
      * @param minSyncFrom : minimum `sync_from_block_number` value among all supported currencies (may be missing).
      * @param maxSyncFrom : maximum `sync_from_block_number` value among all supported currencies (may be missing).
      */
-    final case class CurrenciesSyncStatus(minSyncFrom: Option[Int], maxSyncFrom: Option[Int])
+    sealed case class CurrenciesSyncStatus(minSyncFrom: Option[Int], maxSyncFrom: Option[Int])
 
     /** Sync status of `ucg_block` table
      *
      * @param from : minimum block number in `ucg_block` table (may be missing).
      * @param to   : maximum block number in `ucg_block` table (may be missing).
      */
-    final case class BlocksSyncStatus(from: Option[Int], to: Option[Int])
+    sealed case class BlocksSyncStatus(from: Option[Int], to: Option[Int])
 
     /** Sync status of `ucg_tracked_address` table.
      *
@@ -81,9 +81,9 @@ class PostgreSQLStorage(jdbcUrl: String,
      * @param toHasNulls : whether `synced_to_block_number` has nulls;
      *                   i.e., for some tracked addresses, the synced_to value is missing.
      */
-    final case class TrackedAddressesSyncStatus(minFrom: Int, maxFrom: Int,
-                                                minTo: Option[Int], maxTo: Option[Int],
-                                                toHasNulls: Boolean)
+    sealed case class TrackedAddressesSyncStatus(minFrom: Int, maxFrom: Int,
+                                                 minTo: Option[Int], maxTo: Option[Int],
+                                                 toHasNulls: Boolean)
 
     /** Sync status of `ucg_currency_tracked_address_progress` table.
      *
@@ -98,9 +98,9 @@ class PostgreSQLStorage(jdbcUrl: String,
      * @param toHasNulls : whether `synced_to_block_number` has nulls;
      *                   i.e., for some currency/tracked-address pairs, the synced_to value is missing.
      */
-    final case class PerCurrencyTrackedAddressesSyncStatus(minFrom: Option[Int], maxFrom: Option[Int],
-                                                           minTo: Option[Int], maxTo: Option[Int],
-                                                           toHasNulls: Boolean)
+    sealed case class PerCurrencyTrackedAddressesSyncStatus(minFrom: Option[Int], maxFrom: Option[Int],
+                                                            minTo: Option[Int], maxTo: Option[Int],
+                                                            toHasNulls: Boolean)
 
     /** Whole-system syncing progress.
      *
@@ -110,11 +110,11 @@ class PostgreSQLStorage(jdbcUrl: String,
      * @param trackedAddresses            : progress of syncing as per `ucg_tracked_address` table.
      * @param perCurrencyTrackedAddresses : progress of syncing as per `ucg_currency_tracked_address_progress` table.
      */
-    final case class Progress(overall: OverallSyncStatus,
-                              currencies: CurrenciesSyncStatus,
-                              blocks: BlocksSyncStatus,
-                              trackedAddresses: TrackedAddressesSyncStatus,
-                              perCurrencyTrackedAddresses: PerCurrencyTrackedAddressesSyncStatus)
+    sealed case class Progress(overall: OverallSyncStatus,
+                               currencies: CurrenciesSyncStatus,
+                               blocks: BlocksSyncStatus,
+                               trackedAddresses: TrackedAddressesSyncStatus,
+                               perCurrencyTrackedAddresses: PerCurrencyTrackedAddressesSyncStatus)
 
     /** Get the overall syncing progress. */
     def getProgress(implicit session: DBSession = ReadOnlyAutoSession): Option[Progress] = {
@@ -519,14 +519,14 @@ class PostgreSQLStorage(jdbcUrl: String,
 
 
     /** Single instance of currency/token/asset. */
-    final case class DBCurrency(currencyType: CurrencyTypes.DBCurrencyType,
-                                dAppAddress: Option[String],
-                                name: Option[String],
-                                symbol: Option[String],
-                                ucgComment: Option[String],
-                                verified: Boolean,
-                                decimals: Option[Int]
-                               ) {
+    sealed case class DBCurrency(currencyType: CurrencyTypes.DBCurrencyType,
+                                 dAppAddress: Option[String],
+                                 name: Option[String],
+                                 symbol: Option[String],
+                                 ucgComment: Option[String],
+                                 verified: Boolean,
+                                 decimals: Option[Int]
+                                ) {
       require((currencyType == CurrencyTypes.Eth) == dAppAddress.isEmpty, (currencyType, dAppAddress))
       require(dAppAddress.isEmpty || EthUtils.Addresses.isValidLowercasedAddress(dAppAddress.get), dAppAddress)
 
@@ -580,11 +580,11 @@ class PostgreSQLStorage(jdbcUrl: String,
      * Note that the [[Option]] arguments being [[None]] don’t necessary mean the data really has NULL here:
      * they may be empty if the result has been requested without this piece of data.
      */
-    final case class TrackedAddress(address: String,
-                                    comment: Option[String],
-                                    syncedFrom: Option[Int],
-                                    syncedTo: Option[Int]
-                                   )
+    sealed case class TrackedAddress(address: String,
+                                     comment: Option[String],
+                                     syncedFrom: Option[Int],
+                                     syncedTo: Option[Int]
+                                    )
 
     /** Get the list of all tracked addresses;
      * optionally containing (or not containing) various extra information about each address.
@@ -714,7 +714,7 @@ class PostgreSQLStorage(jdbcUrl: String,
                         blockHash: String,
                       )(implicit
                         session: DBSession = AutoSession
-                      ) {
+                      ): Unit = {
       require(EthUtils.Hashes.isValidBlockHash(blockHash), blockHash)
 
       sql"""
@@ -763,7 +763,7 @@ class PostgreSQLStorage(jdbcUrl: String,
                    txLogs: Seq[dlt.EthereumTxLog]
                  )(implicit
                    session: DBSession = AutoSession
-                 ) {
+                 ): Unit = {
       val batchParams: Seq[Seq[Any]] = txLogs.map(t => Seq(
         transactionHash,
         blockNumber,

@@ -6,7 +6,6 @@ import java.util.concurrent.TimeUnit
 import caliban.client.CalibanClientError
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.connectors.graphql._
-import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.typesafe.scalalogging.LazyLogging
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameterNumber
@@ -26,10 +25,13 @@ import scala.jdk.OptionConverters._
 import scala.language.postfixOps
 import scala.util.control.NonFatal
 
-/** Connector that handles a connection to single Ethereum node via RPC, and communicates with it.
- */
-class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends LazyLogging {
-  override def toString: String = s"EthereumRpcSingleConnector($nodeUrl)"
+/** Connector that communicates with a single Ethereum node using JSON-RPC (via Web3J library). */
+class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
+  extends AbstractEthereumNodeConnector(nodeUrl)
+    with Web3ReadOperations
+    with LazyLogging {
+
+  override def toString: String = s"EthereumWeb3jSingleNodeConnector($nodeUrl)"
 
   private[this] var web3j: Web3j = rebuildWeb3j()
 
@@ -42,51 +44,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
     Web3j.build(new HttpService(nodeUrl))
   }
 
-
-  private[this] final case class SyncingStatusData(currentBlock: Int = 0, highestBlock: Int = 0) {
-    assert(currentBlock >= 0)
-    assert(highestBlock >= 0)
-  }
-
-  private[EthereumRpcSingleConnector] class SyncingStatusResult(private val data: Option[SyncingStatusData]) {
-    val isStillSyncing: Boolean = data.nonEmpty
-    lazy val currentBlock: Int = {
-      if (isStillSyncing) data.get.currentBlock
-      else throw new RuntimeException("currentBlock available only if `isStillSyncing`")
-    }
-    lazy val highestBlock: Int = {
-      if (isStillSyncing) data.get.highestBlock
-      else throw new RuntimeException("highestBlock available only if `isStillSyncing`")
-    }
-
-    override val toString: String = {
-      if (isStillSyncing)
-        s"SyncingStatusResult(currentBlock=$currentBlock, highestBlock=$highestBlock)"
-      else
-        s"SyncingStatusResult(not_syncing)"
-    }
-  }
-
-  object SyncingStatusResult {
-    @inline
-    private[this] def apply(data: Option[SyncingStatusData]): SyncingStatusResult = new SyncingStatusResult(data)
-
-    @inline
-    private[EthereumRpcSingleConnector] def createSyncing(currentBlock: Int, highestBlock: Int): SyncingStatusResult =
-      new SyncingStatusResult(Some(SyncingStatusData(currentBlock, highestBlock)))
-
-    @inline
-    private[EthereumRpcSingleConnector] def createNotSyncing(): SyncingStatusResult =
-      new SyncingStatusResult(None)
-  }
-
-
-  /** Get the status of the syncing process for this Ethereum node (`eth.syncing`).
-   *
-   * @return [[Option]] with the data about the syncing process; the Option is empty if the data could not be received
-   *         (probably due to some network error).
-   */
-  def ethSyncing: Option[SyncingStatusResult] = {
+  private[this] def ethSyncing: Option[SyncingStatusResult] = {
     try {
       val result: EthSyncing.Result = web3j.ethSyncing.send.getResult
       if (!result.isSyncing) {
@@ -111,13 +69,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
     }
   }
 
-
-  /** Get the number of the last block synced by this Ethereum node (`eth.blockNumber`).
-   *
-   * @return [[Option]] with the data about the syncing process; the Option is empty if the data could not be received
-   *         (probably due to some network error).
-   */
-  def ethBlockNumber: Option[BigInt] = {
+  private[this] def ethBlockNumber: Option[BigInt] = {
     try {
       Some(web3j.ethBlockNumber.send.getBlockNumber)
     } catch {
@@ -127,6 +79,9 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
       }
     }
   }
+
+  override def ethSyncingBlockNumber: Option[(SyncingStatusResult, BigInt)] =
+    ethSyncing zip ethBlockNumber
 
   /** Get the Ethereum data for a block, by its number; the data is returned in Web3j-style classes.
    *
@@ -205,11 +160,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
       }
     }
 
-  /** Read the block from Ethereum node (by the block number), returning all parseable data.
-   *
-   * @param blockNumber what block to read (by its number).
-   */
-  def readBlock(blockNumber: BigInt): Option[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])] =
+  override def readBlock(blockNumber: BigInt): Option[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])] =
     readBlockWeb3j(blockNumber) match {
       case None => None
       case Some((w3jBlock, w3jTransactions, w3jReceiptsByTrHash)) => {
@@ -280,43 +231,13 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
               gasUsed = w3jTrReceipt.getGasUsed,
               effectiveGasPrice = decodeQuantity(w3jTrReceipt.getEffectiveGasPrice),
               cumulativeGasUsed = w3jTrReceipt.getCumulativeGasUsed,
-              txLogs = EthereumRpcSingleConnector.getLogsFromTransactionReceipt(w3jTrReceipt)
+              txLogs = EthereumSingleNodeJsonRpcConnector.getLogsFromTransactionReceipt(w3jTrReceipt)
             )
           }
           Some((block, minedTransactions))
         }
       }
     }
-
-  /** Read the block from Ethereum node (by the block number), filtered for specific addresses.
-   *
-   * @param blockNumber         what block to read (by its number).
-   * @param addressesOfInterest list of address hashes (all lowercased); only these addresses are returned.
-   */
-  def readBlock(blockNumber: BigInt,
-                addressesOfInterest: Set[String]): Option[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])] = {
-    assert(addressesOfInterest.forall(EthUtils.Addresses.isValidLowercasedAddress), addressesOfInterest)
-    // Convert the addresses (which should be used to filter) to their Uint256 representations
-    val addressesOfInterestUint256: Set[String] = addressesOfInterest.map(EthUtils.Uint256Str.fromAddress)
-
-    readBlock(blockNumber) match {
-      case None => None
-      case Some((block, minedTransactionsUnfiltered)) => {
-        val minedTransactionsFiltered =
-          for (tr: dlt.EthereumMinedTransaction <- minedTransactionsUnfiltered
-               // We take a transaction if it is sent from any address of interest...
-               if addressesOfInterest.contains(tr.from) ||
-                 // ... or sent to any address of interest...
-                 (tr.to.nonEmpty && addressesOfInterest.contains(tr.to.get)) ||
-                 // ... or any of addresses-of-interest matches any txlog topic.
-                 addressesOfInterestUint256.exists(tr.anyTxLogContainsTopic)
-               )
-            yield tr
-
-        Some((block, minedTransactionsFiltered))
-      }
-    }
-  }
 
   //    try {
   //      val block: EthBlock.Block = web3j.ethGetBlockByNumber(new DefaultBlockParameterNumber(blockNumber.bigInteger), true).send.getBlock
@@ -467,7 +388,7 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
 
     try {
       val value: Response[Either[CalibanClientError, Option[BlockBasicView]]] =
-        Await.result(rq.send(backend), EthereumRpcSingleConnector.NETWORK_TIMEOUT)
+        Await.result(rq.send(backend), EthereumSingleNodeJsonRpcConnector.NETWORK_TIMEOUT)
 
       value.body match {
         case Left(err) =>
@@ -536,10 +457,10 @@ class EthereumRpcSingleConnector(private[this] val nodeUrl: String) extends Lazy
 }
 
 /** Connector that handles a connection to single Ethereum node via RPC, and communicates with it. */
-object EthereumRpcSingleConnector {
+object EthereumSingleNodeJsonRpcConnector {
   val NETWORK_TIMEOUT: FiniteDuration = 10 seconds
 
-  @inline def apply(nodeUrl: String): EthereumRpcSingleConnector = new EthereumRpcSingleConnector(nodeUrl)
+  @inline def apply(nodeUrl: String): EthereumSingleNodeJsonRpcConnector = new EthereumSingleNodeJsonRpcConnector(nodeUrl)
 
   /** Convert the web3j-provided [[TransactionReceipt]] to the [[Seq]] of [[dlt.EthereumTxLog]]. */
   def getLogsFromTransactionReceipt(trReceipt: TransactionReceipt): Seq[dlt.EthereumTxLog] = trReceipt

@@ -6,13 +6,18 @@ import com.myodov.unicherrygarden.api.dlt.{EthereumBlock, EthereumMinedTransacti
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpec
 
-class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
-  lazy val config = ConfigFactory.load()
-  lazy val sharedConnector = EthereumRpcSingleConnector(config.getStringList("ethereum.rpc_servers").get(0))
+abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
+  val sharedConnector: AbstractEthereumNodeConnector with Web3ReadOperations
 
-  "latestSyncedBlockNumber()" should "return some valid number" in {
+  lazy val config = ConfigFactory.load()
+
+  "ethBlockNumber()" should "return some valid number" in {
+    val blockNumberResult = sharedConnector.ethSyncingBlockNumber
     assert(
-      sharedConnector.ethBlockNumber.get > 11500000
+      blockNumberResult match {
+        case Some((syncingStatus, blockNumber)) => blockNumber > 11500000
+      },
+      blockNumberResult
     )
   }
 
@@ -342,26 +347,6 @@ class EthereumRpcSingleConnectorSpec extends AnyFlatSpec {
       sharedConnector.readBlock(
         blockNumber = 10381084,
         addressesOfInterest = Set("0x3452519f4711703e13ea0863487eb8401bd6ae57"))
-    )
-  }
-
-  "readBlockGraphQL(12345)" should "read and parse a block" in {
-    assertResult(
-      Some( // Option of Tuple
-        (
-          EthereumBlock(
-            0,
-            hash = "0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3",
-            parentHash = Some("0x0000000000000000000000000000000000000000000000000000000000000000"),
-            Instant.parse("1970-01-01T00:00:00Z")
-          ),
-          List()
-        )
-      )
-    )(
-      sharedConnector.readBlockGraphQL(
-        blockNumber = 10381084,
-        addressesOfInterest = Set.empty)
     )
   }
 }

@@ -5,7 +5,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.UnicherrygardenVersion
 import com.myodov.unicherrygarden.api.types.dlt.Currency
-import com.myodov.unicherrygarden.connectors.EthereumRpcSingleConnector
+import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector
 import com.myodov.unicherrygarden.messages.cherrygardener.{GetCurrencies, PingCherryGardener}
 import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryPickerRequest, CherryPlanterRequest}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
@@ -16,7 +16,7 @@ import scala.language.postfixOps
 
 /** "Cherry Gardener": the high-level interface to Ethereum blockchain. */
 class CherryGardener(private val pgStorage: PostgreSQLStorage,
-                     private val ethereumConnector: EthereumRpcSingleConnector) extends LazyLogging {
+                     private val ethereumConnector: AbstractEthereumNodeConnector) extends LazyLogging {
 
   /**
    * Reply to [[GetCurrencies]] request.
@@ -45,7 +45,7 @@ object CherryGardener extends LazyLogging {
   lazy val propBuildTimestampStr = props.getProperty("build_timestamp", "");
 
   def apply(pgStorage: PostgreSQLStorage,
-            ethereumConnector: EthereumRpcSingleConnector,
+            ethereumConnector: AbstractEthereumNodeConnector,
             cherryPickerOpt: Option[ActorRef[CherryPickerRequest]],
             cherryPlanterOpt: Option[ActorRef[CherryPlanterRequest]]
            ): Behavior[CherryGardenerRequest] = {
