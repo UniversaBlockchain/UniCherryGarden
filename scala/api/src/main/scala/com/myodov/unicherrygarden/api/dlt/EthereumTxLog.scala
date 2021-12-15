@@ -54,7 +54,7 @@ class EthereumTxLog(val logIndex: Int,
 
   /** Checks if the log is for ERC20 Transfer event; returns the parsed details if yes. */
   lazy val isErc20Transfer: Option[Erc20TransferEvent] = {
-    val erc20TransferSig: Seq[Byte] = hexStringToByteArray(Ethereum.ERC20.TRANSFER_EVENT_SIGNATURE)
+    val erc20TransferSig: Seq[Byte] = hexStringToByteArray(Ethereum.ERC20.TRANSFER_EVENT_SIGNATURE).toSeq
 
     topics match {
       case Seq(`erc20TransferSig`, fromBytes, toBytes) =>
@@ -76,14 +76,20 @@ object EthereumTxLog {
   @inline def apply(logIndex: Int,
                     address: String,
                     topics: Seq[Seq[Byte]],
-                    data: Seq[Byte]): EthereumTxLog = {
-    new EthereumTxLog(logIndex, address, topics, data)
-  }
+                    data: Seq[Byte]): EthereumTxLog =
+    new EthereumTxLog(
+      logIndex,
+      address,
+      topics,
+      data)
 
   @inline def apply(logIndex: Int,
                     address: String,
                     topics: Seq[String],
-                    data: String): EthereumTxLog = {
-    new EthereumTxLog(logIndex, address, topics.map(hexStringToByteArray), hexStringToByteArray(data))
-  }
+                    data: String): EthereumTxLog =
+    new EthereumTxLog(
+      logIndex,
+      address,
+      topics.map(hexStringToByteArray(_).toSeq),
+      hexStringToByteArray(data).toSeq)
 }
