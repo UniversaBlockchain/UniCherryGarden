@@ -164,11 +164,12 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
     readBlockWeb3j(blockNumber) match {
       case None => None
       case Some((w3jBlock, w3jTransactions, w3jReceiptsByTrHash)) => {
-        assert(blockNumber.bigInteger == w3jBlock.getNumber,
+        require(blockNumber.bigInteger == w3jBlock.getNumber,
           (blockNumber, w3jBlock.getNumber))
-        assert(w3jBlock.getTransactions.size == w3jTransactions.size,
+        // These may easily fail if the node is not fully synced
+        require(w3jBlock.getTransactions.size == w3jTransactions.size,
           (blockNumber, w3jBlock.getTransactions.size, w3jTransactions.size))
-        assert(w3jTransactions.size == w3jReceiptsByTrHash.size,
+        require(w3jTransactions.size == w3jReceiptsByTrHash.size,
           (blockNumber, w3jTransactions.size, w3jReceiptsByTrHash.size))
 
         val blockHash = w3jBlock.getHash

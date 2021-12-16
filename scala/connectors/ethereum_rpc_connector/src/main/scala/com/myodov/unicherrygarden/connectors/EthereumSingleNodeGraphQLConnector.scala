@@ -6,6 +6,7 @@ import akka.actor.ActorSystem
 import caliban.client.CalibanClientError
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.connectors.graphql.{BlockBasic, BlockBasicView, TransactionFullView}
+import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.typesafe.scalalogging.LazyLogging
 import sttp.capabilities
 import sttp.capabilities.akka.AkkaStreams
@@ -131,8 +132,10 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
               )
             }
 
+            val blockNumber = Math.toIntExact(blockBasic.number)
+
             val block = dlt.EthereumBlock(
-              number = blockBasic.number.toInt,
+              number = blockNumber,
               hash = blockBasic.hash,
               parentHash = blockBasic.parent match {
                 // We need some custom handling of parent
@@ -156,8 +159,16 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
                   value = tr.value,
                   // *** Mined transaction ***
                   // "status" – EIP 658, since Byzantium fork
-                  // using Option(nullable)
-                  status = tr.status.map(Math.toIntExact), // Option[Long] to Option[Int]
+                  // using Option(nullable).
+                  // But there seems to be a bug in GraphQL handling pre-Byzantium statuses,
+                  // (https://github.com/ethereum/go-ethereum/issues/24124)
+                  // So need to handle this manually.
+                  status = blockNumber match {
+                    case preByzantium if preByzantium < EthUtils.BYZANTIUM_FIRST_BLOCK =>
+                      None
+                    case byzantiumAndNewer =>
+                      tr.status.map(Math.toIntExact) // Option[Long] to Option[Int]
+                  },
                   blockNumber = tr.block.get.number, // block must exist!
                   transactionIndex = tr.index.get, // transaction must exist!
                   gasUsed = tr.gasUsed.get, // presumed non-null if mined

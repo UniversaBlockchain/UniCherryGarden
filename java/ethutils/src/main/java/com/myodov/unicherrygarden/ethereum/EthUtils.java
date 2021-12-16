@@ -12,6 +12,8 @@ public class EthUtils {
     static final int TRANSACTION_HASH_LENGTH = 66;
     static final int ADDRESS_HASH_LENGTH = 42;
 
+    public static final int BYZANTIUM_FIRST_BLOCK = 4370000;
+
 
     /**
      * Check if a string is a valid “hex string”, like ones used to store hashes.

@@ -84,7 +84,7 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
   // Blocks 1264, 120522 and 120545 are the only blocks for address 0x90d331f19e4ef54c4dc2710087ebd8536084a85a
   // In block 1264, it mined some ETH; in 120522 and 120545 it moved out some ETH
   // 60003 block has 4 transactions
-  "readBlock(120522)" should "parse block and find some single ETH transfer from address" in {
+  "readBlock(120522) - pre-Byzantium" should "parse block and find some single ETH transfer from address" in {
     assertResult(
       Some( // Option of Tuple
         (
@@ -194,7 +194,7 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
 
 
   // 60003 block has 4 transactions
-  "readBlock(60003)" should "read and parse block (with some filters)" in {
+  "readBlock(60003) - pre-Byzantium" should "read and parse block (with some filters)" in {
     assertResult(
       Some( // Option of Tuple
         (
@@ -214,12 +214,12 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
     )
   }
 
-  it should "read and parse some heavily used block (with some filters)" in {
+  "readBlock(11906373) - post-Byzantium" should "read and parse some heavily used block (with some filters)" in {
     assertResult(
       Some( // Option of Tuple
         (
           EthereumBlock(
-            11906373,
+            11_906_373,
             hash = "0x71313d0f8edb2146c071d088a7ea4f91dd6f108ee42a7b7041c95a6154ed94e8",
             parentHash = Some("0x7a5412e1e68f2627ac671e33a0b8f1e0aad47231b78333328dabdaf5e1b692d9"),
             Instant.parse("2021-02-22T10:50:22Z")
@@ -257,17 +257,17 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
       )
     )(
       sharedConnector.readBlock(
-        blockNumber = 11906373,
+        blockNumber = 11_906_373,
         addressesOfInterest = Set("0x28bacfa4fc8b8ed6f50cbd0eb1d58bc508eb8e15"))
     )
   }
 
-  "readBlock(10381084)" should "find a transaction generating (5) ERC20 Transfer events from smart contract" in {
+  "readBlock(10381084) - post-Byzantium" should "find a transaction generating (5) ERC20 Transfer events from smart contract" in {
     assertResult(
       Some( // Option of Tuple
         (
           EthereumBlock(
-            10381084,
+            10_381_084,
             hash = "0x703aaebacb5abb97043cf22d806e0ff1b947b8f09673e8539b1abb78f737b707",
             parentHash = Some("0x3cee0f907ad3d303a32759d513eb538d58a56e2eb78985edb81841e707b1bde2"),
             Instant.parse("2020-07-02T16:30:14Z")
@@ -280,7 +280,7 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
               nonce = 119,
               value = 0,
               status = Some(1),
-              blockNumber = BigInt(10381084l),
+              blockNumber = BigInt(10_381_084),
               gas = BigInt(5000000),
               gasPrice = BigInt(43000000000l),
               transactionIndex = 38,
@@ -345,7 +345,7 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
       )
     )(
       sharedConnector.readBlock(
-        blockNumber = 10381084,
+        blockNumber = 10_381_084,
         addressesOfInterest = Set("0x3452519f4711703e13ea0863487eb8401bd6ae57"))
     )
   }
