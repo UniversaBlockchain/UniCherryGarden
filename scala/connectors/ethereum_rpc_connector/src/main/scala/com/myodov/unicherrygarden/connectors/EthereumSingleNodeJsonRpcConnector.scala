@@ -91,7 +91,9 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
    *         list directly from the [[EthBlock.Block]]).
    *         3. Mapping from the transaction hash to [[TransactionReceipt]].
    */
-  protected[this] def readBlockWeb3j(blockNumber: BigInt): Option[(EthBlock.Block, Seq[Transaction], Map[String, TransactionReceipt])] =
+  protected[this] def readBlockWeb3j(blockNumber: BigInt): Option[(EthBlock.Block, Seq[Transaction], Map[String, TransactionReceipt])] = {
+    require(blockNumber >= 0, blockNumber)
+
     try {
       val startTime = System.nanoTime
 
@@ -159,8 +161,11 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
         None
       }
     }
+  }
 
-  override def readBlock(blockNumber: BigInt): Option[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])] =
+  override def readBlock(blockNumber: BigInt): Option[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])] = {
+    require(blockNumber >= 0, blockNumber)
+
     readBlockWeb3j(blockNumber) match {
       case None => None
       case Some((w3jBlock, w3jTransactions, w3jReceiptsByTrHash)) => {
@@ -238,6 +243,7 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
         }
       }
     }
+  }
 
   //    try {
   //      val block: EthBlock.Block = web3j.ethGetBlockByNumber(new DefaultBlockParameterNumber(blockNumber.bigInteger), true).send.getBlock
