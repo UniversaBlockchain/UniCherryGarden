@@ -5,6 +5,9 @@ import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.dlt.{EthereumBlock, EthereumMinedTransaction}
 import com.myodov.unicherrygarden.ethereum.EthUtils
 
+import scala.concurrent.duration._
+import scala.language.postfixOps
+
 /** Any implementation of Ethereum node connector, no matter of the underlying network mechanism. */
 abstract class AbstractEthereumNodeConnector(protected[this] val nodeUrl: String)
 
@@ -18,6 +21,9 @@ trait Web3ReadOperations {
    * and the number of the last block synced by this Ethereum node (`eth.blockNumber`),
    * simultaneously in a single call.
    *
+   * @note using Int for block number should be fine up to 2B blocks;
+   *       it must be fixed in about 1657 years.
+   *
    * @return The option of the tuple with two elements:
    *         <ol>
    *         <li>the data about the syncing process (`eth.syncing`);</li>
@@ -26,7 +32,7 @@ trait Web3ReadOperations {
    *         The Option is empty if the data could not be received
    *         (probably due to some network error).
    */
-  def ethSyncingBlockNumber: Option[(SyncingStatusResult, BigInt)]
+  def ethSyncingBlockNumber: Option[(SyncingStatusResult, Int)]
 
   /** Read the block from Ethereum node (by the block number), returning all parseable data.
    *
@@ -153,7 +159,10 @@ trait Web3ReadOperations {
     private[connectors] def createNotSyncing(): SyncingStatusResult =
       new SyncingStatusResult(None)
   }
+}
 
+object AbstractEthereumNodeConnector {
+  val NETWORK_TIMEOUT: FiniteDuration = 10 seconds
 }
 
 private object Web3ReadOperations {

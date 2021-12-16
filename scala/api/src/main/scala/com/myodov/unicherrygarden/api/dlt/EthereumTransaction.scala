@@ -27,7 +27,7 @@ class EthereumTransaction(
                            val to: Option[String],
                            val gas: BigInt,
                            val gasPrice: BigInt,
-                           val nonce: Int,
+                           val nonce: Int, // account nonce max value 2^64 - 2: TODO: https://github.com/ethereum/go-ethereum/pull/23853
                            val value: BigInt
                          ) {
   require(txhash != null && EthUtils.Hashes.isValidTransactionHash(txhash), txhash)
