@@ -39,44 +39,32 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
     Web3j.build(new HttpService(nodeUrl))
   }
 
-  private[this] def ethSyncing: Option[SyncingStatusResult] = {
+  override def ethSyncingBlockNumber: Option[SyncingStatus] = {
     try {
-      val result: EthSyncing.Result = web3j.ethSyncing.send.getResult
-      if (!result.isSyncing) {
-        logger.debug("eth.syncing = not syncing")
-        Some(SyncingStatusResult.createNotSyncing())
-      } else {
-        val syncingResult: EthSyncing.Syncing = result.asInstanceOf[EthSyncing.Syncing]
+      val syncingResult: EthSyncing.Result = web3j.ethSyncing.send.getResult
 
-        val currentBlockStr = syncingResult.getCurrentBlock
-        val highestBlockStr = syncingResult.getHighestBlock
+      if (!syncingResult.isSyncing) {
+        logger.debug("eth.syncing = not syncing")
+        val blockNumber: Int = web3j.ethBlockNumber.send.getBlockNumber.intValueExact
+        Some(SyncingStatus(blockNumber, blockNumber))
+      } else {
+        val syncingExt: EthSyncing.Syncing = syncingResult.asInstanceOf[EthSyncing.Syncing]
+
+        val currentBlockStr = syncingExt.getCurrentBlock
+        val highestBlockStr = syncingExt.getHighestBlock
         logger.debug(s"eth.syncing = current $currentBlockStr, highest $highestBlockStr")
 
-        Some(SyncingStatusResult.createSyncing(
+        Some(SyncingStatus(
           decodeQuantity(currentBlockStr).intValueExact(),
           decodeQuantity(highestBlockStr).intValueExact()))
       }
     } catch {
       case NonFatal(e) => {
-        logger.error("Cannot call eth.syncing!", e)
+        logger.error("Cannot call eth.syncing/eth.blockNumber!", e)
         None
       }
     }
   }
-
-  private[this] def ethBlockNumber: Option[Int] = {
-    try {
-      Some(web3j.ethBlockNumber.send.getBlockNumber.intValueExact)
-    } catch {
-      case NonFatal(e) => {
-        logger.error("Cannot call eth.blockNumber!", e)
-        None
-      }
-    }
-  }
-
-  override def ethSyncingBlockNumber: Option[(SyncingStatusResult, Int)] =
-    ethSyncing zip ethBlockNumber
 
   /** Get the Ethereum data for a block, by its number; the data is returned in Web3j-style classes.
    *

@@ -217,11 +217,11 @@ Inner FSM states related to the iterations:
 
 As with HeadSyncer, any error (including cases like `syncEndBlock` < `syncStartBlock`) would lead to `pauseThenIterate` state.
 
-After calculating `syncStartBlock` and `syncEndBlock`, we should think, should we actually do this? Won’t it actually reach/overlay the next HeadSyncer iteration? Did it reach the HeadSyncer?
+After calculating `syncStartBlock` and `syncEndBlock`, we should think, should we actually perform the sync? Won’t it actually reach/overlay the next HeadSyncer iteration? Did it reach the HeadSyncer?
 
 The answer is simple:
 
-* if `syncStartBlock` = `max(ucg_block.number) + 1`, we don’t do anything, it’s HeadSyncer task to sync further; → `pauseThenIterate`.
+* if `syncStartBlock` = `max(ucg_block.number) + 1` (that is, if all `ucg_currency_tracked_address_progress` records exist and have already reached the same end), we don’t do anything, it’s HeadSyncer task to sync further; → `pauseThenIterate`.
 * otherwise → `syncBlocks`.
 
 **syncBlocks**:

@@ -394,7 +394,8 @@ class PostgreSQLStorage(jdbcUrl: String,
                     -- whether synced_to_block_number IS NULL or not.
                     (
                       -- We change the NULL to_block_number to non-NULL
-                      -- only if it the current block matches the good synced_from_block_number
+                      -- only if it the current block matches the smallest
+                      -- of (sync-currency-from-block) and (sync-address-first-block)
                       (
                         synced_to_block_number IS NULL AND
                         arg.block_number = LEAST(currency.sync_from_block_number,

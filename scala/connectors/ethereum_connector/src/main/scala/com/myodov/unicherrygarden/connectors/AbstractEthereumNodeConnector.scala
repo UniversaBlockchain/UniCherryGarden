@@ -17,22 +17,23 @@ trait Web3ReadOperations {
 
   import Web3ReadOperations.filterSingleBlock
 
-  /** Get the status of the synccreateSyncinging process for this Ethereum node (`eth.syncing`)
+  /** Get the status of the syncing process for this Ethereum node (`eth.syncing`)
    * and the number of the last block synced by this Ethereum node (`eth.blockNumber`),
    * simultaneously in a single call.
    *
    * @note using Int for block number should be fine up to 2B blocks;
    *       it must be fixed in about 1657 years.
-   *
-   * @return The option of the tuple with two elements:
+   * @return The option of the [[SyncingStatus]] with two elements:
    *         <ol>
-   *         <li>the data about the syncing process (`eth.syncing`);</li>
-   *         <li>the number of the last block synced by the node (`eth.blockNumber`).</li>
+   *         <li>`currentBlock` (equivalent to `eth.syncing.currentBlock`);</li>
+   *         <li>`highestBlock` (equivalent to `eth.syncing.highestBlock`).</li>
    *         </ol>
+   *         When the data is not available from `eth.syncing`, it is derived from `eth.blockNumber`
+   *         (if possible).
    *         The Option is empty if the data could not be received
-   *         (probably due to some network error).
+   *         (probably due to some network error, or the node still being synced).
    */
-  def ethSyncingBlockNumber: Option[(SyncingStatusResult, Int)]
+  def ethSyncingBlockNumber: Option[SyncingStatus]
 
   /** Read the block from Ethereum node (by the block number), returning all parseable data.
    *
@@ -122,43 +123,44 @@ trait Web3ReadOperations {
     }
   }
 
-  private[connectors] sealed case class SyncingStatusData(currentBlock: Int = 0, highestBlock: Int = 0) {
+  case class SyncingStatus(currentBlock: Int = 0, highestBlock: Int = 0) {
     assert(currentBlock >= 0)
     assert(highestBlock >= 0)
   }
 
-  /** Result of querying `eth.syncing` query of the node, i.e. getting the overall status of the node sync. */
-  private[connectors] sealed class SyncingStatusResult(data: Option[SyncingStatusData]) {
-    val isStillSyncing: Boolean = data.nonEmpty
-    lazy val currentBlock: Int = {
-      if (isStillSyncing) data.get.currentBlock
-      else throw new RuntimeException("currentBlock available only if `isStillSyncing`")
-    }
-    lazy val highestBlock: Int = {
-      if (isStillSyncing) data.get.highestBlock
-      else throw new RuntimeException("highestBlock available only if `isStillSyncing`")
-    }
+  //  /** Result of querying `eth.syncing` query of the node, i.e. getting the overall status of the node sync. */
+  //  sealed class SyncingStatusResult(data: Option[SyncingStatusData]) {
+  //    val isStillSyncing: Boolean = data.nonEmpty
+  //    lazy val currentBlock: Int = {
+  //      if (isStillSyncing) data.get.currentBlock
+  //      else throw new RuntimeException("currentBlock available only if `isStillSyncing`")
+  //    }
+  //    lazy val highestBlock: Int = {
+  //      if (isStillSyncing) data.get.highestBlock
+  //      else throw new RuntimeException("highestBlock available only if `isStillSyncing`")
+  //    }
 
-    override val toString: String = {
-      if (isStillSyncing)
-        s"SyncingStatusResult(currentBlock=$currentBlock, highestBlock=$highestBlock)"
-      else
-        s"SyncingStatusResult(not_syncing)"
-    }
-  }
+  //    override val toString: String = {
+  //      if (isStillSyncing)
+  //        s"SyncingStatusResult(currentBlock=$currentBlock, highestBlock=$highestBlock)"
+  //      else
+  //        s"SyncingStatusResult(not_syncing)"
+  //    }
+  //  }
 
-  object SyncingStatusResult {
-    @inline
-    private[this] def apply(data: Option[SyncingStatusData]): SyncingStatusResult = new SyncingStatusResult(data)
-
-    @inline
-    private[connectors] def createSyncing(currentBlock: Int, highestBlock: Int): SyncingStatusResult =
-      new SyncingStatusResult(Some(SyncingStatusData(currentBlock, highestBlock)))
-
-    @inline
-    private[connectors] def createNotSyncing(): SyncingStatusResult =
-      new SyncingStatusResult(None)
-  }
+//  object SyncingStatusResult {
+//    @inline
+//    private[this] def apply(data: Option[SyncingStatusData]): SyncingStatusResult = new SyncingStatusResult(data)
+//
+//    @inline
+//    private[connectors] def createSyncing(currentBlock: Int, highestBlock: Int): SyncingStatusResult =
+//      new SyncingStatusResult(Some(SyncingStatusData(currentBlock, highestBlock)))
+//
+//    @inline
+//    private[connectors] def createNotSyncing(): SyncingStatusResult =
+//      new SyncingStatusResult(None)
+//  }
+//
 }
 
 object AbstractEthereumNodeConnector {

@@ -2,10 +2,11 @@ package com.myodov.unicherrygarden.connectors
 
 import java.time.Instant
 
-import akka.actor.ActorSystem
+import akka.actor.typed.{ActorSystem => TypedActorSystem}
+import akka.actor.{ActorSystem => ClassicActorSystem}
 import caliban.client.CalibanClientError
 import com.myodov.unicherrygarden.api.dlt
-import com.myodov.unicherrygarden.connectors.graphql.{BlockBasic, BlockBasicView, TransactionFullView}
+import com.myodov.unicherrygarden.connectors.graphql._
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.typesafe.scalalogging.LazyLogging
 import sttp.capabilities
@@ -14,12 +15,13 @@ import sttp.client3.akkahttp.AkkaHttpBackend
 import sttp.client3.{Response, SttpBackend, UriContext}
 import sttp.model.Uri
 
+import scala.annotation.switch
 import scala.concurrent.{Await, Future}
 import scala.util.control.NonFatal
 
 /** Connector that communicates with a single Ethereum node using GraphQL (via Caliban library). */
 class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
-                                         preferredActorSystem: Option[ActorSystem] = None)
+                                         preferredActorSystem: Option[ClassicActorSystem])
   extends AbstractEthereumNodeConnector(nodeUrl)
     with Web3ReadOperations
     with LazyLogging {
@@ -30,42 +32,52 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
 
   /** Backend used for sending out queries. */
   protected val sttpBackend: SttpBackend[Future, AkkaStreams with capabilities.WebSockets] =
-    preferredActorSystem match {
+    (preferredActorSystem: @switch) match {
       case None => AkkaHttpBackend()
-      case Some(actorSystem) => AkkaHttpBackend.usingActorSystem(actorSystem)
+      case Some(actorSystem: ClassicActorSystem) => AkkaHttpBackend.usingActorSystem(actorSystem)
     }
 
-  override def ethSyncingBlockNumber: Option[(SyncingStatusResult, Int)] = {
+  override def ethSyncingBlockNumber: Option[SyncingStatus] = {
     import caliban.Geth._
 
     val query = Query.syncing {
       SyncState.view
+    } ~ Query.block() {
+      BlockMinimal.view
     }
 
     val rq = query.toRequest(graphQLUri)
+
     try {
-      val value: Response[Either[CalibanClientError, Option[SyncState.SyncStateView]]] =
-        Await.result(rq.send(sttpBackend), AbstractEthereumNodeConnector.NETWORK_TIMEOUT)
+      val value = Await.result(rq.send(sttpBackend), AbstractEthereumNodeConnector.NETWORK_TIMEOUT)
 
       value.body match {
         case Left(err) =>
           logger.error(s"Error for GraphQL querying sync state", err)
           None
-        case Right(optSyncing) =>
-          // If optSyncing is None, it means the network request failed.
-          // So it’s a `map`.
-          val maybeResult = optSyncing.map { syncing =>
-            val current = Math.toIntExact(syncing.currentBlock)
-            val highest = Math.toIntExact(syncing.highestBlock)
-            (
-              SyncingStatusResult.createSyncing(
-                currentBlock = current,
-                highestBlock = highest
-              ),
-              highest
-            )
+        case Right((optSyncing, optRecentBlock)) =>
+          // Received a valid response; do something with both paths:
+          (optSyncing, optRecentBlock) match {
+            case (Some(syncing), _) =>
+              // The node is still syncing
+              logger.debug(s"The node is still syncing: $syncing")
+              Some(SyncingStatus(
+                currentBlock = Math.toIntExact(syncing.currentBlock),
+                highestBlock = Math.toIntExact(syncing.highestBlock)
+              ))
+            case (None, Some(latestBlock)) =>
+              logger.debug(s"The node is fully synced, most recent block is $latestBlock")
+              // Not syncing already; but does the block number really makes sense?
+              if (latestBlock.number > 0) // This is a sensible block
+                Some(SyncingStatus(
+                  currentBlock = Math.toIntExact(latestBlock.number),
+                  highestBlock = Math.toIntExact(latestBlock.number)
+                ))
+              else None // not really synced
+            case other =>
+              logger.debug(s"The node is in incomprehensible state of syncing: $optSyncing, $optRecentBlock")
+              None
           }
-          maybeResult
         case other =>
           logger.error(s"Unhandled GraphQL response for GraphQL querying sync state: $other")
           None
@@ -204,7 +216,14 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
 
 /** Connector that handles a connection to single Ethereum node via RPC, and communicates with it. */
 object EthereumSingleNodeGraphQLConnector {
+  @inline def apply(nodeUrl: String): EthereumSingleNodeGraphQLConnector =
+    new EthereumSingleNodeGraphQLConnector(nodeUrl, None)
+
   @inline def apply(nodeUrl: String,
-                    preferredActorSystem: Option[ActorSystem] = None): EthereumSingleNodeGraphQLConnector =
-    new EthereumSingleNodeGraphQLConnector(nodeUrl, preferredActorSystem)
+                    preferredActorSystem: ClassicActorSystem): EthereumSingleNodeGraphQLConnector =
+    new EthereumSingleNodeGraphQLConnector(nodeUrl, Some(preferredActorSystem))
+
+  @inline def apply[T](nodeUrl: String,
+                       preferredActorSystem: TypedActorSystem[T]): EthereumSingleNodeGraphQLConnector =
+    new EthereumSingleNodeGraphQLConnector(nodeUrl, Some(preferredActorSystem.classicSystem))
 }

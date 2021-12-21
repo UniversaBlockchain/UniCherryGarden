@@ -5,7 +5,7 @@ import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.ClusterEvent.MemberEvent
 import akka.cluster.typed.{Cluster, Subscribe}
 import com.myodov.unicherrygarden.cherrygardener.CherryGardener
-import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, EthereumSingleNodeJsonRpcConnector, Web3ReadOperations}
+import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, EthereumSingleNodeGraphQLConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryGardenerResponse, CherryPickerRequest, CherryPlanterRequest}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.myodov.unicherrygarden.{CherryPicker, CherryPlanter, LoggingConfigurator, UnicherrygardenVersion}
@@ -85,16 +85,15 @@ You can choose a different HOCON configuration file instead of the regular appli
 
     val nodeUrl = nodeUrls.get(0)
     logger.debug(s"Using Ethereum node at $nodeUrl")
-    EthereumSingleNodeJsonRpcConnector(nodeUrl)
+    EthereumSingleNodeGraphQLConnector(nodeUrl, actorSystem)
+//    EthereumSingleNodeJsonRpcConnector(nodeUrl)
   }
 
   def init(wipe: Boolean): Unit = {
-    //    parseConfFile(confFile)
     logger.info("Done!\nMultiline launch message.\nInitializing...")
     val rpcServers = config.getList("ethereum.rpc_servers")
 
     val pgStorage = getPgStorage(wipe)
-    //    implicit val dbSession: DBSession = pgStorage.makeSession
 
     pgStorage.state.setSyncState("Launched, using SQL")
   }
@@ -110,12 +109,7 @@ You can choose a different HOCON configuration file instead of the regular appli
   /** Launches the CherryGardener (and, inside it, CherryPicker and CherryPlanter) Akka actors
    * (which are usually launcher together at the moment). */
   private[this] def launchGardener(): Unit = {
-    val pgStorage = getPgStorage(wipe = false)
-    val ethereumConnector = getEthereumConnector
-
-    //    actorSystem ! LauncherActor.LaunchCherryPicker(pgStorage, ethereumConnector)
-    //    actorSystem ! LauncherActor.LaunchCherryPlanter(pgStorage, ethereumConnector)
-    actorSystem ! LauncherActor.LaunchCherryGardener(pgStorage, ethereumConnector)
+    actorSystem ! LauncherActor.LaunchCherryGardener(getPgStorage(wipe = false), getEthereumConnector)
   }
 
   private[this] def mainLaunch(args: Array[String]): Unit = {

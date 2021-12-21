@@ -298,13 +298,13 @@ lazy val db_postgresql_storage = (project in file("scala/storages/db_postgresql_
   .dependsOn(commonScala, api)
 
 // Interface to Web3 Ethereum nodes via RPC.
-lazy val ethereum_rpc_connector = (project in file("scala/connectors/ethereum_rpc_connector"))
+lazy val ethereum_connector = (project in file("scala/connectors/ethereum_connector"))
   .settings(
     commonSettings,
     commonScalaSettings,
     commonAkkaMicroserviceSettings, // for akka-http
-    name := "ethereum_rpc_connector",
-    description := "UniCherryGarden: connect to Web3 (geth) nodes from Scala code via JSON-RPC",
+    name := "ethereum_connector",
+    description := "UniCherryGarden: connect to Web3 (geth) nodes from Scala code via JSON-RPC or GraphQL",
     libraryDependencies ++= Seq(
       // Web3/Ethereum node JSON-RPC client
       "org.web3j" % "core" % web3jVersion,
@@ -323,7 +323,7 @@ lazy val ethereum_rpc_connector = (project in file("scala/connectors/ethereum_rp
 
     ),
     Compile / caliban / calibanSettings ++= Seq(
-      calibanSetting(file("scala/connectors/ethereum_rpc_connector/src/main/graphql/Geth.graphql"))(
+      calibanSetting(file("scala/connectors/ethereum_connector/src/main/graphql/Geth.graphql"))(
         cs => cs
           .packageName("caliban")
           .genView(true)
@@ -332,7 +332,7 @@ lazy val ethereum_rpc_connector = (project in file("scala/connectors/ethereum_rp
             "com.myodov.unicherrygarden.connectors.ScalarDecoder.bigInt")
       )
     ),
-    Compile / resourceGenerators += versionFileTask("unicherrygarden_ethereum_rpc_connector.properties").taskValue,
+    Compile / resourceGenerators += versionFileTask("unicherrygarden_ethereum_connector.properties").taskValue,
   )
   .dependsOn(commonScala, api, confreader % "test->compile", logging % "test->compile")
   .enablePlugins(CalibanPlugin)
@@ -351,7 +351,7 @@ lazy val cherrypicker = (project in file("scala/cherrypicker"))
       "(selective currencies, selective addresses to watch)",
     Compile / resourceGenerators += versionFileTask("unicherrygarden_cherrypicker.properties").taskValue,
   )
-  .dependsOn(commonScala, api, db_postgresql_storage, ethereum_rpc_connector)
+  .dependsOn(commonScala, api, db_postgresql_storage, ethereum_connector)
 
 // CherryPlanter: sends the transactions to the Ethereum blockchain.
 lazy val cherryplanter = (project in file("scala/cherryplanter"))
@@ -365,7 +365,7 @@ lazy val cherryplanter = (project in file("scala/cherryplanter"))
       "if needed, maintaining the nonce values)",
     Compile / resourceGenerators += versionFileTask("unicherrygarden_cherryplanter.properties").taskValue,
   )
-  .dependsOn(commonScala, api, db_postgresql_storage, ethereum_rpc_connector)
+  .dependsOn(commonScala, api, db_postgresql_storage, ethereum_connector)
 
 // CherryGardener: provides high-level convenient front-end to the .
 lazy val cherrygardener = (project in file("scala/cherrygardener"))
@@ -379,7 +379,7 @@ lazy val cherrygardener = (project in file("scala/cherrygardener"))
   )
   .dependsOn(
     commonScala, api,
-    db_postgresql_storage, ethereum_rpc_connector,
+    db_postgresql_storage, ethereum_connector,
     cherrypicker, cherryplanter
   )
 

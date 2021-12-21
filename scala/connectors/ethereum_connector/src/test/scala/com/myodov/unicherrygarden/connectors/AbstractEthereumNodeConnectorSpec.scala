@@ -11,11 +11,12 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
 
   lazy val config = ConfigFactory.load()
 
-  "ethBlockNumber()" should "return some valid number" in {
-    val blockNumberResult = sharedConnector.ethSyncingBlockNumber
+  "ethSyncingBlockNumber()" should "return some valid number" in {
+    val blockNumberResult: Option[sharedConnector.SyncingStatus] = sharedConnector.ethSyncingBlockNumber
     assert(
       blockNumberResult match {
-        case Some((syncingStatus, blockNumber)) => blockNumber > 11500000
+        case Some(sharedConnector.SyncingStatus(current, highest)) =>
+          (current > 11500000) && (highest  > 11500000)
       },
       blockNumberResult
     )
@@ -100,14 +101,14 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
               from = "0x90d331f19e4ef54c4dc2710087ebd8536084a85a",
               to = Some("0x8f22398f1567cddaba1b6bb1973e62b4992d5c9c"),
               nonce = 0,
-              value = BigInt(1000000000000000000l),
+              value = BigInt(1000000000000000000L),
               status = None,
               blockNumber = BigInt(120522),
               gas = BigInt(90000),
-              gasPrice = BigInt(59920793400l),
+              gasPrice = BigInt(59920793400L),
               transactionIndex = 0,
               gasUsed = BigInt(21000),
-              effectiveGasPrice = BigInt(59920793400l),
+              effectiveGasPrice = BigInt(59920793400L),
               cumulativeGasUsed = BigInt(21000)
             )
           )
@@ -136,14 +137,14 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
               from = "0x90d331f19e4ef54c4dc2710087ebd8536084a85a",
               to = Some("0x8f22398f1567cddaba1b6bb1973e62b4992d5c9c"),
               nonce = 0,
-              value = BigInt(1000000000000000000l),
+              value = BigInt(1000000000000000000L),
               status = None,
               blockNumber = BigInt(120522),
               gas = BigInt(90000),
-              gasPrice = BigInt(59920793400l),
+              gasPrice = BigInt(59920793400L),
               transactionIndex = 0,
               gasUsed = BigInt(21000),
-              effectiveGasPrice = BigInt(59920793400l),
+              effectiveGasPrice = BigInt(59920793400L),
               cumulativeGasUsed = BigInt(21000)
             )
           )
@@ -172,14 +173,14 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
               from = "0x90d331f19e4ef54c4dc2710087ebd8536084a85a",
               to = Some("0x8f22398f1567cddaba1b6bb1973e62b4992d5c9c"),
               nonce = 0,
-              value = BigInt(1000000000000000000l),
+              value = BigInt(1000000000000000000L),
               status = None,
               blockNumber = BigInt(120522),
               gas = BigInt(90000),
-              gasPrice = BigInt(59920793400l),
+              gasPrice = BigInt(59920793400L),
               transactionIndex = 0,
               gasUsed = BigInt(21000),
-              effectiveGasPrice = BigInt(59920793400l),
+              effectiveGasPrice = BigInt(59920793400L),
               cumulativeGasUsed = BigInt(21000)
             )
           )
@@ -230,15 +231,15 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
               from = "0x28bacfa4fc8b8ed6f50cbd0eb1d58bc508eb8e15",
               to = Some("0x26a5b7c23e86f237ff14b9992ce5dafd72057267"),
               nonce = 1,
-              value = BigInt(3513761340000000000l),
+              value = BigInt(3513761340000000000L),
               gas = BigInt(27881),
-              gasPrice = BigInt(140000000000l),
+              gasPrice = BigInt(140000000000L),
               status = Some(1),
               blockNumber = BigInt(11906373),
               transactionIndex = 244,
               gasUsed = BigInt(23234),
-              effectiveGasPrice = BigInt(140000000000l),
-              cumulativeGasUsed = BigInt(12429673l),
+              effectiveGasPrice = BigInt(140000000000L),
+              cumulativeGasUsed = BigInt(12429673L),
               txLogs = List(
                 EthereumTxLog(
                   logIndex = 245,
@@ -282,10 +283,10 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
               status = Some(1),
               blockNumber = BigInt(10_381_084),
               gas = BigInt(5000000),
-              gasPrice = BigInt(43000000000l),
+              gasPrice = BigInt(43000000000L),
               transactionIndex = 38,
               gasUsed = BigInt(154501),
-              effectiveGasPrice = BigInt(43000000000l),
+              effectiveGasPrice = BigInt(43000000000L),
               cumulativeGasUsed = BigInt(3121857),
               txLogs = List(
                 EthereumTxLog(
