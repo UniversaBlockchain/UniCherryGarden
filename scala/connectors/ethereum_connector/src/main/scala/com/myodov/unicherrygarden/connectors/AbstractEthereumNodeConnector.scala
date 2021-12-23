@@ -1,10 +1,14 @@
 package com.myodov.unicherrygarden.connectors
 
-import com.myodov.unicherrygarden.Tools.reduceOptionSeq
+import com.myodov.unicherrygarden.Tools.{reduceOptionSeq, seqIsIncrementing}
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.dlt.{EthereumBlock, EthereumMinedTransaction}
+import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.SyncingStatus
 import com.myodov.unicherrygarden.ethereum.EthUtils
+import com.typesafe.scalalogging.LazyLogging
 
+import scala.annotation.switch
+import scala.collection.immutable.SortedMap
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -13,7 +17,7 @@ abstract class AbstractEthereumNodeConnector(protected[this] val nodeUrl: String
 
 
 /** What operations can be supported by some Ethereum node connector: read-only operations. */
-trait Web3ReadOperations {
+trait Web3ReadOperations extends LazyLogging {
 
   import Web3ReadOperations.filterSingleBlock
 
@@ -57,21 +61,14 @@ trait Web3ReadOperations {
 
   /** Read the blocks from Ethereum node (in a range defined by the start and end block numbers).
    *
-   * @param startBlockNumber the number of the first block to read (inclusive).
-   * @param endBlockNumber   the number of the last block to read (inclusive, should be ≥ `startBlockNumber`).
+   * @param range the range of block numbers to read.
    * @return an [[Option]] of with the sequence of pairs defining a block and its transactions;
    *         the Option is `None` if any network problem occurred during returning this sequence;
    *         otherwise it contains the sequence with exactly the requested blocks (and the transactions in these blocks),
    *         in strictly increasing order.
    */
-  def readBlocks(startBlockNumber: BigInt,
-                 endBlockNumber: BigInt): Option[Seq[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])]] = {
-    require(
-      startBlockNumber >= 0 && endBlockNumber >= startBlockNumber,
-      (startBlockNumber, endBlockNumber))
-
-    val seqOfOptions: Seq[Option[(EthereumBlock, Seq[EthereumMinedTransaction])]] =
-      (startBlockNumber to endBlockNumber).map(readBlock)
+  def readBlocks(range: EthereumBlock.BlockNumberRange): Option[Seq[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])]] = {
+    val seqOfOptions: Seq[Option[(EthereumBlock, Seq[EthereumMinedTransaction])]] = range.map(readBlock(_))
 
     val optionOfSeqs: Option[Seq[(EthereumBlock, Seq[EthereumMinedTransaction])]] = reduceOptionSeq(seqOfOptions)
 
@@ -79,21 +76,15 @@ trait Web3ReadOperations {
     // None to None, Some[seq] to Some[seq] - this is map!
     optionOfSeqs.map { seq =>
       require(
-        seq
-          .sliding(2)
-          .forall { p =>
-            p match {
-              case Seq((lBlock, lTxes), (rBlock, rTxes)) => lBlock.number + 1 == rBlock.number
-            }
-          },
-        s"readBlocks($startBlockNumber, $endBlockNumber) didn't return increasing blocks: $seq"
+        seqIsIncrementing(seq.map { case (block, txes) => block.number }),
+        s"readBlocks($range) didn't return strictly incrementing blocks: $seq"
       )
       require(
-        seq.length == (endBlockNumber - startBlockNumber + 1),
-        (startBlockNumber, endBlockNumber, seq.length, seq)
+        seq.length == range.length,
+        (range, seq.length, seq)
       )
 
-      // Return the validated input without any changes.
+      // Otherwise return the validated input without any changes.
       seq
     }
   }
@@ -101,19 +92,18 @@ trait Web3ReadOperations {
   /** Read the blocks from Ethereum node (in a range defined by the start and end block numbers),
    * filtering it for specific addresses.
    *
-   * @param startBlockNumber    the number of the first block to read (inclusive).
-   * @param endBlockNumber      the number of the last block to read (inclusive, should be ≥ `startBlockNumber`).
+   * @note the default implementation is suboptimal and based on [[Web3ReadOperations.readBlock]].
+   *       Engine/connector-specific optimizations may be needed.
+   * @param range               the range of block numbers to read.
    * @param addressesOfInterest list of address hashes (all lowercased); only these addresses are returned.
-   * @return an [[Option]] of with the sequence of pairs defining a block and its transactions;
+   * @return an [[Option]] containing the sequence of pairs defining a block and its transactions;
    *         the Option is `None` if any network problem occured during returning this sequence;
    *         otherwise it contains the sequence with exactly the requested blocks (and the transactions in these blocks),
    *         in strictly increasing order.
    */
-  def readBlocks(startBlockNumber: BigInt,
-                 endBlockNumber: BigInt,
+  def readBlocks(range: EthereumBlock.BlockNumberRange,
                  addressesOfInterest: Set[String]): Option[Seq[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])]] = {
-    val optionOfSecs: Option[Seq[(EthereumBlock, Seq[EthereumMinedTransaction])]] =
-      readBlocks(startBlockNumber, endBlockNumber)
+    val optionOfSecs: Option[Seq[(EthereumBlock, Seq[EthereumMinedTransaction])]] = readBlocks(range)
 
     // None to None, Some to Some - this is map!
     optionOfSecs map { seq =>
@@ -123,47 +113,71 @@ trait Web3ReadOperations {
     }
   }
 
+  /** Read just the block hashes from Ethereum node (in a range defined by the start and end block numbers).
+   *
+   * @note the default implementation is suboptimal and based on [[Web3ReadOperations.readBlock]].
+   *       Engine/connector-specific optimizations may be needed.
+   * @param range the range of block numbers to read.
+   * @return an [[Option]] SortedMap[Int, String];
+   *         the Option is `None` if any network problem occurred during returning this sequence;
+   *         otherwise it contains the map with steadily increasing blocks in the requested range.
+   *         Note: if requesting a range like `5 to 10`, it may return the blocks in `5 to 7` range
+   *         if only 5 to 7 is available, and this will be a valid non-`None` response; so always check
+   *         for the real size of the response!
+   */
+  def readBlockHashes(range: EthereumBlock.BlockNumberRange): Option[SortedMap[Int, String]] = {
+    val optionOfSecs: Option[Seq[(EthereumBlock, Seq[EthereumMinedTransaction])]] =
+      readBlocks(range, Set.empty)
+
+    // None to None, Some to Some - this is map!
+    val result = optionOfSecs map { seq =>
+      // If this option isn’t empty and contains a seq,
+      // let’s map `filterSingleBlock` to each element
+      seq
+        .map { case (bl, tr) => bl.number -> bl.hash }
+        .to(SortedMap)
+    }
+
+    validateBlockHashes(range, result)
+  }
+
+  /** Default validator for the [[readBlockHashes]] result. */
+  def validateBlockHashes(range: EthereumBlock.BlockNumberRange,
+                          resultToValidate: Option[SortedMap[Int, String]]): Option[SortedMap[Int, String]] = {
+    // Validate output before returning; treat any inconsistencies as network errors
+    (resultToValidate: @switch) match {
+      case None => None
+      case Some(map) =>
+        (map: @switch) match {
+          case emptyMap if emptyMap.isEmpty =>
+            // Well okay, we’ve requested a block range which is empty
+            resultToValidate // original result, unmodified
+          // The further cases are non-empty! we can rely upon it
+          case tooBigMap if tooBigMap.size > range.length =>
+            logger.error(s"Requested readBlockHashes($range) with size ${range.length} but received ${map.size} results")
+            None
+          case mapStartsFromWrongBlock if mapStartsFromWrongBlock.keys.head != range.start =>
+            logger.error(s"Requested readBlockHashes($range) starting from ${range.start} " +
+              s"but result starts from ${mapStartsFromWrongBlock.keys.head}")
+            None
+          case badlyOrderedMap if !seqIsIncrementing(badlyOrderedMap.keys) =>
+            logger.error(s"Requested readBlockHashes($range) starting from ${range.start} " +
+              s"but the result isn't strictly incrementing: ${badlyOrderedMap.keys}")
+            None
+          case _ =>
+            resultToValidate // Otherwise it is good, return the original result unmodified
+        }
+    }
+  }
+}
+
+object AbstractEthereumNodeConnector {
+
   case class SyncingStatus(currentBlock: Int = 0, highestBlock: Int = 0) {
     assert(currentBlock >= 0)
     assert(highestBlock >= 0)
   }
 
-  //  /** Result of querying `eth.syncing` query of the node, i.e. getting the overall status of the node sync. */
-  //  sealed class SyncingStatusResult(data: Option[SyncingStatusData]) {
-  //    val isStillSyncing: Boolean = data.nonEmpty
-  //    lazy val currentBlock: Int = {
-  //      if (isStillSyncing) data.get.currentBlock
-  //      else throw new RuntimeException("currentBlock available only if `isStillSyncing`")
-  //    }
-  //    lazy val highestBlock: Int = {
-  //      if (isStillSyncing) data.get.highestBlock
-  //      else throw new RuntimeException("highestBlock available only if `isStillSyncing`")
-  //    }
-
-  //    override val toString: String = {
-  //      if (isStillSyncing)
-  //        s"SyncingStatusResult(currentBlock=$currentBlock, highestBlock=$highestBlock)"
-  //      else
-  //        s"SyncingStatusResult(not_syncing)"
-  //    }
-  //  }
-
-//  object SyncingStatusResult {
-//    @inline
-//    private[this] def apply(data: Option[SyncingStatusData]): SyncingStatusResult = new SyncingStatusResult(data)
-//
-//    @inline
-//    private[connectors] def createSyncing(currentBlock: Int, highestBlock: Int): SyncingStatusResult =
-//      new SyncingStatusResult(Some(SyncingStatusData(currentBlock, highestBlock)))
-//
-//    @inline
-//    private[connectors] def createNotSyncing(): SyncingStatusResult =
-//      new SyncingStatusResult(None)
-//  }
-//
-}
-
-object AbstractEthereumNodeConnector {
   val NETWORK_TIMEOUT: FiniteDuration = 10 seconds
 }
 

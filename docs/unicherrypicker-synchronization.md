@@ -103,11 +103,11 @@ There are two places which specify what ranges of data we are tracking:
 
 The architecture of the syncing solution that resolves all the problems from the “Problems” section, is described below.
 
-(Note: The real implementation may be different in detail (and may change in the future), and may have some more, newer, specifics implemented. As of late 2021, this is the primary guide to grok the CherryPicker synchronization idea.)
+(Note: The real implementation may be different in detail (and may change in the future), and may have some more, newer, specifics implemented. As of late 2021, this is the primary guide to grok the overall CherryPicker synchronization idea.)
 
 The syncing process is split to two primary subsystems, **HeadSyncer** and **TailSyncer**. There is also a tiny helper, **EthereumStatePoller**.
 
-**EthereumStatePoller** is the component that just polls the Ethereum node for its own syncing status, once per about 10 seconds (because in full-sync condition, it isn’t expected to change earlier than in 10 seconds), and notifies both HeadSyncer and TailSyncer about it (so they don’t have to do it themselves).
+**EthereumStatePoller** is the component that just polls the Ethereum node for the node’s syncing status, once per about 10 seconds (because in full-sync condition, it isn’t expected to change earlier than in 10 seconds), and notifies both HeadSyncer and TailSyncer about it (so they don’t have to do it themselves).
 
 **HeadSyncer** is the subsystem that syncs the most recent blocks (after the ones which are already stored in the `ucg_block` table). It’s the component that will poll the blocks after the full-sync has been achieved (and will do it slowly, just about once in 10 seconds).
 

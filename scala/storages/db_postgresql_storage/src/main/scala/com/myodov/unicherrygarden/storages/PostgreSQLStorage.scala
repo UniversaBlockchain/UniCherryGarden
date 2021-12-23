@@ -2,6 +2,7 @@ package com.myodov.unicherrygarden.storages
 
 import java.sql.SQLException
 
+import com.myodov.unicherrygarden.Tools.seqIsIncrementing
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.ethereum.EthUtils
@@ -12,6 +13,7 @@ import org.flywaydb.core.api.output.{CleanResult, MigrateResult}
 import scalikejdbc._
 
 import scala.collection.compat.Factory
+import scala.collection.immutable.SortedMap
 import scala.util.control.NonFatal
 
 /** Stores the blockchain information in PostgreSQL database. */
@@ -699,6 +701,46 @@ class PostgreSQLStorage(jdbcUrl: String,
           ))
         .single
         .apply
+    }
+
+    /** Get a mapping from block number to block hash, for (up to, inclusive) `howMany` latest blocks. */
+    def getLatestHashes(howMany: Int
+                       )(implicit session: DBSession = ReadOnlyAutoSession): SortedMap[Int, String] = {
+      assert(howMany >= 1, howMany)
+      val result =
+        sql"""
+      WITH
+          last_known_block(number) AS (
+              SELECT max(number)
+              FROM ucg_block
+          )
+      SELECT
+          ucg_block.number,
+          ucg_block.hash
+      FROM ucg_block, last_known_block
+      WHERE ucg_block.number > last_known_block.number - 10
+      ORDER BY ucg_block.number
+      """
+          .map(rs => (rs.int("number") -> rs.string("hash")))
+          .list
+          .apply
+          .to(SortedMap)
+
+      // Validate output before returning
+
+      // The size must be <= of requested
+      assert(result.size <= howMany, result)
+      // Make sure all the keys are steadily increasing
+      assert(
+        seqIsIncrementing(result.keys),
+        result)
+      // All the hashes must be valid block hashes
+      assert(
+        result.values.forall(EthUtils.Hashes.isValidBlockHash),
+        result
+      )
+
+      result
     }
   }
 

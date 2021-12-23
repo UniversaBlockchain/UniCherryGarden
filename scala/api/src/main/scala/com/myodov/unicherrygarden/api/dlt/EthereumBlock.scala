@@ -46,6 +46,8 @@ class EthereumBlock(val number: Int,
 }
 
 object EthereumBlock {
+  type BlockNumberRange = scala.collection.immutable.Range
+
   @inline def apply(number: Int,
                     hash: String,
                     parentHash: Option[String],

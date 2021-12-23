@@ -5,7 +5,7 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 import akka.actor.typed.receptionist.Receptionist
-import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
+import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.api.types.{BlockchainSyncStatus, MinedTransfer}
 import com.myodov.unicherrygarden.cherrypicker.EthereumStatePoller
@@ -61,166 +61,142 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
         GetTransfers.SERVICE_KEY
       ).foreach(context.system.receptionist ! Receptionist.Register(_, context.self))
 
-      // On startup, schedule a single iteration;
-      // It will re-schedule itself when/if needed.
-      // We don’t setup a “regular” timer because sometimes a new iteration should happen without a pause;
-      // and sometimes a new iteration should happen not 5 (or so) seconds after the previous iteration *started*,
-      // but 5 seconds after a previous iteration *completed*.
-      // The latter though can be resolved by scheduleWithFixedDelay.
-//      logger.error("Running first iteration of CherryPicker...")
-//      Behaviors.withTimers[CherryPickerRequest] { timers: TimerScheduler[CherryPickerRequest] =>
-//        //        timers.startTimerWithFixedDelay(
-//        //          ReadEthNodeSyncState(),
-//        //          0 seconds,
-//        //          BLOCK_ITERATION_PERIOD
-//        //        ) // due to initialDelay = 0 seconds, it also sends this message, instantly, too.
-//        // ..   And even before the next line.
-//        context.self ! DoSyncIteration(CherryPickerState()) // TODO: enable to start iterations
-//
-        Behaviors.receiveMessage {
-//          case DoSyncIteration(state: CherryPickerState) => {
-//            nextIteration(state)
-//          }
+      Behaviors.receiveMessage {
+        case message: GetTrackedAddresses.Request => {
+          logger.debug(s"Receiving GetTrackedAddresses message: $message")
+          val payload: GetTrackedAddresses.GTARequestPayload = message.payload
 
-          //          case ReadEthNodeSyncState() => {
-          //            rereadEthSyncingBlockNumber()
-          //          }
-          case message: GetTrackedAddresses.Request => {
-            logger.debug(s"Receiving GetTrackedAddresses message: $message")
-            val payload: GetTrackedAddresses.GTARequestPayload = message.payload
-
-            val results: List[Response.TrackedAddressInformation] = pgStorage
-              .trackedAddresses
-              .getTrackedAddresses(
-                payload.includeComment,
-                payload.includeSyncedFrom,
-                payload.includeSyncedTo)
-              .map(item => new Response.TrackedAddressInformation(
-                item.address,
-                // The subsequent items may be Java-nullable
-                item.comment.orNull,
-                // Converting the Option[Int] to nullable Java Integers needs some cunning
-                item.syncedFrom.map(Integer.valueOf).orNull,
-                item.syncedTo.map(Integer.valueOf).orNull)
-              )
-
-            val response = new GetTrackedAddresses.Response(
-              results.asJava,
+          val results: List[Response.TrackedAddressInformation] = pgStorage
+            .trackedAddresses
+            .getTrackedAddresses(
               payload.includeComment,
               payload.includeSyncedFrom,
-              payload.includeSyncedTo
+              payload.includeSyncedTo)
+            .map(item => new Response.TrackedAddressInformation(
+              item.address,
+              // The subsequent items may be Java-nullable
+              item.comment.orNull,
+              // Converting the Option[Int] to nullable Java Integers needs some cunning
+              item.syncedFrom.map(Integer.valueOf).orNull,
+              item.syncedTo.map(Integer.valueOf).orNull)
             )
-            logger.debug(s"Replying with $response")
-            message.replyTo ! response
-            Behaviors.same
-          }
-          case message: AddTrackedAddresses.Request => {
-            logger.debug(s"Receiving AddTrackedAddresses message: $message")
-            val payload: AddTrackedAddresses.ATARequestPayload = message.payload
 
-            // Here goes the list of all added addresses
-            // (as Options; with `None` instead of any address that failed to add)
-            val addressesMaybeAdded: List[Option[String]] = (
-              for (addr: AddTrackedAddresses.AddressDataToTrack <- payload.addressesToTrack.asScala.toList)
-                yield {
-                  if (pgStorage.trackedAddresses.addTrackedAddress(
-                    addr.address,
-                    Option(addr.comment), // nullable
-                    payload.trackingMode,
-                    // The next line needs cunning processing of java.lang.Integer,
-                    // as otherwise Option(null:Integer): Option[Int]
-                    // will be evaluated as Some(0)
-                    Option(payload.fromBlock).map(_.toInt) // nullable
-                  )) {
-                    Some(addr.address)
-                  } else {
-                    None
-                  }
+          val response = new GetTrackedAddresses.Response(
+            results.asJava,
+            payload.includeComment,
+            payload.includeSyncedFrom,
+            payload.includeSyncedTo
+          )
+          logger.debug(s"Replying with $response")
+          message.replyTo ! response
+          Behaviors.same
+        }
+        case message: AddTrackedAddresses.Request => {
+          logger.debug(s"Receiving AddTrackedAddresses message: $message")
+          val payload: AddTrackedAddresses.ATARequestPayload = message.payload
+
+          // Here goes the list of all added addresses
+          // (as Options; with `None` instead of any address that failed to add)
+          val addressesMaybeAdded: List[Option[String]] = (
+            for (addr: AddTrackedAddresses.AddressDataToTrack <- payload.addressesToTrack.asScala.toList)
+              yield {
+                if (pgStorage.trackedAddresses.addTrackedAddress(
+                  addr.address,
+                  Option(addr.comment), // nullable
+                  payload.trackingMode,
+                  // The next line needs cunning processing of java.lang.Integer,
+                  // as otherwise Option(null:Integer): Option[Int]
+                  // will be evaluated as Some(0)
+                  Option(payload.fromBlock).map(_.toInt) // nullable
+                )) {
+                  Some(addr.address)
+                } else {
+                  None
                 }
-              )
+              }
+            )
 
-            // Flatten it to just the added elements
-            val addressesActuallyAdded: Set[String] = addressesMaybeAdded.flatten.toSet
-            logger.debug(s"Actually added the following addresses to watch: $addressesActuallyAdded")
+          // Flatten it to just the added elements
+          val addressesActuallyAdded: Set[String] = addressesMaybeAdded.flatten.toSet
+          logger.debug(s"Actually added the following addresses to watch: $addressesActuallyAdded")
 
-            val response = new AddTrackedAddresses.Response(
-              addressesActuallyAdded.asJava
+          val response = new AddTrackedAddresses.Response(
+            addressesActuallyAdded.asJava
+          )
+          logger.debug(s"Replying with $response")
+          message.replyTo ! response
+          Behaviors.same
+        }
+        case message: GetBalances.Request => {
+          logger.debug(s"Receiving GetBalances message: $message")
+          message.replyTo ! new GetBalances.Response(
+            new GetBalances.BalanceRequestResult(
+              false,
+              0,
+              //                List[CurrencyBalanceFact](
+              //                  new CurrencyBalanceFact(
+              //                    Currency.newEthCurrency(),
+              //                    BigDecimal(123.45).underlying(),
+              //                    BalanceRequestResult.CurrencyBalanceFact.BalanceSyncState.SYNCED_TO_LATEST_UNICHERRYGARDEN_TOKEN_STATE,
+              //                    15
+              //                  )
+              //                ).asJava,
+              List.empty[GetBalances.BalanceRequestResult.CurrencyBalanceFact].asJava,
+              new BlockchainSyncStatus(0, 0, 0))
+          )
+          Behaviors.same
+        }
+        case message: GetTransfers.Request => {
+          logger.debug(s"Receiving GetTransfers message: $message")
+          message.replyTo ! new GetTransfers.Response(
+            new GetTransfers.TransfersRequestResult(
+              true,
+              0,
+              // List(
+              //   new MinedTransfer(
+              //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+              //     "0xedcc6f8f20962e6747369a71a5b89256289da87f",
+              //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+              //     BigDecimal("10045.6909000003").underlying,
+              //     new MinedTx(
+              //       "0x9cb54df2444658891df0c8165fecaecb4a2f1197ebe7b175dda1130b91ea4c9f",
+              //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+              //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+              //       new Block(
+              //         13628884,
+              //         "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
+              //         Instant.ofEpochSecond(1637096843)),
+              //       111
+              //     ),
+              //     144),
+              //   // UTNP out #6
+              //   new MinedTransfer(
+              //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+              //     "0x74644fd700c11dcc262eed1c59715ee874f65251",
+              //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+              //     BigDecimal("30000").underlying,
+              //     new MinedTx(
+              //       "0x3f0c1e4f1e903381c1e8ad2ad909482db20a747e212fbc32a4c626cad6bb14ab",
+              //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+              //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+              //       new Block(
+              //         13631007,
+              //         "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
+              //         Instant.ofEpochSecond(1637125704)),
+              //       133
+              //     ),
+              //     173)
+              // ).asJava,
+              List.empty[MinedTransfer].asJava,
+              new BlockchainSyncStatus(0, 0, 0)
             )
-            logger.debug(s"Replying with $response")
-            message.replyTo ! response
-            Behaviors.same
-          }
-          case message: GetBalances.Request => {
-            logger.debug(s"Receiving GetBalances message: $message")
-            message.replyTo ! new GetBalances.Response(
-              new GetBalances.BalanceRequestResult(
-                false,
-                0,
-                //                List[CurrencyBalanceFact](
-                //                  new CurrencyBalanceFact(
-                //                    Currency.newEthCurrency(),
-                //                    BigDecimal(123.45).underlying(),
-                //                    BalanceRequestResult.CurrencyBalanceFact.BalanceSyncState.SYNCED_TO_LATEST_UNICHERRYGARDEN_TOKEN_STATE,
-                //                    15
-                //                  )
-                //                ).asJava,
-                List.empty[GetBalances.BalanceRequestResult.CurrencyBalanceFact].asJava,
-                new BlockchainSyncStatus(0, 0, 0))
-            )
-            Behaviors.same
-          }
-          case message: GetTransfers.Request => {
-            logger.debug(s"Receiving GetTransfers message: $message")
-            message.replyTo ! new GetTransfers.Response(
-              new GetTransfers.TransfersRequestResult(
-                true,
-                0,
-                // List(
-                //   new MinedTransfer(
-                //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //     "0xedcc6f8f20962e6747369a71a5b89256289da87f",
-                //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //     BigDecimal("10045.6909000003").underlying,
-                //     new MinedTx(
-                //       "0x9cb54df2444658891df0c8165fecaecb4a2f1197ebe7b175dda1130b91ea4c9f",
-                //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //       new Block(
-                //         13628884,
-                //         "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
-                //         Instant.ofEpochSecond(1637096843)),
-                //       111
-                //     ),
-                //     144),
-                //   // UTNP out #6
-                //   new MinedTransfer(
-                //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //     "0x74644fd700c11dcc262eed1c59715ee874f65251",
-                //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //     BigDecimal("30000").underlying,
-                //     new MinedTx(
-                //       "0x3f0c1e4f1e903381c1e8ad2ad909482db20a747e212fbc32a4c626cad6bb14ab",
-                //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-                //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-                //       new Block(
-                //         13631007,
-                //         "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
-                //         Instant.ofEpochSecond(1637125704)),
-                //       133
-                //     ),
-                //     173)
-                // ).asJava,
-                List.empty[MinedTransfer].asJava,
-                new BlockchainSyncStatus(0, 0, 0)
-              )
-            )
-            Behaviors.same
-          }
-          case unknownMessage => {
-            logger.error(s"Unexpected message $unknownMessage")
-            Behaviors.unhandled
-          }
-//        }
+          )
+          Behaviors.same
+        }
+        case unknownMessage => {
+          logger.error(s"Unexpected message $unknownMessage")
+          Behaviors.unhandled
+        }
       }
     }
   }
@@ -246,23 +222,27 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
             if (optProgress.isEmpty) {
               logger.error("Cannot get the progress, something failed!")
               pgStorage.state.setSyncState("Cannot get the progress state!")
-              reiterateAfterDelay(state)
+//              reiterateAfterDelay(state)
+              Behaviors.empty
 
             } else if (progress.overall.from.isEmpty) {
               logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!");
-              reiterateAfterDelay(state)
+//              reiterateAfterDelay(state)
+              Behaviors.empty
 
             } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
               logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
                 s"is ${progress.currencies.minSyncFrom.get}; " +
                 s"it should not be lower than $overallFrom!")
-              reiterateAfterDelay(state)
+//              reiterateAfterDelay(state)
+              Behaviors.empty
 
             } else if (progress.trackedAddresses.minFrom < overallFrom) {
               logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
                 s"is ${progress.trackedAddresses.minFrom}; " +
                 s"it should not be lower than $overallFrom!")
-              reiterateAfterDelay(state)
+//              reiterateAfterDelay(state)
+              Behaviors.empty
 
               // ------------------------------------------------------------------------------
               // Since this point go all the options where the iteration should actually happen
@@ -271,8 +251,9 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
               // progress.overall.from is not Empty
               val blockToSync = progress.overall.from.get
               logger.info(s"Starting from the very first block ($blockToSync)...")
-//              handleSyncedBlock(blockToSync)
-              reiterateImmediately(state)
+              //              handleSyncedBlock(blockToSync)
+//              reiterateImmediately(state)
+              Behaviors.empty
 
             } else { // Fast sync
               // progress.overall.from is not Empty
@@ -311,8 +292,9 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
               val blockToSync = blocksToCompare.flatten.min
 
               logger.info(s"Fast-syncing $blockToSync block")
-//              handleSyncedBlock(blockToSync)
-              reiterateImmediately(state)
+              //              handleSyncedBlock(blockToSync)
+//              reiterateImmediately(state)
+              Behaviors.empty
             }
           } // DB localTx
         }
@@ -325,34 +307,36 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
     } catch {
       case NonFatal(e) =>
         logger.error("On iteration, got a error", e)
-        reiterateAfterDelay(state)
+//        reiterateAfterDelay(state)
     }
+
+    Behaviors.empty
   }
 
   /** FSM state: “and now let’s immediately run next syncing iterate”. */
-  private def reiterateImmediately(state: CherryPickerState): Behavior[CherryPickerRequest] = {
-    logger.debug("Next iteration will happen immediately: fast sync!")
-    val newState = state.advanceFastSync()
+//  private def reiterateImmediately(state: CherryPickerState): Behavior[CherryPickerRequest] = {
+//    logger.debug("Next iteration will happen immediately: fast sync!")
+//    val newState = state.advanceFastSync()
+//
+//    //    Behaviors.setup[CherryPickerRequest] { context =>
+//    //      context.self ! DoSyncIteration(newState)
+//    //      Behaviors.same
+//    //    }
+//    Behaviors.same
+//  }
 
-//    Behaviors.setup[CherryPickerRequest] { context =>
-//      context.self ! DoSyncIteration(newState)
-//      Behaviors.same
-//    }
-    Behaviors.same
-  }
-
-  /** FSM state: “and now let’s run next syncing iterate after a short pause”. */
-  private def reiterateAfterDelay(state: CherryPickerState): Behavior[CherryPickerRequest] = {
-    logger.debug("Next iteration will happen after timer")
-    val newState = state.stopFastSync() // this is not a fast sync anymore
-
-    //    Behaviors.withTimers[CherryPickerRequest] { timers =>
-    //      timers.startSingleTimer(DoSyncIteration(newState), CherryPicker.BLOCK_ITERATION_PERIOD)
-    //      Behaviors.same
-    //    }
-    //  }
-    Behaviors.same
-  }
+//  /** FSM state: “and now let’s run next syncing iterate after a short pause”. */
+//  private def reiterateAfterDelay(state: CherryPickerState): Behavior[CherryPickerRequest] = {
+//    logger.debug("Next iteration will happen after timer")
+//    val newState = state.stopFastSync() // this is not a fast sync anymore
+//
+//    //    Behaviors.withTimers[CherryPickerRequest] { timers =>
+//    //      timers.startSingleTimer(DoSyncIteration(newState), CherryPicker.BLOCK_ITERATION_PERIOD)
+//    //      Behaviors.same
+//    //    }
+//    //  }
+//    Behaviors.same
+//  }
 }
 
 
@@ -364,13 +348,7 @@ object CherryPicker extends LazyLogging {
 
   val BLOCK_ITERATION_PERIOD = 10 seconds // Each block is generated about once per 13 seconds, let’s be safe
 
-  /** A message informing CherryPicker it needs to run a next iteration. */
-//  private sealed case class DoSyncIteration(state: CherryPickerState) extends CherryPickerRequest
-
-  /** A message informing CherryPicker it needs to recheck the Ethereum node sync state.
-   * (i.e. to read `eth.blockNumber`).
-   */
-  //  private sealed case class ReadEthNodeSyncState() extends CherryPickerRequest
+  val MAX_REORG = 100 // TODO: must be configured through application.conf
 
   /** Main constructor. */
   @inline def apply(pgStorage: PostgreSQLStorage,
@@ -419,4 +397,3 @@ case class CherryPickerState(fastSyncStats: Option[FastSyncStats] = None) extend
     CherryPickerState(fastSyncStats = None)
   }
 }
-

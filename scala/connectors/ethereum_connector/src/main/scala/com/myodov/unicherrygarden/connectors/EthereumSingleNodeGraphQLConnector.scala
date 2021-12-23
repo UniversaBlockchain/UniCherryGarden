@@ -6,6 +6,7 @@ import akka.actor.typed.{ActorSystem => TypedActorSystem}
 import akka.actor.{ActorSystem => ClassicActorSystem}
 import caliban.client.CalibanClientError
 import com.myodov.unicherrygarden.api.dlt
+import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.SyncingStatus
 import com.myodov.unicherrygarden.connectors.graphql._
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.typesafe.scalalogging.LazyLogging
@@ -39,6 +40,8 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
 
   override def ethSyncingBlockNumber: Option[SyncingStatus] = {
     import caliban.Geth._
+
+    // Either we have some data in `syncing`; or we must get the most recent block as just `block {number hash}`
 
     val query = Query.syncing {
       SyncState.view

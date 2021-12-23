@@ -10,6 +10,11 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
+/** Very simple actor to read the Ethereum node syncing status (like `eth.syncing`/`eth.blockNumber` API commands,
+ * and getting the “current”/“highest” known Ethereum block).
+ *
+ * @note For more details please read [[/docs/unicherrypicker-synchronization.md]] document.
+ */
 private class EthereumStatePoller(ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
   extends LazyLogging {
 
@@ -30,8 +35,7 @@ private class EthereumStatePoller(ethereumConnector: AbstractEthereumNodeConnect
         case Poll() =>
           logger.debug("Polling Ethereum node for syncing status...")
           // If polling successful (and only then), resend the syncing status to listeners
-          val syncing = ethereumConnector.ethSyncingBlockNumber
-          syncing.map { syncingStatus =>
+          ethereumConnector.ethSyncingBlockNumber.map { syncingStatus =>
             for (listener <- listeners) {
               listener ! EthereumNodeStatus(syncingStatus.currentBlock, syncingStatus.highestBlock)
             }
@@ -44,6 +48,7 @@ private class EthereumStatePoller(ethereumConnector: AbstractEthereumNodeConnect
 
 /** A simple helper to poll the Ethereum */
 object EthereumStatePoller {
+
   // Sealed to make message matches exhaustive
   sealed trait Message
 

@@ -4,6 +4,7 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 import com.myodov.unicherrygarden.api.dlt
+import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.SyncingStatus
 import com.typesafe.scalalogging.LazyLogging
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameterNumber

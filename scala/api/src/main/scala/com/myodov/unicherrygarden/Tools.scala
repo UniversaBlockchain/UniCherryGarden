@@ -1,10 +1,8 @@
 package com.myodov.unicherrygarden
 
 import scala.Ordering.Implicits._
-import scala.language.implicitConversions
 import scala.math.Numeric
 import scala.math.Numeric.Implicits._
-
 
 /** Miscellaneous useful tools. */
 object Tools {
@@ -28,8 +26,8 @@ object Tools {
    * Note: true for single-item collection.
    */
   def seqIsIncreasing[T: Ordering](seq: Iterable[T]): Boolean =
-    (seq.size == 1) || seq.sliding(2).forall {
-      case Seq(a: T, b: T) => (a <= b)
+    (seq.size == 1) || seq.sliding(2).forall { case Seq(a, b) =>
+      (a: T) <= (b: T)
     }
 
   /** Check if a sequence of orderable items is only incrementing on each step.
@@ -38,7 +36,7 @@ object Tools {
    * Note: true for single-item collection.
    */
   def seqIsIncrementing[T: Numeric](seq: Iterable[T]): Boolean =
-    (seq.size == 1) || seq.sliding(2).forall {
-      case Seq(a: T, b: T) => (b == a + Numeric[T].one)
+    (seq.size == 1) || seq.sliding(2).forall { case Seq(a, b) =>
+      b == (a: T) + Numeric[T].one
     }
 }

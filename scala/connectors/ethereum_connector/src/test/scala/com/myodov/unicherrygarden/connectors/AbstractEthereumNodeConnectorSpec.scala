@@ -3,6 +3,7 @@ package com.myodov.unicherrygarden.connectors
 import java.time.Instant
 
 import com.myodov.unicherrygarden.api.dlt.{EthereumBlock, EthereumMinedTransaction, EthereumTxLog}
+import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.SyncingStatus
 import com.typesafe.config.ConfigFactory
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -12,10 +13,10 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
   lazy val config = ConfigFactory.load()
 
   "ethSyncingBlockNumber()" should "return some valid number" in {
-    val blockNumberResult: Option[sharedConnector.SyncingStatus] = sharedConnector.ethSyncingBlockNumber
+    val blockNumberResult: Option[SyncingStatus] = sharedConnector.ethSyncingBlockNumber
     assert(
       blockNumberResult match {
-        case Some(sharedConnector.SyncingStatus(current, highest)) =>
+        case Some(SyncingStatus(current, highest)) =>
           (current > 11500000) && (highest  > 11500000)
       },
       blockNumberResult

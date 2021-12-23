@@ -2,10 +2,10 @@ package com.myodov.unicherrygarden.cherrypicker.syncers
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.myodov.unicherrygarden.cherrypicker.syncers.AbstractSyncer.SyncerState
-import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{IterateTailSyncer, TailSyncerMessage}
+import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{EthereumNodeStatus, IterateTailSyncer, TailSyncerMessage}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
+import com.myodov.unicherrygarden.api.dlt
 
 import scala.language.postfixOps
 
@@ -18,7 +18,7 @@ private class TailSyncer(pgStorage: PostgreSQLStorage,
                          ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
   extends AbstractSyncer[
     TailSyncerMessage,
-//    TailSyncerState,
+    //    TailSyncerState,
     IterateTailSyncer
   ](pgStorage, ethereumConnector) {
 
@@ -28,9 +28,9 @@ private class TailSyncer(pgStorage: PostgreSQLStorage,
    * and behaviors. If we receive some state-changing message from outside (e.g. the latest state of Ethereum node
    * syncing process; or, for HeadSyncer, the message from TailSyncer), we need to alter the state immediately.
    * But the FSM may be in a 10-second delay after the latest block being processed, and after it a message
-   * with the previous state will be posted by the timer. So alas, `state` has to be a var.
+   * with the previous state will be posted by the timer. So alas, `state` has to be variable.
    */
-  protected[this] var state: TailSyncerState = TailSyncerState() // initialized with default state
+  private[this] val state: TailSyncer.State = TailSyncer.State() // initialized with default state
 
   import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages._
 
@@ -40,26 +40,18 @@ private class TailSyncer(pgStorage: PostgreSQLStorage,
     Behaviors.setup[TailSyncerMessage] { context =>
       Behaviors.receiveMessage[TailSyncerMessage] {
         case IterateTailSyncer() =>
-          //          nextIteration()
+          //          iterate()
           logger.debug(s"Iteration in TailSyncer $state")
           Behaviors.same
-        case EthereumNodeStatus(current, highest) =>
-          logger.debug(s"TailSyncer received $current, $highest")
+        case message@EthereumNodeStatus(current, highest) =>
+          logger.debug(s"TailSyncer received Ethereum node syncing status: $message")
+          state.synchronized {
+            state.ethereumNodeStatus = Some(message)
+          }
           Behaviors.same
       }
     }
   }
-
-  //  override def mainLoop(state: TailSyncerState): Behavior[TailSyncerMessage] =
-  //    Behaviors.receiveMessage[TailSyncerMessage] {
-  //      case IterateTailSyncer(state) =>
-  //        //          nextIteration()
-  //        logger.debug(s"Iteration in TailSyncer $state")
-  //        Behaviors.same
-  //      case EthereumNodeStatus(current, highest) =>
-  //        logger.debug(s"TailSyncer received $current, $highest")
-  //        Behaviors.same
-  //    }
 
   override def makeIterateMessage(): IterateTailSyncer =
     IterateTailSyncer()
@@ -68,20 +60,18 @@ private class TailSyncer(pgStorage: PostgreSQLStorage,
     logger.debug(s"Iterating with $state")
     Behaviors.same
   }
-
-  //  def nextIteration(): Unit = {
-  //    logger.debug("FFF  Trying Fast-sync...")
-  //    Behaviors.same
-  //  }
 }
 
 object TailSyncer {
+
+  val BATCH_SIZE = 100 // TODO: must be configured through application.conf
+
+  private final case class State(var ethereumNodeStatus: Option[EthereumNodeStatus] = None)
+    extends AbstractSyncer.SyncerState
+
   /** Main constructor. */
   @inline def apply(pgStorage: PostgreSQLStorage,
                     ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
                     headSyncer: ActorRef[SyncerMessages.HeadSyncerMessage]): Behavior[SyncerMessages.TailSyncerMessage] =
     new TailSyncer(pgStorage, ethereumConnector).launch(headSyncer)
 }
-
-private final case class TailSyncerState()
-  extends SyncerState
