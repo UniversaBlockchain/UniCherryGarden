@@ -22,25 +22,12 @@ import scala.language.postfixOps
  */
 abstract private class AbstractSyncer[
   M <: SyncerMessages.Message,
-//  S <: SyncerState[M],
+  //  S <: SyncerState[M],
   IS <: SyncerMessages.IterateSyncer[M] with M
 ]
 (protected[this] val pgStorage: PostgreSQLStorage,
  protected[this] val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
   extends LazyLogging {
-
-//  /** The overall state of the syncer.
-//   *
-//   * Unfortunately, we cannot go fully Akka-way having the system state passed through the methods, FSM states
-//   * and behaviors. If we receive some state-changing message from outside (e.g. the latest state of Ethereum node
-//   * syncing process; or, for HeadSyncer, the message from TailSyncer), we need to alter the state immediately.
-//   * But the FSM may be in a 10-second delay after the latest block being processed, and after it a message
-//   * with the previous state will be posted by the timer. So alas, `state` has to be a var.
-//   */
-//  protected[this] var state: S
-
-//  /** Main message handler. */
-//  def mainLoop(state: S): Behavior[M]
 
   /** Most important method doing some next iteration of a syncer. */
   def iterate(): Behavior[M]
@@ -57,31 +44,10 @@ abstract private class AbstractSyncer[
       Behaviors.same
     }
 
-
-  //  def launch(): Behavior[SyncerMessages.Message] = {
-  //
-  //    logger.debug(s"Launching ${this.getClass.getName}")
-  //    Behaviors.withTimers[Message] { timers: TimerScheduler[Message] =>
-  //      timers.startTimerWithFixedDelay(
-  //        Iterate(),
-  //        startDelay,
-  //        iterationDelay,
-  //      )
-  //      // due to initialDelay = 0 seconds, it also sends this message, instantly, too.
-  //      Behaviors.receiveMessage[Message] {
-  //        case Iterate() =>
-  //          nextIteration()
-  //          Behaviors.same
-  //      }
-  //    }
-  //  }
-
-  //  protected def nextIteration(): Unit
-
   /** Perform the regular iteration for a specific block number:
    * read the block from the Ethereum connector, store it into the DB.
    */
-  private[this] def syncBlock(blockToSync: Int)(implicit session: DBSession): Unit = {
+  protected[this] def syncBlock(blockToSync: Int)(implicit session: DBSession): Unit = {
     val trackedAddresses: Set[String] = pgStorage.trackedAddresses.getJustAddresses
 
     logger.debug(s"processing block $blockToSync with tracked addresses $trackedAddresses")
@@ -142,5 +108,7 @@ abstract private class AbstractSyncer[
 }
 
 object AbstractSyncer {
+
   trait SyncerState
+
 }

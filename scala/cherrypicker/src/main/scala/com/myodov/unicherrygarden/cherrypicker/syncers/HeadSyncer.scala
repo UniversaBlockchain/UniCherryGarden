@@ -9,6 +9,7 @@ import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{EthereumNodeStatus, GoingToTailSync, HeadSyncerMessage, IterateHeadSyncer}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
+import com.myodov.unicherrygarden.storages.PostgreSQLStorage.Progress
 import scalikejdbc.{DB, DBSession}
 
 import scala.annotation.switch
@@ -54,15 +55,11 @@ private class HeadSyncer(pgStorage: PostgreSQLStorage,
           iterate()
         case message@EthereumNodeStatus(current, highest) =>
           logger.debug(s"HeadSyncer received Ethereum node syncing status: $message")
-          state.synchronized {
-            state.ethereumNodeStatus = Some(message)
-          }
+          state.ethereumNodeStatus = Some(message)
           Behaviors.same
         case message@GoingToTailSync(range) =>
           logger.debug(s"TailSyncer notified us it is going to sync $range.")
-          state.synchronized {
-            state.tailSyncStatus = Some(message);
-          }
+          state.tailSyncStatus = Some(message);
           Behaviors.same
       }
     }
@@ -72,9 +69,7 @@ private class HeadSyncer(pgStorage: PostgreSQLStorage,
 
   def iterateMustCheckReorg(): Behavior[HeadSyncerMessage] = {
     logger.debug("iterateMustCheckReorg")
-    state.synchronized {
-      state.nextIterationMustCheckReorg.set(true)
-    }
+    state.nextIterationMustCheckReorg.set(true)
     iterateMayCheckReorg()
   }
 
@@ -108,29 +103,80 @@ private class HeadSyncer(pgStorage: PostgreSQLStorage,
     }
 
   override def iterate(): Behavior[HeadSyncerMessage] = {
-    logger.debug(s"Iterating with $state")
-    // Atomically get the value and unset it
-    val mustCheckReorg = state.nextIterationMustCheckReorg.getAndSet(false)
-    logger.debug(s"Do we need to check for reorg? $mustCheckReorg")
-    if (mustCheckReorg) {
-      // Since this moment, we may want to use DB in a single atomic DB transaction;
-      // even though this will involve querying the Ethereum node, maybe even multiple times.
-      DB localTx { implicit session =>
-        val checkReorgResult = checkReorg
-        (checkReorgResult: @switch) match {
-          case Left(None) =>
-            logger.debug("No reorg needed")
-            Behaviors.unhandled // TODO
-          case Left(Some(invalidRange)) =>
-            logger.debug(s"Need reorg for $invalidRange")
-            Behaviors.unhandled // TODO
-          case Right(error) =>
-            logger.error(s"During checkReorg, there was a problem: $error")
-            pauseThenMustCheckReorg()
-        }
+    logger.debug(s"Running an iteration with $state")
+    // Since this moment, we may want to use DB in a single atomic DB transaction;
+    // even though this will involve querying the Ethereum node, maybe even multiple times.
+    DB localTx { implicit session =>
+      // For more details on reorg handling phases, read the [[/docs/unicherrypicker-synchronization.md]] document.
+
+      // We could put this check deeper into `isNodeReachable` method; but let’s enjoy the convenience
+      // having the Progress.ProgressData safely unwrapped from Option for simpler future usage
+      pgStorage.progress.getProgress match {
+        case None =>
+          // we could not even get the DB progress – go to the next round
+          logger.error("Some unexpected error when reading the overall progress from the DB")
+          pauseThenMustCheckReorg
+        case Some(overallProgress) =>
+          // Reorg/rewind, phase 1/4: “is node reachable” – does the overall data sanity allows us to proceed?
+          if (!isNodeReachable(overallProgress)) {
+            pauseThenMustCheckReorg
+          } else {
+            // Reorg/rewind, phase 2/4: “reorg check check” – should we bother checking for reorg?
+
+            // Atomically get the value and unset it
+            val mustCheckReorg = state.nextIterationMustCheckReorg.getAndSet(false)
+            val isReorgCheckNeeded = mustCheckReorg || reorgCheckCheck
+            logger.debug(s"Do we need to check for reorg? $mustCheckReorg / $isReorgCheckNeeded")
+
+            if (isReorgCheckNeeded) {
+              val reorgCheckResult = reorgCheck
+              (reorgCheckResult: @switch) match {
+                case Left(None) =>
+                  logger.debug("No reorg needed")
+                  Behaviors.unhandled // TODO
+                case Left(Some(invalidRange)) =>
+                  logger.debug(s"Need reorg for $invalidRange")
+                  Behaviors.unhandled // TODO
+                case Right(error) =>
+                  logger.error(s"During reorgCheck, there was a problem: $error")
+                  pauseThenMustCheckReorg()
+              }
+            }
+
+            // Reorg/rewind, phase 3/4: “reorg check” – did reorg happened?
+
+            // Reorg/rewind, phase 4/4: “rewind”
+          }
+
       }
     }
     Behaviors.unhandled // TODO
+  }
+
+  /** Most basic sanity test for the DB data;
+   * fails if we cannot even go further and must wait for the node to continue syncing.
+   */
+  private[this] def isNodeReachable(dbProgressData: Progress.ProgressData): Boolean =
+    (state.ethereumNodeStatus: @switch) match {
+      case None =>
+        logger.warn("Ethereum node hasn't provided the syncing state yet, maybe it is unavailable")
+        false
+      case Some(nodeStatus) =>
+        dbProgressData.blocks.to match {
+          case None =>
+            // All data is available; but there is no blocks in the DB. This actually is fully okay
+            true
+          case Some(maxBlocksNum) =>
+            // Everything is fine if our latest stored block is not newer than the latest block available
+            // to Ethereum node;
+            // false/bad otherwise
+            maxBlocksNum <= nodeStatus.currentBlock
+        }
+    }
+
+  /** Check if we even need to check the blockchain for reorganization. */
+  private[this] def reorgCheckCheck()(implicit session: DBSession): Boolean = {
+    false // TODO
   }
 
   /** Check if the blockchain reorganization happened.
@@ -143,7 +189,7 @@ private class HeadSyncer(pgStorage: PostgreSQLStorage,
    *         if the reorg happened, and this BlockRange was affected.</li>
    *         </ul>
    */
-  private[this] def checkReorg()(implicit session: DBSession): Either[Option[dlt.EthereumBlock.BlockNumberRange], String] = {
+  private[this] def reorgCheck()(implicit session: DBSession): Either[Option[dlt.EthereumBlock.BlockNumberRange], String] = {
     val maxReorg = CherryPicker.MAX_REORG
     val blockHashesInDb: SortedMap[Int, String] = pgStorage.blocks.getLatestHashes(maxReorg)
     logger.debug(s"We have ${blockHashesInDb.size} blocks stored in DB, checking for reorg sized $maxReorg")
@@ -190,9 +236,9 @@ object HeadSyncer {
   val BATCH_SIZE = 100 // TODO: must be configured through application.conf
   val CATCH_UP_BRAKE_MAX_LEAD = 100 // TODO: must be configured through application.conf
 
-  private final case class State(var ethereumNodeStatus: Option[EthereumNodeStatus] = None,
+  private final case class State(@volatile var ethereumNodeStatus: Option[EthereumNodeStatus] = None,
                                  nextIterationMustCheckReorg: AtomicBoolean = new AtomicBoolean(true),
-                                 var tailSyncStatus: Option[GoingToTailSync] = None)
+                                 @volatile var tailSyncStatus: Option[GoingToTailSync] = None)
     extends AbstractSyncer.SyncerState
 
   /** Main constructor. */

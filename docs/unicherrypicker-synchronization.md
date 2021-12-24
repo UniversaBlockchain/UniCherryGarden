@@ -144,23 +144,14 @@ Any error in any iteration causes HeadSyncer to delay (for like 10 seconds) and 
 
 #### Reorg check/rewinding
 
-Consists of three phases:
+Consists of four phases:
 
-1. Reorg check check (read this as “check for reorg check”) – do we even need to check for reorg?
-2. Reorg check – did reorg occur? is rewinding needed?
-3. Rewinding – actual deletion from the database.
+1. Is node reachable? – does the data in the DB and in the Ethereum node sufficient for us to even do anything?
+2. Reorg check check (read this as “check for reorg check”) – do we really need to check for reorg?
+3. Reorg check – did reorg occur? is rewinding needed?
+4. Rewinding – actual deletion from the database.
 
-##### 1. Reorg check check
-
-Checking for reorg is a resource-consuming operation, too – at least, it will need to get the hashes for a number of blocks from the DB and from the Ethereum node; think about like 100 records from DB and 100 records from the Ethereum node.
-
-We actually do not need to check for reorg very often, even when moving the HeadSyncer forward. There are some cases when we *must* do it (like, when we launch the system for the first time). On most of the subsequent iterations we *may* do it.
-
-The HeadSyncer internal state contains a flag `nextIterationMustCheckReorg` which is related to the “must”-condition. If it is set, we *undoubtedly do* the reorg check phase – i.e. reorg check **is needed**. If it is unset, we still “may” check the reorg.
-
-What defines if we should do the reorg check or not?
-
-Basically, several most important numbers:
+Most of the reorg-checking decisions are taken upon these several most important numbers:
 
 * `min(ucg_block.number)` – the earliest block stored in our DB.
 * `max(ucg_block.number)` – the newest block stored in our DB.
@@ -168,16 +159,33 @@ Basically, several most important numbers:
 * `eth.syncing.highestBlock` – the block that the Ethereum node reports is the latest which it is aware about, but may not have the full information about it; typically `eth.syncing.highestBlock` ≥ `eth.syncing.currentBlock`.
 * `syncers.max_reorg` – the configuration setting defining the number of blocks how far we do even check for reorgs.
 
+##### 1. Is node reachable
+
+If `max(ucg_block.number)` > `eth.syncing.currentBlock`, it means the Ethereum node was probably wiped/restarted (and our DB has more information than the node) and is still being synced; so we should not go further, and go to `pauseThenMustCheckReorg` state instead, waiting until the Ethereum node syncs-up further to be able to even ask it for reorg data.
+
+Another case for us to think the node is unreachable, is if our recent `eth.syncing` data from the Ethereum node is even unavailable.
+
+(Interestingly, if there are no blocks in `ucg_block` – that’s okay and we go to the next step; at least we didn’t fail).
+
+##### 2. Reorg check check
+
+Otherwise, if the basic data sanity is ensured (and “the node is reachable”), we going further to question if we need to check for reorg.
+
+Checking for reorg is a resource-consuming operation, too – at least, it will need to get the hashes for a number of blocks from the DB and from the Ethereum node; think about like 100 records from DB and 100 records from the Ethereum node.
+
+We actually do not need to check for reorg very often, even when moving the HeadSyncer forward. There are some cases when we *must* do it (like, when we launch the system for the first time). On most of the subsequent iterations we *may* do it.
+
+The HeadSyncer internal state contains a flag `nextIterationMustCheckReorg` which is related to the “must”-condition. If it is set, we *undoubtedly do* the reorg check phase – i.e. the reorg reorg check **is needed**. If it is unset, we still “may” check the reorg.
+
 The conditions for the “we may do reorg check but should we?” question are following:
 
-* If there are no blocks in `ucg_block`, reorg check **is not needed** (as we don’t know any blocks).
-* If `max(ucg_block.number)` > `eth.syncing.currentBlock`, it means the Ethereum node was probably wiped/restarted (and our DB has more information than the node) and is still being synced; so we should not go further, and go to `pauseThenMustCheckReorg` state instead, waiting until the Ethereum node syncs-up larger to even ask it for reorg data.
-* If `max(ucg_block.number)` < `eth.syncing.currentBlock - syncers.max_reorg`, it means we are very far from the current tip of the blockchain, and we are hurrying to sync it up to it. We did the reorg-check once after the bootup; but now, as we are in hurry, the reorg check **is not needed**.
-* Otherwise, we are in a situation when latest our stored block is within the “danger zone” for the reorg. For the most safety, reorg check **is needed**.
+* If there are no blocks in `ucg_block`, reorg check **is not needed** (as we don’t have any blocks to check).
+* If `max(ucg_block.number)` < `eth.syncing.currentBlock - syncers.max_reorg`, it means we are very far from the current tip of the blockchain, and we are hurrying to sync it up to it. We did the reorg-check once after the bootup (in some “mustCheckReorg” condition); but now, as we are in hurry, the reorg check **is not needed**.
+* Otherwise, we are in a situation when the latest of our stored blocks is within the “danger zone” for the reorg. For the utmost safety, the reorg check **is needed**.
 
-##### 2. Reorg check
+##### 3. Reorg check
 
-If “reorg check check” decided we need to do a reorg check we do it:
+If “reorg check check” decided we need to do the reorg check we do it:
 
 `reorgCheckEndBlock` to read: `max(ucg_block.number).`
 
@@ -187,7 +195,7 @@ Then, knowing the `reorgCheckStartBlock` and `reorgCheckEndBlock` values, we ask
 
 We compare the results with the data in our database (basically, we get the most recent blocks stored in `ucg_block`, as much as available up to `syncers.max_reorg`). The first block where the hash doesn’t match, is assumed the first block to rewind.
 
-##### 3. Rewind
+##### 4. Rewind
 
 `rewindStartBlock`: the first block in our `ucg_block` whose hash didn’t match the data from the Ethereum node.
 `rewindEndBlock`: `max(ucg_block.number)`.

@@ -66,7 +66,7 @@ object TailSyncer {
 
   val BATCH_SIZE = 100 // TODO: must be configured through application.conf
 
-  private final case class State(var ethereumNodeStatus: Option[EthereumNodeStatus] = None)
+  private final case class State(@volatile var ethereumNodeStatus: Option[EthereumNodeStatus] = None)
     extends AbstractSyncer.SyncerState
 
   /** Main constructor. */
