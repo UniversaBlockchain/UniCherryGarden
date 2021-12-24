@@ -15,6 +15,7 @@ import com.myodov.unicherrygarden.messages.CherryPickerRequest
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.Response
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses, GetTransfers}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
+import com.myodov.unicherrygarden.storages.api.DBStorage
 import com.typesafe.scalalogging.LazyLogging
 import scalikejdbc.DB
 

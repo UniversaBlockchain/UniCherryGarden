@@ -4,9 +4,9 @@ import java.sql.SQLException
 
 import com.myodov.unicherrygarden.Tools.seqIsIncrementing
 import com.myodov.unicherrygarden.api.dlt
-import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
+import com.myodov.unicherrygarden.storages.api.DBStorage
 import com.typesafe.scalalogging.LazyLogging
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.{CleanResult, MigrateResult}
@@ -22,7 +22,7 @@ class PostgreSQLStorage(jdbcUrl: String,
                         dbPassword: String,
                         wipeOnStart: Boolean,
                         migrationPaths: List[String]
-                       ) extends LazyLogging {
+                       ) extends DBStorage with LazyLogging {
   private[this] lazy val flw: Flyway = {
     val stockMigrations = List("classpath:com/myodov/unicherrygarden/db/migrations")
     val totalMigrations = stockMigrations ::: migrationPaths
@@ -432,50 +432,7 @@ class PostgreSQLStorage(jdbcUrl: String,
   /** Access `ucg_currency` table. */
   object Currencies {
 
-    object CurrencyTypes extends Enumeration {
-      type DBCurrencyType = Value
-      val Eth, Erc20 = Value
-
-      def fromString(str: String): Value = {
-        str match {
-          case "ETH" => CurrencyTypes.Eth
-          case "ERC20" => CurrencyTypes.Erc20
-          case other => throw new RuntimeException(s"Unsupported currency type $other")
-        }
-      }
-
-      def toInteropType(v: Value): Currency.CurrencyType = {
-        v match {
-          case CurrencyTypes.Eth => Currency.CurrencyType.ETH
-          case CurrencyTypes.Erc20 => Currency.CurrencyType.ERC20
-          case other => throw new RuntimeException(s"Unsupported currency type $other")
-        }
-      }
-    }
-
-
-    /** Single instance of currency/token/asset. */
-    sealed case class DBCurrency(currencyType: CurrencyTypes.DBCurrencyType,
-                                 dAppAddress: Option[String],
-                                 name: Option[String],
-                                 symbol: Option[String],
-                                 ucgComment: Option[String],
-                                 verified: Boolean,
-                                 decimals: Option[Int]
-                                ) {
-      require((currencyType == CurrencyTypes.Eth) == dAppAddress.isEmpty, (currencyType, dAppAddress))
-      require(dAppAddress.isEmpty || EthUtils.Addresses.isValidLowercasedAddress(dAppAddress.get), dAppAddress)
-
-      def asAsset: dlt.Asset = {
-        currencyType match {
-          case CurrencyTypes.Eth => dlt.Ether
-          case CurrencyTypes.Erc20 => dlt.ERC20Token(dAppAddress.get)
-          case _ => {
-            throw new RuntimeException(s"Unsupported currencyType $currencyType")
-          }
-        }
-      }
-    }
+    import com.myodov.unicherrygarden.storages.api.DBStorage.Currencies._
 
     def getCurrencies(
                        getVerified: Boolean,
@@ -509,15 +466,7 @@ class PostgreSQLStorage(jdbcUrl: String,
 
   object TrackedAddresses {
 
-    /** Single instance of tracked address.
-     * Note that the [[Option]] arguments being [[None]] don’t necessary mean the data really has NULL here:
-     * they may be empty if the result has been requested without this piece of data.
-     */
-    sealed case class TrackedAddress(address: String,
-                                     comment: Option[String],
-                                     syncedFrom: Option[Int],
-                                     syncedTo: Option[Int]
-                                    )
+    import com.myodov.unicherrygarden.storages.api.DBStorage.TrackedAddresses._
 
     /** Get the list of all tracked addresses;
      * optionally containing (or not containing) various extra information about each address.

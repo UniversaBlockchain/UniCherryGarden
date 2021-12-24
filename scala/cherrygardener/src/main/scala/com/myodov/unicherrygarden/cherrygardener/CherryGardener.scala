@@ -9,6 +9,7 @@ import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector
 import com.myodov.unicherrygarden.messages.cherrygardener.{GetCurrencies, PingCherryGardener}
 import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryPickerRequest, CherryPlanterRequest}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
+import com.myodov.unicherrygarden.storages.api.DBStorage
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.jdk.CollectionConverters._
@@ -18,13 +19,11 @@ import scala.language.postfixOps
 class CherryGardener(private val dbStorage: PostgreSQLStorage,
                      private val ethereumConnector: AbstractEthereumNodeConnector) extends LazyLogging {
 
-  /**
-   * Reply to [[GetCurrencies]] request.
-   */
+  /** Reply to [[GetCurrencies]] request. */
   def getCurrencies(getVerified: Boolean, getUnverified: Boolean): GetCurrencies.Response = {
     val result: List[Currency] = dbStorage.Currencies.getCurrencies(getVerified, getUnverified).map(
       c => new Currency(
-        dbStorage.Currencies.CurrencyTypes.toInteropType(c.currencyType),
+        DBStorage.Currencies.CurrencyTypes.toInteropType(c.currencyType),
         c.dAppAddress.orNull,
         c.name.orNull,
         c.symbol.orNull,
