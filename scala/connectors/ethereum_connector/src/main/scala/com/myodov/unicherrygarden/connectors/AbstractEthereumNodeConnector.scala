@@ -148,7 +148,7 @@ trait Web3ReadOperations extends LazyLogging {
     (resultToValidate: @switch) match {
       case None => None
       case Some(map) =>
-        (map: @switch) match {
+        map match {
           case emptyMap if emptyMap.isEmpty =>
             // Well okay, we’ve requested a block range which is empty
             resultToValidate // original result, unmodified

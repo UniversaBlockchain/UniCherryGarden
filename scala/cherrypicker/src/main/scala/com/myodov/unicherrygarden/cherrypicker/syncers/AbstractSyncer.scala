@@ -25,7 +25,7 @@ abstract private class AbstractSyncer[
   //  S <: SyncerState[M],
   IS <: SyncerMessages.IterateSyncer[M] with M
 ]
-(protected[this] val pgStorage: PostgreSQLStorage,
+(protected[this] val dbStorage: PostgreSQLStorage,
  protected[this] val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
   extends LazyLogging {
 
@@ -48,7 +48,7 @@ abstract private class AbstractSyncer[
    * read the block from the Ethereum connector, store it into the DB.
    */
   protected[this] def syncBlock(blockToSync: Int)(implicit session: DBSession): Unit = {
-    val trackedAddresses: Set[String] = pgStorage.trackedAddresses.getJustAddresses
+    val trackedAddresses: Set[String] = dbStorage.TrackedAddresses.getJustAddresses
 
     logger.debug(s"processing block $blockToSync with tracked addresses $trackedAddresses")
 
@@ -57,8 +57,8 @@ abstract private class AbstractSyncer[
       case Some((block, transactions)) => {
         logger.debug(s"Reading block $block: txes $transactions")
 
-        val thisBlockInDbOpt = pgStorage.blocks.getBlockByNumber(block.number)
-        val prevBlockInDbOpt = pgStorage.blocks.getBlockByNumber(block.number - 1)
+        val thisBlockInDbOpt = dbStorage.Blocks.getBlockByNumber(block.number)
+        val prevBlockInDbOpt = dbStorage.Blocks.getBlockByNumber(block.number - 1)
 
         logger.debug(s"Storing block: $block; " +
           s"block may be present as $thisBlockInDbOpt, " +
@@ -69,14 +69,14 @@ abstract private class AbstractSyncer[
             // This is the simplest case: this is probably the very first block in the DB
             logger.debug(s"Adding first block ${block.number}: " +
               s"neither it nor previous block exist in the DB")
-            pgStorage.blocks.addBlock(block.withoutParentHash)
+            dbStorage.Blocks.addBlock(block.withoutParentHash)
           }
           case (None, Some(prevBlockInDb)) if prevBlockInDb.hash == block.parentHash.get => {
             // Another simplest case: second and further blocks in the DB.
             // Very new block, and its parent matches the existing one
             logger.debug(s"Adding new block ${block.number}; parent block ${block.number - 1} " +
               s"exists already with proper hash")
-            pgStorage.blocks.addBlock(block)
+            dbStorage.Blocks.addBlock(block)
           }
           case (Some(thisBlockInDb), _) if thisBlockInDb.hash == block.hash => {
             logger.debug(s"Block ${block.number} exists already in the DB " +
@@ -98,10 +98,10 @@ abstract private class AbstractSyncer[
         }
         logger.debug(s"Now trying to store the transactions: $transactions")
         for (tx <- transactions) {
-          pgStorage.transactions.addTransaction(tx, block.hash)
-          pgStorage.txlogs.addTxLogs(block.number, tx.txhash, tx.txLogs)
+          dbStorage.Transactions.addTransaction(tx, block.hash)
+          dbStorage.TxLogs.addTxLogs(block.number, tx.txhash, tx.txLogs)
         }
-        pgStorage.state.advanceProgress(block.number, trackedAddresses)
+        dbStorage.State.advanceProgress(block.number, trackedAddresses)
       }
     }
   }

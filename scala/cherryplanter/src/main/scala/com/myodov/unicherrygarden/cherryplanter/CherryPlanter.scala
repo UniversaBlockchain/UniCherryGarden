@@ -11,7 +11,7 @@ import scala.language.postfixOps
 
 /** "Cherry planter": the "CherryGarden" subsystem to create and inject new Ethereum transactions
  * into the Ethereum blockchain. */
-class CherryPlanter(private val pgStorage: PostgreSQLStorage,
+class CherryPlanter(private val dbStorage: PostgreSQLStorage,
                     private val ethereumConnector: AbstractEthereumNodeConnector) extends LazyLogging {
 }
 
@@ -25,10 +25,10 @@ object CherryPlanter extends LazyLogging {
   /** A message informing you need to run a next iteration */
   final case class Iterate() extends CherryPlanterRequest
 
-  def apply(pgStorage: PostgreSQLStorage,
+  def apply(dbStorage: PostgreSQLStorage,
             ethereumConnector: AbstractEthereumNodeConnector): Behavior[CherryPlanterRequest] = {
 
-    val planter = new CherryPlanter(pgStorage, ethereumConnector)
+    val planter = new CherryPlanter(dbStorage, ethereumConnector)
 
     Behaviors.setup { context =>
       logger.info(s"Launching CherryPlanter: v. $propVersionStr, built at $propBuildTimestampStr")

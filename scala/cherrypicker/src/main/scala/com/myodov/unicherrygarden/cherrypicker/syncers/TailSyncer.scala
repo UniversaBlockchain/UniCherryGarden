@@ -5,7 +5,6 @@ import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{EthereumNodeStatus, IterateTailSyncer, TailSyncerMessage}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
-import com.myodov.unicherrygarden.api.dlt
 
 import scala.language.postfixOps
 
@@ -14,13 +13,13 @@ import scala.language.postfixOps
  *
  * @note For more details please read [[/docs/unicherrypicker-synchronization.md]] document.
  */
-private class TailSyncer(pgStorage: PostgreSQLStorage,
+private class TailSyncer(dbStorage: PostgreSQLStorage,
                          ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
   extends AbstractSyncer[
     TailSyncerMessage,
     //    TailSyncerState,
     IterateTailSyncer
-  ](pgStorage, ethereumConnector) {
+  ](dbStorage, ethereumConnector) {
 
   /** The overall state of the syncer.
    *
@@ -70,8 +69,8 @@ object TailSyncer {
     extends AbstractSyncer.SyncerState
 
   /** Main constructor. */
-  @inline def apply(pgStorage: PostgreSQLStorage,
+  @inline def apply(dbStorage: PostgreSQLStorage,
                     ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
                     headSyncer: ActorRef[SyncerMessages.HeadSyncerMessage]): Behavior[SyncerMessages.TailSyncerMessage] =
-    new TailSyncer(pgStorage, ethereumConnector).launch(headSyncer)
+    new TailSyncer(dbStorage, ethereumConnector).launch(headSyncer)
 }

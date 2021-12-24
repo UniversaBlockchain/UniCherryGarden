@@ -9,7 +9,7 @@ import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{EthereumNodeStatus, GoingToTailSync, HeadSyncerMessage, IterateHeadSyncer}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
-import com.myodov.unicherrygarden.storages.PostgreSQLStorage.Progress
+import com.myodov.unicherrygarden.storages.api.DBStorage
 import scalikejdbc.{DB, DBSession}
 
 import scala.annotation.switch
@@ -20,13 +20,13 @@ import scala.language.postfixOps
  *
  * @note For more details please read [[/docs/unicherrypicker-synchronization.md]] document.
  */
-private class HeadSyncer(pgStorage: PostgreSQLStorage,
+private class HeadSyncer(dbStorage: PostgreSQLStorage,
                          ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
   extends AbstractSyncer[
     HeadSyncerMessage,
     //    HeadSyncerState,
     IterateHeadSyncer
-  ](pgStorage, ethereumConnector) {
+  ](dbStorage, ethereumConnector) {
 
   /** The overall state of the syncer.
    *
@@ -111,7 +111,7 @@ private class HeadSyncer(pgStorage: PostgreSQLStorage,
 
       // We could put this check deeper into `isNodeReachable` method; but let’s enjoy the convenience
       // having the Progress.ProgressData safely unwrapped from Option for simpler future usage
-      pgStorage.progress.getProgress match {
+      dbStorage.Progress.getProgress match {
         case None =>
           // we could not even get the DB progress – go to the next round
           logger.error("Some unexpected error when reading the overall progress from the DB")
@@ -129,8 +129,7 @@ private class HeadSyncer(pgStorage: PostgreSQLStorage,
             logger.debug(s"Do we need to check for reorg? $mustCheckReorg / $isReorgCheckNeeded")
 
             if (isReorgCheckNeeded) {
-              val reorgCheckResult = reorgCheck
-              (reorgCheckResult: @switch) match {
+              reorgCheck match {
                 case Left(None) =>
                   logger.debug("No reorg needed")
                   Behaviors.unhandled // TODO
@@ -156,7 +155,7 @@ private class HeadSyncer(pgStorage: PostgreSQLStorage,
   /** Most basic sanity test for the DB data;
    * fails if we cannot even go further and must wait for the node to continue syncing.
    */
-  private[this] def isNodeReachable(dbProgressData: Progress.ProgressData): Boolean =
+  private[this] def isNodeReachable(dbProgressData: DBStorage.Progress.ProgressData): Boolean =
     (state.ethereumNodeStatus: @switch) match {
       case None =>
         logger.warn("Ethereum node hasn't provided the syncing state yet, maybe it is unavailable")
@@ -191,7 +190,7 @@ private class HeadSyncer(pgStorage: PostgreSQLStorage,
    */
   private[this] def reorgCheck()(implicit session: DBSession): Either[Option[dlt.EthereumBlock.BlockNumberRange], String] = {
     val maxReorg = CherryPicker.MAX_REORG
-    val blockHashesInDb: SortedMap[Int, String] = pgStorage.blocks.getLatestHashes(maxReorg)
+    val blockHashesInDb: SortedMap[Int, String] = dbStorage.Blocks.getLatestHashes(maxReorg)
     logger.debug(s"We have ${blockHashesInDb.size} blocks stored in DB, checking for reorg sized $maxReorg")
     if (blockHashesInDb.isEmpty) {
       // We don’t have any blocks stored yet, so no reorg check needed; but this is valid
@@ -242,7 +241,7 @@ object HeadSyncer {
     extends AbstractSyncer.SyncerState
 
   /** Main constructor. */
-  @inline def apply(pgStorage: PostgreSQLStorage,
+  @inline def apply(dbStorage: PostgreSQLStorage,
                     ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations): Behavior[SyncerMessages.HeadSyncerMessage] =
-    new HeadSyncer(pgStorage, ethereumConnector).launch()
+    new HeadSyncer(dbStorage, ethereumConnector).launch()
 }

@@ -61,7 +61,7 @@ You can choose a different HOCON configuration file instead of the regular appli
     OParser.parse(parser, args, CLIConfig())
   }
 
-  private[this] def getPgStorage(wipe: Boolean): PostgreSQLStorage = {
+  private[this] def getDbStorage(wipe: Boolean): PostgreSQLStorage = {
     val jdbcUrl = config.getString("db.jdbc_url")
     val dbUser = config.getString("db.user")
     val dbPassword = config.getString("db.password")
@@ -86,16 +86,16 @@ You can choose a different HOCON configuration file instead of the regular appli
     val nodeUrl = nodeUrls.get(0)
     logger.debug(s"Using Ethereum node at $nodeUrl")
     EthereumSingleNodeGraphQLConnector(nodeUrl, actorSystem)
-//    EthereumSingleNodeJsonRpcConnector(nodeUrl)
+    //    EthereumSingleNodeJsonRpcConnector(nodeUrl)
   }
 
   def init(wipe: Boolean): Unit = {
     logger.info("Done!\nMultiline launch message.\nInitializing...")
     val rpcServers = config.getList("ethereum.rpc_servers")
 
-    val pgStorage = getPgStorage(wipe)
+    val dbStorage = getDbStorage(wipe)
 
-    pgStorage.state.setSyncState("Launched, using SQL")
+    dbStorage.State.setSyncState("Launched, using SQL")
   }
 
   lazy val actorSystem: ActorSystem[LauncherActor.LaunchComponent] =
@@ -109,7 +109,7 @@ You can choose a different HOCON configuration file instead of the regular appli
   /** Launches the CherryGardener (and, inside it, CherryPicker and CherryPlanter) Akka actors
    * (which are usually launcher together at the moment). */
   private[this] def launchGardener(): Unit = {
-    actorSystem ! LauncherActor.LaunchCherryGardener(getPgStorage(wipe = false), getEthereumConnector)
+    actorSystem ! LauncherActor.LaunchCherryGardener(getDbStorage(wipe = false), getEthereumConnector)
   }
 
   private[this] def mainLaunch(args: Array[String]): Unit = {
@@ -148,48 +148,31 @@ object LauncherActor extends LazyLogging {
 
   trait LaunchComponent extends Message {}
 
-  /** Messages supported by this actor. */
-  //  final case class LaunchCherryPicker(pgStorage: PostgreSQLStorage,
-  //                                      ethereumConnector: EthereumRpcSingleConnector) extends LaunchComponent
-  //
-  //  final case class LaunchCherryPlanter(pgStorage: PostgreSQLStorage,
-  //                                       ethereumConnector: EthereumRpcSingleConnector) extends LaunchComponent
-
   /** Akka message to launch GardenWatcher. */
   final case class LaunchGardenWatcher() extends LaunchComponent
 
   /** Akka message to launch CherryGardener. */
-  final case class LaunchCherryGardener(pgStorage: PostgreSQLStorage,
+  final case class LaunchCherryGardener(dbStorage: PostgreSQLStorage,
                                         ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations) extends LaunchComponent
 
   def apply(): Behavior[Message] =
     Behaviors.receive { (context, message) =>
       message match {
-        //        case LauncherActor.LaunchCherryPicker(pgStorage, ethereumConnector) => {
-        //          logger.info(s"Launching CherryPicker ($pgStorage, $ethereumConnector)")
-        //          val cherryPicker: ActorRef[CherryPicker.Iterate] = context.spawn(CherryPicker(pgStorage, ethereumConnector), "CherryPicker")
-        //        }
-        //        case LauncherActor.LaunchCherryPlanter(pgStorage, ethereumConnector) => {
-        //          logger.info(s"Launching CherryPlanter")
-        //          val cherryPlanter: ActorRef[CherryPlanter.Iterate] = context.spawn(CherryPlanter(pgStorage, ethereumConnector), "CherryPlanter")
-        //        }
-        case LauncherActor.LaunchGardenWatcher() => {
+        case LauncherActor.LaunchGardenWatcher() =>
           logger.info(s"Launching GardenWatcher (pure launcher, no actor): launcher v. $propVersionStr, built at $propBuildTimestampStr")
-        }
-
-        case LauncherActor.LaunchCherryGardener(pgStorage, ethereumConnector) => {
-          logger.debug(s"Launching sub-actor CherryPicker ($pgStorage, $ethereumConnector)")
+        case LauncherActor.LaunchCherryGardener(dbStorage, ethereumConnector) =>
+          logger.debug(s"Launching sub-actor CherryPicker ($dbStorage, $ethereumConnector)")
           val cherryPicker: ActorRef[CherryPickerRequest] =
-            context.spawn(CherryPicker(pgStorage, ethereumConnector), "CherryPicker")
+            context.spawn(CherryPicker(dbStorage, ethereumConnector), "CherryPicker")
 
           logger.debug(s"Launching sub-actor CherryPlanter")
           val cherryPlanter: ActorRef[CherryPlanterRequest] =
-            context.spawn(CherryPlanter(pgStorage, ethereumConnector), "CherryPlanter")
+            context.spawn(CherryPlanter(dbStorage, ethereumConnector), "CherryPlanter")
 
           logger.info(s"Launched CherryGardener (which now knows about CherryPicker and CherryPlanter)")
           val cherryGardener: ActorRef[CherryGardenerRequest] =
             context.spawn(
-              CherryGardener(pgStorage, ethereumConnector, Some(cherryPicker), Some(cherryPlanter)),
+              CherryGardener(dbStorage, ethereumConnector, Some(cherryPicker), Some(cherryPlanter)),
               "CherryGardener")
           //          cherryGardener ! new Balances.GetBalance(context.self, "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24")
 
@@ -197,11 +180,10 @@ object LauncherActor extends LazyLogging {
 
           val cluster = Cluster(context.system)
           cluster.subscriptions ! Subscribe(clusterSubscriber: ActorRef[MemberEvent], classOf[MemberEvent])
-        }
 
         // CherryGardenerResponse and further are Java interfaces, so we cannot use convenient
         // unapply-based pattern matching.
-        case response: CherryGardenerResponse => {
+        case response: CherryGardenerResponse =>
           response match {
             //            case getBalanceResp: Balances.GetBalanceResp => {
             //              logger.debug(s"Received GetBalanceResponse: $getBalanceResp")
@@ -209,10 +191,8 @@ object LauncherActor extends LazyLogging {
             case unknownResponse =>
               logger.error(s"Unexpected CherryGardener response: $unknownResponse")
           }
-        }
-        case unexpectedComponent => {
+        case unexpectedComponent =>
           logger.error(s"Unexpected component to launch: $unexpectedComponent")
-        }
       }
 
       Behaviors.same

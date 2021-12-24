@@ -30,7 +30,7 @@ import scala.util.control.NonFatal
  *
  * @note For more details please read [[/docs/unicherrypicker-synchronization.md]] document.
  */
-private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
+private class CherryPicker(protected[this] val dbStorage: PostgreSQLStorage,
                            protected[this] val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
   extends LazyLogging {
 
@@ -43,10 +43,10 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
 
       logger.debug("CherryPicker: Launching HeadSyncer...")
       val headSyncer: ActorRef[SyncerMessages.HeadSyncerMessage] = context.spawn(
-        HeadSyncer(pgStorage, ethereumConnector), "HeadSyncer")
+        HeadSyncer(dbStorage, ethereumConnector), "HeadSyncer")
       logger.debug("CherryPicker: Launching TailSyncer...")
       val tailSyncer: ActorRef[SyncerMessages.TailSyncerMessage] = context.spawn(
-        TailSyncer(pgStorage, ethereumConnector, headSyncer),
+        TailSyncer(dbStorage, ethereumConnector, headSyncer),
         "TailSyncer")
       val ethereumStatePoller = context.spawn(
         EthereumStatePoller(ethereumConnector, Seq(headSyncer, tailSyncer)),
@@ -66,8 +66,8 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
           logger.debug(s"Receiving GetTrackedAddresses message: $message")
           val payload: GetTrackedAddresses.GTARequestPayload = message.payload
 
-          val results: List[Response.TrackedAddressInformation] = pgStorage
-            .trackedAddresses
+          val results: List[Response.TrackedAddressInformation] = dbStorage
+            .TrackedAddresses
             .getTrackedAddresses(
               payload.includeComment,
               payload.includeSyncedFrom,
@@ -100,7 +100,7 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
           val addressesMaybeAdded: List[Option[String]] = (
             for (addr: AddTrackedAddresses.AddressDataToTrack <- payload.addressesToTrack.asScala.toList)
               yield {
-                if (pgStorage.trackedAddresses.addTrackedAddress(
+                if (dbStorage.TrackedAddresses.addTrackedAddress(
                   addr.address,
                   Option(addr.comment), // nullable
                   payload.trackingMode,
@@ -215,13 +215,13 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
           // Since this moment, we may want to use DB in a single atomic DB transaction;
           // even though this will involve querying the Ethereum node, maybe even multiple times.
           DB localTx { implicit session =>
-            val optProgress = pgStorage.progress.getProgress
+            val optProgress = dbStorage.Progress.getProgress
             lazy val progress = optProgress.get
             lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
 
             if (optProgress.isEmpty) {
               logger.error("Cannot get the progress, something failed!")
-              pgStorage.state.setSyncState("Cannot get the progress state!")
+              dbStorage.State.setSyncState("Cannot get the progress state!")
 //              reiterateAfterDelay(state)
               Behaviors.empty
 
@@ -264,11 +264,11 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
               // 2. We never started some (currency, tracked address) pair?
               // Use the least from_block (from either currency or tracked address).
               val firstNeverCTAStartedBlock: Option[Int] =
-              pgStorage.progress.getFirstBlockResolvingSomeNeverStartedCTAddress
+              dbStorage.Progress.getFirstBlockResolvingSomeNeverStartedCTAddress
               // 3. We never completed some (currency, tracked address) pair?
               // Use the least from_block (from either currency or tracked address).
               val firstNeverCTASyncedBlock: Option[Int] =
-              pgStorage.progress.getFirstBlockResolvingSomeNeverSyncedCTAddress
+              dbStorage.Progress.getFirstBlockResolvingSomeNeverSyncedCTAddress
               // 4. Some of CTA to-blocks is smaller than others?
               // Use it.
               val firstMismatchingCTAToBlock: Option[Int] =
@@ -299,7 +299,7 @@ private class CherryPicker(protected[this] val pgStorage: PostgreSQLStorage,
           } // DB localTx
         }
 
-        pgStorage.state.setLastHeartbeatAt
+        dbStorage.State.setLastHeartbeatAt
         val duration = Duration(System.nanoTime - startTime, TimeUnit.NANOSECONDS)
         logger.debug(s"Iteration completed in ${duration.toMillis} ms.")
         behavior
@@ -351,9 +351,9 @@ object CherryPicker extends LazyLogging {
   val MAX_REORG = 100 // TODO: must be configured through application.conf
 
   /** Main constructor. */
-  @inline def apply(pgStorage: PostgreSQLStorage,
+  @inline def apply(dbStorage: PostgreSQLStorage,
                     ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations): Behavior[CherryPickerRequest] =
-    new CherryPicker(pgStorage, ethereumConnector).launch()
+    new CherryPicker(dbStorage, ethereumConnector).launch()
 }
 
 
