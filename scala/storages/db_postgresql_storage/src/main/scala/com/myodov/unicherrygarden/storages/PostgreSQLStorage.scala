@@ -6,7 +6,7 @@ import com.myodov.unicherrygarden.Tools.seqIsIncrementing
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
-import com.myodov.unicherrygarden.storages.api.DBStorage
+import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.{CleanResult, MigrateResult}
@@ -22,7 +22,7 @@ class PostgreSQLStorage(jdbcUrl: String,
                         dbPassword: String,
                         wipeOnStart: Boolean,
                         migrationPaths: List[String]
-                       ) extends DBStorage with LazyLogging {
+                       ) extends DBStorageAPI with LazyLogging {
   private[this] lazy val flw: Flyway = {
     val stockMigrations = List("classpath:com/myodov/unicherrygarden/db/migrations")
     val totalMigrations = stockMigrations ::: migrationPaths
@@ -50,13 +50,11 @@ class PostgreSQLStorage(jdbcUrl: String,
   lazy val makeSession: AutoSession.type = AutoSession
 
 
-  /** All functions with the overall UniCherrypicker syncing progress. */
-  object Progress {
+  object progress extends DBStorageAPI.Progress {
 
     import com.myodov.unicherrygarden.storages.api.DBStorage.Progress._
 
-    /** Get the overall syncing progress. */
-    def getProgress(implicit session: DBSession = ReadOnlyAutoSession): Option[ProgressData] = {
+    override def getProgress(implicit session: DBSession = ReadOnlyAutoSession): Option[ProgressData] = {
       sql"""
       SELECT * FROM ucg_progress;
       """.map(rs => {
@@ -91,13 +89,7 @@ class PostgreSQLStorage(jdbcUrl: String,
         .apply
     }
 
-    /** If we have any Currency Tracked Addresses (CT Addresses) which have never been started to sync,
-     * find a (earliest possible) block to sync any of them.
-     *
-     * @return: [[Option]] with the first never-yet-started CT address;
-     *          Option is empty if there is no such address found.
-     */
-    def getFirstBlockResolvingSomeNeverStartedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
+    override def getFirstBlockResolvingSomeNeverStartedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
       sql"""
       SELECT
           LEAST(currency.sync_from_block_number, address.synced_from_block_number)
@@ -118,13 +110,7 @@ class PostgreSQLStorage(jdbcUrl: String,
         .flatten // Option[Option[Int]] to Option[Int]
     }
 
-    /** If we have any Currency Tracked Addresses (CT Addresses) which have never been synced till the end,
-     * find a (earliest possible) block to sync any of them.
-     *
-     * @return: [[Option]] with the first unsynced PCT address;
-     *          Option is empty if there is no such address found.
-     */
-    def getFirstBlockResolvingSomeNeverSyncedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
+    override def getFirstBlockResolvingSomeNeverSyncedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
       sql"""
       SELECT
           LEAST(currency.sync_from_block_number, address.synced_from_block_number)
@@ -146,21 +132,20 @@ class PostgreSQLStorage(jdbcUrl: String,
     }
   }
 
-  /** Access `ucg_state` table. */
-  object State {
+  object state extends DBStorageAPI.State {
     def setRestartedAt(implicit session: DBSession = AutoSession) = {
       sql"""
       UPDATE ucg_state SET restarted_at=now()
       """.execute.apply
     }
 
-    def setLastHeartbeatAt(implicit session: DBSession = AutoSession) = {
+    override def setLastHeartbeatAt(implicit session: DBSession = AutoSession) = {
       sql"""
       UPDATE ucg_state SET last_heartbeat_at=now()
       """.execute.apply
     }
 
-    def setSyncState(state: String)(implicit session: DBSession = AutoSession) = {
+    override def setSyncState(state: String)(implicit session: DBSession = AutoSession) = {
       logger.debug(s"Setting sync state: “${state}”")
       sql"""
       UPDATE ucg_state
@@ -213,10 +198,10 @@ class PostgreSQLStorage(jdbcUrl: String,
      *                          because what if the tracked addresses have changed already since
      *                          the reading/parsing time?
      */
-    def advanceProgress(
-                         syncedBlockNumber: Long,
-                         trackedAddresses: Set[String]
-                       )(implicit session: DBSession) = {
+    override def advanceProgress(
+                                  syncedBlockNumber: Long,
+                                  trackedAddresses: Set[String]
+                                )(implicit session: DBSession) = {
       assert(
         trackedAddresses.forall(EthUtils.Addresses.isValidLowercasedAddress),
         trackedAddresses)
@@ -429,18 +414,17 @@ class PostgreSQLStorage(jdbcUrl: String,
     }
   }
 
-  /** Access `ucg_currency` table. */
-  object Currencies {
+  object currencies extends DBStorageAPI.Currencies {
 
     import com.myodov.unicherrygarden.storages.api.DBStorage.Currencies._
 
-    def getCurrencies(
-                       getVerified: Boolean,
-                       getUnverified: Boolean
-                     )
-                     (
-                       implicit session: DBSession = ReadOnlyAutoSession
-                     ): List[DBCurrency] = {
+    override def getCurrencies(
+                                getVerified: Boolean,
+                                getUnverified: Boolean
+                              )
+                              (
+                                implicit session: DBSession = ReadOnlyAutoSession
+                              ): List[DBCurrency] = {
       // What values are allowed for `verified` field in a query we’ll run?
       val verifiedValues = (
         (if (getVerified) Seq(true) else Seq())
@@ -464,20 +448,17 @@ class PostgreSQLStorage(jdbcUrl: String,
     }
   }
 
-  object TrackedAddresses {
+  object trackedAddresses extends DBStorageAPI.TrackedAddresses {
 
     import com.myodov.unicherrygarden.storages.api.DBStorage.TrackedAddresses._
 
-    /** Get the list of all tracked addresses;
-     * optionally containing (or not containing) various extra information about each address.
-     */
-    def getTrackedAddresses(
-                             includeComment: Boolean,
-                             includeSyncedFrom: Boolean,
-                             includeSyncedTo: Boolean
-                           )(implicit
-                             session: DBSession = ReadOnlyAutoSession
-                           ): List[TrackedAddress] = {
+    override def getTrackedAddresses(
+                                      includeComment: Boolean,
+                                      includeSyncedFrom: Boolean,
+                                      includeSyncedTo: Boolean
+                                    )(implicit
+                                      session: DBSession = ReadOnlyAutoSession
+                                    ): List[TrackedAddress] = {
       sql"""
       SELECT
        address,
@@ -493,25 +474,20 @@ class PostgreSQLStorage(jdbcUrl: String,
       )).list.apply
     }
 
-    /** Get the set of all tracked addresses (and just of the address strings, nothing else). */
-    def getJustAddresses(implicit session: DBSession = ReadOnlyAutoSession): Set[String] = {
+    override def getJustAddresses(implicit session: DBSession = ReadOnlyAutoSession): Set[String] = {
       sql"""
       SELECT address FROM ucg_tracked_address;
       """.map(_.string("address")).list.apply.toSet
     }
 
-    /** Add a new address to be tracked.
-     *
-     * @return whether the adding happened successfully.
-     */
-    def addTrackedAddress(
-                           address: String,
-                           comment: Option[String],
-                           mode: StartTrackingAddressMode,
-                           fromBlock: Option[Int]
-                         )(implicit
-                           session: DBSession = AutoSession
-                         ): Boolean = {
+    override def addTrackedAddress(
+                                    address: String,
+                                    comment: Option[String],
+                                    mode: StartTrackingAddressMode,
+                                    fromBlock: Option[Int]
+                                  )(implicit
+                                    session: DBSession = AutoSession
+                                  ): Boolean = {
       logger.debug(s"Tracking address $address: $comment, $mode, $fromBlock")
       require(EthUtils.Addresses.isValidLowercasedAddress(address), address)
       require((mode == StartTrackingAddressMode.FROM_BLOCK) == fromBlock.nonEmpty, (mode, fromBlock))
@@ -548,21 +524,20 @@ class PostgreSQLStorage(jdbcUrl: String,
     }
   }
 
-  /** Access `ucg_block` table. */
-  object Blocks {
+  object blocks extends DBStorageAPI.Blocks {
 
-    def addBlock(block: dlt.EthereumBlock
-                )(implicit
-                  session: DBSession = AutoSession
-                ) = {
+    override def addBlock(block: dlt.EthereumBlock
+                         )(implicit
+                           session: DBSession = AutoSession
+                         ) = {
       sql"""
       INSERT INTO ucg_block(number, hash, parent_hash, timestamp)
       VALUES (${block.number}, ${block.hash}, ${block.parentHash}, ${block.timestamp})
       """.execute.apply
     }
 
-    def getBlockByNumber(blockNumber: Int
-                        )(implicit session: DBSession = ReadOnlyAutoSession): Option[dlt.EthereumBlock] = {
+    override def getBlockByNumber(blockNumber: Int
+                                 )(implicit session: DBSession = ReadOnlyAutoSession): Option[dlt.EthereumBlock] = {
       sql"""
       SELECT *
       FROM ucg_block
@@ -580,8 +555,8 @@ class PostgreSQLStorage(jdbcUrl: String,
     }
 
     /** Get a mapping from block number to block hash, for (up to, inclusive) `howMany` latest blocks. */
-    def getLatestHashes(howMany: Int
-                       )(implicit session: DBSession = ReadOnlyAutoSession): SortedMap[Int, String] = {
+    override def getLatestHashes(howMany: Int
+                                )(implicit session: DBSession = ReadOnlyAutoSession): SortedMap[Int, String] = {
       assert(howMany >= 1, howMany)
       val result =
         sql"""
@@ -620,17 +595,16 @@ class PostgreSQLStorage(jdbcUrl: String,
     }
   }
 
-  /** Access `ucg_transaction` table. */
-  object Transactions {
+  object transactions extends DBStorageAPI.Transactions {
 
-    def addTransaction(
-                        tx: dlt.EthereumMinedTransaction,
-                        // The transaction already has the block number, but, passing the block hash,
-                        // we ensure that the block hasn’t been reorganized
-                        blockHash: String,
-                      )(implicit
-                        session: DBSession = AutoSession
-                      ): Unit = {
+    override def addTransaction(
+                                 tx: dlt.EthereumMinedTransaction,
+                                 // The transaction already has the block number, but, passing the block hash,
+                                 // we ensure that the block hasn’t been reorganized
+                                 blockHash: String,
+                               )(implicit
+                                 session: DBSession = AutoSession
+                               ): Unit = {
       require(EthUtils.Hashes.isValidBlockHash(blockHash), blockHash)
 
       sql"""
@@ -667,17 +641,15 @@ class PostgreSQLStorage(jdbcUrl: String,
     }
   }
 
-  /** Access `ucg_tx_log` table. */
-  object TxLogs {
+  object txLogs extends DBStorageAPI.TxLogs {
 
-    /** Add a pack of Ethereum TX logs, all at once (atomically). */
-    def addTxLogs(
-                   blockNumber: Int,
-                   transactionHash: String,
-                   txLogs: Seq[dlt.EthereumTxLog]
-                 )(implicit
-                   session: DBSession = AutoSession
-                 ): Unit = {
+    override def addTxLogs(
+                            blockNumber: Int,
+                            transactionHash: String,
+                            txLogs: Seq[dlt.EthereumTxLog]
+                          )(implicit
+                            session: DBSession = AutoSession
+                          ): Unit = {
       val batchParams: Seq[Seq[Any]] = txLogs.map(t => Seq(
         transactionHash,
         blockNumber,

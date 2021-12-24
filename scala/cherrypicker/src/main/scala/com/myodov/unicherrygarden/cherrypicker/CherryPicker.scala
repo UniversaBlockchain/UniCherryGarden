@@ -14,8 +14,7 @@ import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.Response
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses, GetTransfers}
-import com.myodov.unicherrygarden.storages.PostgreSQLStorage
-import com.myodov.unicherrygarden.storages.api.DBStorage
+import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging
 import scalikejdbc.DB
 
@@ -31,7 +30,7 @@ import scala.util.control.NonFatal
  *
  * @note For more details please read [[/docs/unicherrypicker-synchronization.md]] document.
  */
-private class CherryPicker(protected[this] val dbStorage: PostgreSQLStorage,
+private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
                            protected[this] val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
   extends LazyLogging {
 
@@ -68,7 +67,7 @@ private class CherryPicker(protected[this] val dbStorage: PostgreSQLStorage,
           val payload: GetTrackedAddresses.GTARequestPayload = message.payload
 
           val results: List[Response.TrackedAddressInformation] = dbStorage
-            .TrackedAddresses
+            .trackedAddresses
             .getTrackedAddresses(
               payload.includeComment,
               payload.includeSyncedFrom,
@@ -101,7 +100,7 @@ private class CherryPicker(protected[this] val dbStorage: PostgreSQLStorage,
           val addressesMaybeAdded: List[Option[String]] = (
             for (addr: AddTrackedAddresses.AddressDataToTrack <- payload.addressesToTrack.asScala.toList)
               yield {
-                if (dbStorage.TrackedAddresses.addTrackedAddress(
+                if (dbStorage.trackedAddresses.addTrackedAddress(
                   addr.address,
                   Option(addr.comment), // nullable
                   payload.trackingMode,
@@ -216,33 +215,33 @@ private class CherryPicker(protected[this] val dbStorage: PostgreSQLStorage,
           // Since this moment, we may want to use DB in a single atomic DB transaction;
           // even though this will involve querying the Ethereum node, maybe even multiple times.
           DB localTx { implicit session =>
-            val optProgress = dbStorage.Progress.getProgress
+            val optProgress = dbStorage.progress.getProgress
             lazy val progress = optProgress.get
             lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
 
             if (optProgress.isEmpty) {
               logger.error("Cannot get the progress, something failed!")
-              dbStorage.State.setSyncState("Cannot get the progress state!")
-//              reiterateAfterDelay(state)
+              dbStorage.state.setSyncState("Cannot get the progress state!")
+              //              reiterateAfterDelay(state)
               Behaviors.empty
 
             } else if (progress.overall.from.isEmpty) {
               logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!");
-//              reiterateAfterDelay(state)
+              //              reiterateAfterDelay(state)
               Behaviors.empty
 
             } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
               logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
                 s"is ${progress.currencies.minSyncFrom.get}; " +
                 s"it should not be lower than $overallFrom!")
-//              reiterateAfterDelay(state)
+              //              reiterateAfterDelay(state)
               Behaviors.empty
 
             } else if (progress.trackedAddresses.minFrom < overallFrom) {
               logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
                 s"is ${progress.trackedAddresses.minFrom}; " +
                 s"it should not be lower than $overallFrom!")
-//              reiterateAfterDelay(state)
+              //              reiterateAfterDelay(state)
               Behaviors.empty
 
               // ------------------------------------------------------------------------------
@@ -253,7 +252,7 @@ private class CherryPicker(protected[this] val dbStorage: PostgreSQLStorage,
               val blockToSync = progress.overall.from.get
               logger.info(s"Starting from the very first block ($blockToSync)...")
               //              handleSyncedBlock(blockToSync)
-//              reiterateImmediately(state)
+              //              reiterateImmediately(state)
               Behaviors.empty
 
             } else { // Fast sync
@@ -265,11 +264,11 @@ private class CherryPicker(protected[this] val dbStorage: PostgreSQLStorage,
               // 2. We never started some (currency, tracked address) pair?
               // Use the least from_block (from either currency or tracked address).
               val firstNeverCTAStartedBlock: Option[Int] =
-              dbStorage.Progress.getFirstBlockResolvingSomeNeverStartedCTAddress
+              dbStorage.progress.getFirstBlockResolvingSomeNeverStartedCTAddress
               // 3. We never completed some (currency, tracked address) pair?
               // Use the least from_block (from either currency or tracked address).
               val firstNeverCTASyncedBlock: Option[Int] =
-              dbStorage.Progress.getFirstBlockResolvingSomeNeverSyncedCTAddress
+              dbStorage.progress.getFirstBlockResolvingSomeNeverSyncedCTAddress
               // 4. Some of CTA to-blocks is smaller than others?
               // Use it.
               val firstMismatchingCTAToBlock: Option[Int] =
@@ -294,13 +293,13 @@ private class CherryPicker(protected[this] val dbStorage: PostgreSQLStorage,
 
               logger.info(s"Fast-syncing $blockToSync block")
               //              handleSyncedBlock(blockToSync)
-//              reiterateImmediately(state)
+              //              reiterateImmediately(state)
               Behaviors.empty
             }
           } // DB localTx
         }
 
-        dbStorage.State.setLastHeartbeatAt
+        dbStorage.state.setLastHeartbeatAt
         val duration = Duration(System.nanoTime - startTime, TimeUnit.NANOSECONDS)
         logger.debug(s"Iteration completed in ${duration.toMillis} ms.")
         behavior
@@ -308,36 +307,36 @@ private class CherryPicker(protected[this] val dbStorage: PostgreSQLStorage,
     } catch {
       case NonFatal(e) =>
         logger.error("On iteration, got a error", e)
-//        reiterateAfterDelay(state)
+      //        reiterateAfterDelay(state)
     }
 
     Behaviors.empty
   }
 
   /** FSM state: “and now let’s immediately run next syncing iterate”. */
-//  private def reiterateImmediately(state: CherryPickerState): Behavior[CherryPickerRequest] = {
-//    logger.debug("Next iteration will happen immediately: fast sync!")
-//    val newState = state.advanceFastSync()
-//
-//    //    Behaviors.setup[CherryPickerRequest] { context =>
-//    //      context.self ! DoSyncIteration(newState)
-//    //      Behaviors.same
-//    //    }
-//    Behaviors.same
-//  }
+  //  private def reiterateImmediately(state: CherryPickerState): Behavior[CherryPickerRequest] = {
+  //    logger.debug("Next iteration will happen immediately: fast sync!")
+  //    val newState = state.advanceFastSync()
+  //
+  //    //    Behaviors.setup[CherryPickerRequest] { context =>
+  //    //      context.self ! DoSyncIteration(newState)
+  //    //      Behaviors.same
+  //    //    }
+  //    Behaviors.same
+  //  }
 
-//  /** FSM state: “and now let’s run next syncing iterate after a short pause”. */
-//  private def reiterateAfterDelay(state: CherryPickerState): Behavior[CherryPickerRequest] = {
-//    logger.debug("Next iteration will happen after timer")
-//    val newState = state.stopFastSync() // this is not a fast sync anymore
-//
-//    //    Behaviors.withTimers[CherryPickerRequest] { timers =>
-//    //      timers.startSingleTimer(DoSyncIteration(newState), CherryPicker.BLOCK_ITERATION_PERIOD)
-//    //      Behaviors.same
-//    //    }
-//    //  }
-//    Behaviors.same
-//  }
+  //  /** FSM state: “and now let’s run next syncing iterate after a short pause”. */
+  //  private def reiterateAfterDelay(state: CherryPickerState): Behavior[CherryPickerRequest] = {
+  //    logger.debug("Next iteration will happen after timer")
+  //    val newState = state.stopFastSync() // this is not a fast sync anymore
+  //
+  //    //    Behaviors.withTimers[CherryPickerRequest] { timers =>
+  //    //      timers.startSingleTimer(DoSyncIteration(newState), CherryPicker.BLOCK_ITERATION_PERIOD)
+  //    //      Behaviors.same
+  //    //    }
+  //    //  }
+  //    Behaviors.same
+  //  }
 }
 
 
@@ -352,7 +351,7 @@ object CherryPicker extends LazyLogging {
   val MAX_REORG = 100 // TODO: must be configured through application.conf
 
   /** Main constructor. */
-  @inline def apply(dbStorage: PostgreSQLStorage,
+  @inline def apply(dbStorage: DBStorageAPI,
                     ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations): Behavior[CherryPickerRequest] =
     new CherryPicker(dbStorage, ethereumConnector).launch()
 }

@@ -8,8 +8,7 @@ import com.myodov.unicherrygarden.CherryPicker
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{EthereumNodeStatus, GoingToTailSync, HeadSyncerMessage, IterateHeadSyncer}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
-import com.myodov.unicherrygarden.storages.PostgreSQLStorage
-import com.myodov.unicherrygarden.storages.api.DBStorage
+import com.myodov.unicherrygarden.storages.api.{DBStorage, DBStorageAPI}
 import scalikejdbc.{DB, DBSession}
 
 import scala.annotation.switch
@@ -20,7 +19,7 @@ import scala.language.postfixOps
  *
  * @note For more details please read [[/docs/unicherrypicker-synchronization.md]] document.
  */
-private class HeadSyncer(dbStorage: PostgreSQLStorage,
+private class HeadSyncer(dbStorage: DBStorageAPI,
                          ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
   extends AbstractSyncer[
     HeadSyncerMessage,
@@ -111,7 +110,7 @@ private class HeadSyncer(dbStorage: PostgreSQLStorage,
 
       // We could put this check deeper into `isNodeReachable` method; but let’s enjoy the convenience
       // having the Progress.ProgressData safely unwrapped from Option for simpler future usage
-      dbStorage.Progress.getProgress match {
+      dbStorage.progress.getProgress match {
         case None =>
           // we could not even get the DB progress – go to the next round
           logger.error("Some unexpected error when reading the overall progress from the DB")
@@ -190,7 +189,7 @@ private class HeadSyncer(dbStorage: PostgreSQLStorage,
    */
   private[this] def reorgCheck()(implicit session: DBSession): Either[Option[dlt.EthereumBlock.BlockNumberRange], String] = {
     val maxReorg = CherryPicker.MAX_REORG
-    val blockHashesInDb: SortedMap[Int, String] = dbStorage.Blocks.getLatestHashes(maxReorg)
+    val blockHashesInDb: SortedMap[Int, String] = dbStorage.blocks.getLatestHashes(maxReorg)
     logger.debug(s"We have ${blockHashesInDb.size} blocks stored in DB, checking for reorg sized $maxReorg")
     if (blockHashesInDb.isEmpty) {
       // We don’t have any blocks stored yet, so no reorg check needed; but this is valid
@@ -241,7 +240,7 @@ object HeadSyncer {
     extends AbstractSyncer.SyncerState
 
   /** Main constructor. */
-  @inline def apply(dbStorage: PostgreSQLStorage,
+  @inline def apply(dbStorage: DBStorageAPI,
                     ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations): Behavior[SyncerMessages.HeadSyncerMessage] =
     new HeadSyncer(dbStorage, ethereumConnector).launch()
 }

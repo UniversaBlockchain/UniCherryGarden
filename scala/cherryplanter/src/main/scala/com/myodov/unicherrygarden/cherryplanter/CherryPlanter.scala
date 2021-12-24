@@ -4,14 +4,14 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector
 import com.myodov.unicherrygarden.messages.CherryPlanterRequest
-import com.myodov.unicherrygarden.storages.PostgreSQLStorage
+import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.language.postfixOps
 
 /** "Cherry planter": the "CherryGarden" subsystem to create and inject new Ethereum transactions
  * into the Ethereum blockchain. */
-class CherryPlanter(private val dbStorage: PostgreSQLStorage,
+class CherryPlanter(private val dbStorage: DBStorageAPI,
                     private val ethereumConnector: AbstractEthereumNodeConnector) extends LazyLogging {
 }
 
@@ -25,7 +25,7 @@ object CherryPlanter extends LazyLogging {
   /** A message informing you need to run a next iteration */
   final case class Iterate() extends CherryPlanterRequest
 
-  def apply(dbStorage: PostgreSQLStorage,
+  def apply(dbStorage: DBStorageAPI,
             ethereumConnector: AbstractEthereumNodeConnector): Behavior[CherryPlanterRequest] = {
 
     val planter = new CherryPlanter(dbStorage, ethereumConnector)

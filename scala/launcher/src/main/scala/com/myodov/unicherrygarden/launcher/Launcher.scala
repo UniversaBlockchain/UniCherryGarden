@@ -8,6 +8,7 @@ import com.myodov.unicherrygarden.cherrygardener.CherryGardener
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, EthereumSingleNodeGraphQLConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryGardenerResponse, CherryPickerRequest, CherryPlanterRequest}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
+import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.myodov.unicherrygarden.{CherryPicker, CherryPlanter, LoggingConfigurator, UnicherrygardenVersion}
 import com.typesafe.config.{ConfigException, ConfigFactory}
 import com.typesafe.scalalogging.LazyLogging
@@ -61,7 +62,7 @@ You can choose a different HOCON configuration file instead of the regular appli
     OParser.parse(parser, args, CLIConfig())
   }
 
-  private[this] def getDbStorage(wipe: Boolean): PostgreSQLStorage = {
+  private[this] def getDbStorage(wipe: Boolean): DBStorageAPI = {
     val jdbcUrl = config.getString("db.jdbc_url")
     val dbUser = config.getString("db.user")
     val dbPassword = config.getString("db.password")
@@ -95,7 +96,7 @@ You can choose a different HOCON configuration file instead of the regular appli
 
     val dbStorage = getDbStorage(wipe)
 
-    dbStorage.State.setSyncState("Launched, using SQL")
+    dbStorage.state.setSyncState("Launched, using SQL")
   }
 
   lazy val actorSystem: ActorSystem[LauncherActor.LaunchComponent] =
@@ -152,7 +153,7 @@ object LauncherActor extends LazyLogging {
   final case class LaunchGardenWatcher() extends LaunchComponent
 
   /** Akka message to launch CherryGardener. */
-  final case class LaunchCherryGardener(dbStorage: PostgreSQLStorage,
+  final case class LaunchCherryGardener(dbStorage: DBStorageAPI,
                                         ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations) extends LaunchComponent
 
   def apply(): Behavior[Message] =

@@ -3,9 +3,155 @@ package com.myodov.unicherrygarden.storages.api
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.ethereum.EthUtils
+import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
+import com.myodov.unicherrygarden.storages.api.DBStorage.Currencies.DBCurrency
+import com.myodov.unicherrygarden.storages.api.DBStorage.Progress.ProgressData
+import com.myodov.unicherrygarden.storages.api.DBStorage.TrackedAddresses.TrackedAddress
+import scalikejdbc.{AutoSession, DBSession, ReadOnlyAutoSession}
 
-trait DBStorage {
+import scala.collection.immutable.SortedMap
+
+/** Any storage/database access connector. */
+trait DBStorageAPI {
+  /** All functions with the overall UniCherrypicker syncing progress. */
+  val progress: DBStorageAPI.Progress
+
+  /** Access `ucg_state` table. */
+  val state: DBStorageAPI.State
+
+  /** Access `ucg_currency` table. */
+  val currencies: DBStorageAPI.Currencies
+
+  /** Access `ucg_tracked_address` table. */
+  val trackedAddresses: DBStorageAPI.TrackedAddresses
+
+  /** Access `ucg_block` table. */
+  val blocks: DBStorageAPI.Blocks
+
+  /** Access `ucg_transaction` table. */
+  val transactions: DBStorageAPI.Transactions
+
+  /** Access `ucg_tx_log` table. */
+  val txLogs: DBStorageAPI.TxLogs
 }
+
+object DBStorageAPI {
+
+  trait Progress {
+    /** Get the overall syncing progress. */
+    def getProgress(implicit session: DBSession = ReadOnlyAutoSession): Option[ProgressData]
+
+    /** If we have any Currency Tracked Addresses (CT Addresses) which have never been started to sync,
+     * find a (earliest possible) block to sync any of them.
+     *
+     * @return: [[Option]] with the first never-yet-started CT address;
+     *          Option is empty if there is no such address found.
+     */
+    def getFirstBlockResolvingSomeNeverStartedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int]
+
+    /** If we have any Currency Tracked Addresses (CT Addresses) which have never been synced till the end,
+     * find a (earliest possible) block to sync any of them.
+     *
+     * @return: [[Option]] with the first unsynced PCT address;
+     *          Option is empty if there is no such address found.
+     */
+    def getFirstBlockResolvingSomeNeverSyncedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int]
+  }
+
+  trait State {
+    def setLastHeartbeatAt(implicit session: DBSession = AutoSession)
+
+    def setSyncState(state: String)(implicit session: DBSession = AutoSession)
+
+    def advanceProgress(
+                         syncedBlockNumber: Long,
+                         trackedAddresses: Set[String]
+                       )(implicit session: DBSession)
+  }
+
+  trait Currencies {
+    /** Get all the currencies (filtered for verified/unverified) in the system. */
+    def getCurrencies(
+                       getVerified: Boolean,
+                       getUnverified: Boolean
+                     )
+                     (
+                       implicit session: DBSession = ReadOnlyAutoSession
+                     ): List[DBCurrency]
+  }
+
+  trait TrackedAddresses {
+
+    /** Get the list of all tracked addresses;
+     * optionally containing (or not containing) various extra information about each address.
+     */
+    def getTrackedAddresses(
+                             includeComment: Boolean,
+                             includeSyncedFrom: Boolean,
+                             includeSyncedTo: Boolean
+                           )(implicit
+                             session: DBSession = ReadOnlyAutoSession
+                           ): List[TrackedAddress]
+
+    /** Get the set of all tracked addresses (and just of the address strings, nothing else). */
+    def getJustAddresses(implicit session: DBSession = ReadOnlyAutoSession): Set[String]
+
+    /** Add a new address to be tracked.
+     *
+     * @return whether the adding happened successfully.
+     */
+    def addTrackedAddress(
+                           address: String,
+                           comment: Option[String],
+                           mode: StartTrackingAddressMode,
+                           fromBlock: Option[Int]
+                         )(implicit
+                           session: DBSession = AutoSession
+                         ): Boolean
+  }
+
+  trait Blocks {
+
+    /** Add a new block record to the DB. */
+    def addBlock(block: dlt.EthereumBlock
+                )(implicit
+                  session: DBSession = AutoSession
+                )
+
+    def getBlockByNumber(blockNumber: Int
+                        )(implicit session: DBSession = ReadOnlyAutoSession): Option[dlt.EthereumBlock]
+
+    def getLatestHashes(
+                         howMany: Int
+                       )(implicit session: DBSession = ReadOnlyAutoSession): SortedMap[Int, String]
+  }
+
+  trait Transactions {
+
+    /** Store the details about the transaction, optionally overwriting the existing if it is present already. */
+    def addTransaction(
+                        tx: dlt.EthereumMinedTransaction,
+                        // The transaction already has the block number, but, passing the block hash,
+                        // we ensure that the block hasn’t been reorganized
+                        blockHash: String,
+                      )(implicit
+                        session: DBSession = AutoSession
+                      ): Unit
+  }
+
+  trait TxLogs {
+    /** Add a pack of Ethereum TX logs, all at once (atomically); overwrites the existing if present already. */
+    def addTxLogs(
+                   blockNumber: Int,
+                   transactionHash: String,
+                   txLogs: Seq[dlt.EthereumTxLog]
+                 )(implicit
+                   session: DBSession = AutoSession
+                 ): Unit
+  }
+
+}
+
 
 object DBStorage {
 
@@ -132,6 +278,7 @@ object DBStorage {
   }
 
   object TrackedAddresses {
+
     /** Single instance of tracked address.
      * Note that the [[Option]] arguments being [[None]] don’t necessary mean the data really has NULL here:
      * they may be empty if the result has been requested without this piece of data.
@@ -141,6 +288,7 @@ object DBStorage {
                                      syncedFrom: Option[Int],
                                      syncedTo: Option[Int]
                                     )
+
   }
 
   object Blocks {
