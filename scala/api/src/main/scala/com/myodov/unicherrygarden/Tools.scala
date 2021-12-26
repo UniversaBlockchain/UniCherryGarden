@@ -26,7 +26,7 @@ object Tools {
    * Note: true for single-item collection.
    */
   def seqIsIncreasing[T: Ordering](seq: Iterable[T]): Boolean =
-    (seq.size == 1) || seq.sliding(2).forall { case Seq(a, b) =>
+    (seq.size == 1) || seq.sliding(2).map(_.toSeq).forall { case Seq(a, b) =>
       (a: T) <= (b: T)
     }
 
@@ -36,7 +36,7 @@ object Tools {
    * Note: true for single-item collection.
    */
   def seqIsIncrementing[T: Numeric](seq: Iterable[T]): Boolean =
-    (seq.size == 1) || seq.sliding(2).forall { case Seq(a, b) =>
+    (seq.size == 1) || seq.sliding(2).map(_.toSeq).forall { case Seq(a, b) =>
       b == (a: T) + Numeric[T].one
     }
 }
