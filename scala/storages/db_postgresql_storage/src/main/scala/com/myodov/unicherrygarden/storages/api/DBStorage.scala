@@ -59,14 +59,14 @@ object DBStorageAPI {
   }
 
   trait State {
-    def setLastHeartbeatAt(implicit session: DBSession = AutoSession)
+    def setLastHeartbeatAt(implicit session: DBSession = AutoSession): Unit
 
-    def setSyncState(state: String)(implicit session: DBSession = AutoSession)
+    def setSyncState(state: String)(implicit session: DBSession = AutoSession): Unit
 
     def advanceProgress(
                          syncedBlockNumber: Long,
                          trackedAddresses: Set[String]
-                       )(implicit session: DBSession)
+                       )(implicit session: DBSession): Unit
   }
 
   trait Currencies {
@@ -116,14 +116,20 @@ object DBStorageAPI {
     def addBlock(block: dlt.EthereumBlock
                 )(implicit
                   session: DBSession = AutoSession
-                )
+                ): Unit
 
     def getBlockByNumber(blockNumber: Int
                         )(implicit session: DBSession = ReadOnlyAutoSession): Option[dlt.EthereumBlock]
 
+    /** Get a mapping from block number to block hash, for (up to, inclusive) `howMany` latest blocks. */
     def getLatestHashes(
                          howMany: Int
                        )(implicit session: DBSession = ReadOnlyAutoSession): SortedMap[Int, String]
+
+    /** Perform a “rewind” of all blocks, starting from `startBlockNumber`. */
+    def rewind(
+                startBlockNumber: Int
+              )(implicit session: DBSession = ReadOnlyAutoSession): Boolean
   }
 
   trait Transactions {

@@ -163,7 +163,7 @@ Most of the reorg-checking decisions are taken upon these several most important
 
 If `max(ucg_block.number)` > `eth.syncing.currentBlock`, it means the Ethereum node was probably wiped/restarted (and our DB has more information than the node) and is still being synced; so we should not go further, and go to `pauseThenMustCheckReorg` state instead, waiting until the Ethereum node syncs-up further to be able to even ask it for reorg data.
 
-Another case for us to think the node is unreachable, is if our recent `eth.syncing` data from the Ethereum node is even unavailable.
+Another case for us to think the actual-state node is “unreachable”, is if our recent `eth.syncing` data from the Ethereum node is even unavailable.
 
 (Interestingly, if there are no blocks in `ucg_block` – that’s okay and we go to the next step; at least we didn’t fail).
 

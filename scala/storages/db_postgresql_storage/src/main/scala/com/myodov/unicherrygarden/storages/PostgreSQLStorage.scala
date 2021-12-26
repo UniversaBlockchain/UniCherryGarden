@@ -536,7 +536,8 @@ class PostgreSQLStorage(jdbcUrl: String,
       """.execute.apply
     }
 
-    override def getBlockByNumber(blockNumber: Int
+    override def getBlockByNumber(
+                                   blockNumber: Int
                                  )(implicit session: DBSession = ReadOnlyAutoSession): Option[dlt.EthereumBlock] = {
       sql"""
       SELECT *
@@ -554,8 +555,8 @@ class PostgreSQLStorage(jdbcUrl: String,
         .apply
     }
 
-    /** Get a mapping from block number to block hash, for (up to, inclusive) `howMany` latest blocks. */
-    override def getLatestHashes(howMany: Int
+    override def getLatestHashes(
+                                  howMany: Int
                                 )(implicit session: DBSession = ReadOnlyAutoSession): SortedMap[Int, String] = {
       assert(howMany >= 1, howMany)
       val result =
@@ -592,6 +593,64 @@ class PostgreSQLStorage(jdbcUrl: String,
       )
 
       result
+    }
+
+    override def rewind(
+                         startBlockNumber: Int
+                       )(implicit session: DBSession = AutoSession): Boolean = {
+      try {
+        logger.debug(s"Performing rewind of blocks since $startBlockNumber")
+
+        sql"""
+        DELETE FROM ucg_tx_log
+        WHERE block_number >= $startBlockNumber
+        """.execute.apply
+        logger.debug(s"Rewound ucg_tx_log")
+
+        sql"""
+        DELETE FROM ucg_transaction
+        WHERE block_number >= $startBlockNumber
+        """.execute.apply
+        logger.debug(s"Rewound ucg_transaction")
+
+        sql"""
+        DELETE FROM ucg_block
+        WHERE number >= $startBlockNumber
+        """.execute.apply
+        logger.debug(s"Rewound ucg_block")
+
+        sql"""
+        UPDATE ucg_state
+        SET synced_to_block_number = $startBlockNumber - 1
+        WHERE synced_to_block_number >= $startBlockNumber
+        """.execute.apply
+        logger.debug(s"Rewound ucg_state")
+
+        sql"""
+        UPDATE ucg_tracked_address
+        SET synced_to_block_number = $startBlockNumber - 1
+        WHERE synced_to_block_number >= $startBlockNumber
+        """.execute.apply
+        logger.debug(s"Rewound ucg_tracked_address") // ucg_tracked_address.synced_to_block_number is not seriously used
+
+        sql"""
+        UPDATE ucg_currency_tracked_address_progress
+        SET synced_to_block_number = $startBlockNumber - 1
+        WHERE synced_to_block_number >= $startBlockNumber
+        """.execute.apply
+        logger.debug(s"Rewound ucg_currency_tracked_address_progress") // ucg_tracked_address.synced_to_block_number is not seriously used
+
+        true
+      } catch {
+        case ex: SQLException => {
+          logger.warn(s"Rewind failed for blocks since $startBlockNumber")
+          false
+        }
+        case NonFatal(e) => {
+          logger.error(s"Unexpected error", e)
+          false
+        }
+      }
     }
   }
 

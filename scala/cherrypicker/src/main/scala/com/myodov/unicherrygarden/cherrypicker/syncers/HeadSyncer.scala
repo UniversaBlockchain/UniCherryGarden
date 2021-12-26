@@ -11,7 +11,6 @@ import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web
 import com.myodov.unicherrygarden.storages.api.{DBStorage, DBStorageAPI}
 import scalikejdbc.{DB, DBSession}
 
-import scala.annotation.switch
 import scala.collection.immutable.SortedMap
 import scala.language.postfixOps
 
@@ -108,73 +107,125 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
     DB localTx { implicit session =>
       // For more details on reorg handling phases, read the [[/docs/unicherrypicker-synchronization.md]] document.
 
-      // We could put this check deeper into `isNodeReachable` method; but let’s enjoy the convenience
-      // having the Progress.ProgressData safely unwrapped from Option for simpler future usage
-      dbStorage.progress.getProgress match {
-        case None =>
+      // We could put the `dbStorage.progress.getProgress` and `state.ethereumNodeStatus` checks deeper
+      // into `isNodeReachable` method; but let’s enjoy the convenience
+      // having the Progress.ProgressData and EthereumNodeStatus safely unwrapped from Options for simpler future usage
+      (dbStorage.progress.getProgress, state.ethereumNodeStatus) match {
+        case (None, _) =>
           // we could not even get the DB progress – go to the next round
           logger.error("Some unexpected error when reading the overall progress from the DB")
           pauseThenMustCheckReorg
-        case Some(overallProgress) =>
+        case (_, None) =>
+          // we haven’t received the syncing state from the node
+          logger.error("Could not read the syncing status from Ethereum node")
+          pauseThenMustCheckReorg
+        case (Some(overallProgress: DBStorage.Progress.ProgressData), Some(nodeSyncingStatus: EthereumNodeStatus))
+          if !isNodeReachable(overallProgress, nodeSyncingStatus) =>
           // Reorg/rewind, phase 1/4: “is node reachable” – does the overall data sanity allows us to proceed?
-          if (!isNodeReachable(overallProgress)) {
-            pauseThenMustCheckReorg
-          } else {
+          // No, sanity test failed
+          pauseThenMustCheckReorg
+        case (Some(overallProgress: DBStorage.Progress.ProgressData), Some(nodeSyncingStatus: EthereumNodeStatus)) =>
+          // Sanity test passed, node is reachable. Only here we can proceed.
+
+          logger.debug(s"Node is reachable: $overallProgress, $nodeSyncingStatus")
+          // At this stage we either do or do not do the reorg check/rewind operations.
+          // Any of the internal reorg/rewind operations may already decide to provide a Behavior
+          // (i.e. maybe go to the next iteration).
+          // If they provide some final behavior, let’s use it; otherwise, let’s move on to the regular sync
+          val reorgRewindProvidedBehavior: Option[Behavior[HeadSyncerMessage]] = {
             // Reorg/rewind, phase 2/4: “reorg check check” – should we bother checking for reorg?
+            val isReorgCheckNeeded = reorgCheckCheck(overallProgress, nodeSyncingStatus)
+            logger.debug(s"Do we need to check for reorg? $isReorgCheckNeeded")
 
-            // Atomically get the value and unset it
-            val mustCheckReorg = state.nextIterationMustCheckReorg.getAndSet(false)
-            val isReorgCheckNeeded = mustCheckReorg || reorgCheckCheck
-            logger.debug(s"Do we need to check for reorg? $mustCheckReorg / $isReorgCheckNeeded")
-
-            if (isReorgCheckNeeded) {
+            if (!isReorgCheckNeeded) {
+              // No suggested behavior to return; let’s do the headSync
+              None
+            } else {
+              // Reorg/rewind, phase 3/4: “reorg check” – did reorg happened?
               reorgCheck match {
                 case Left(None) =>
                   logger.debug("No reorg needed")
-                  Behaviors.unhandled // TODO
+                  // outer Option is None, meaning we can proceed with syncing
+                  // (we don’t have a finished Behavior)
+                  None
                 case Left(Some(invalidRange)) =>
-                  logger.debug(s"Need reorg for $invalidRange")
-                  Behaviors.unhandled // TODO
+                  logger.debug(s"Need reorg rewind for $invalidRange")
+                  // Reorg/rewind, phase 4/4: “rewind”
+                  if (reorgRewind(invalidRange)) {
+                    logger.debug(s"We've successfully rewound $invalidRange; let’s go sync")
+                    // We’ve just completed rewind of some blocks, maybe like 100.
+                    // It seems obvious to go to `pauseThenMustCheckReorg()` phase,..
+                    // ... but if something broke completely, it may cause rewinding 100 more blocks,
+                    // and 100 more, and so on. We end up wiping all the database – and that’s definitely
+                    // not what we want.
+                    // So right after the rewind, we try to do actual `headSync`;
+                    // and for this, we return None (as “no Behavior suggested”) here.
+                    None
+                  } else {
+                    logger.error(s"Some error occured in rewinding $invalidRange; pause and retry")
+                    Some(pauseThenMustCheckReorg)
+                  }
                 case Right(error) =>
                   logger.error(s"During reorgCheck, there was a problem: $error")
-                  pauseThenMustCheckReorg()
+                  Some(pauseThenMustCheckReorg)
               }
             }
+          } // reorgRewindProvidedBehavior
 
-            // Reorg/rewind, phase 3/4: “reorg check” – did reorg happened?
-
-            // Reorg/rewind, phase 4/4: “rewind”
+          // Inside `reorgRewindProvidedBehavior`, we already have a suggested behavior to return... maybe.
+          // If we don’t have it, we just go on with the regular `headSync`.
+          // Note that at this point `dbStorage.progress.getProgress` can be inactual (if rewind happened),
+          // we cannot trust it and may need to re-read it.
+          reorgRewindProvidedBehavior match {
+            case Some(behavior) =>
+              behavior
+            case None =>
+              // Reorg/rewind thinks it is okay for us to move on with actual head-syncing;
+              // so let’s head-sync what we can
+              headSync()
           }
-
       }
     }
-    Behaviors.unhandled // TODO
   }
 
   /** Most basic sanity test for the DB data;
    * fails if we cannot even go further and must wait for the node to continue syncing.
    */
-  private[this] def isNodeReachable(dbProgressData: DBStorage.Progress.ProgressData): Boolean =
-    (state.ethereumNodeStatus: @switch) match {
+  private[this] def isNodeReachable(dbProgressData: DBStorage.Progress.ProgressData,
+                                    nodeSyncingStatus: EthereumNodeStatus): Boolean =
+    dbProgressData.blocks.to match {
       case None =>
-        logger.warn("Ethereum node hasn't provided the syncing state yet, maybe it is unavailable")
-        false
-      case Some(nodeStatus) =>
-        dbProgressData.blocks.to match {
-          case None =>
-            // All data is available; but there is no blocks in the DB. This actually is fully okay
-            true
-          case Some(maxBlocksNum) =>
-            // Everything is fine if our latest stored block is not newer than the latest block available
-            // to Ethereum node;
-            // false/bad otherwise
-            maxBlocksNum <= nodeStatus.currentBlock
-        }
+        // All data is available; but there is no blocks in the DB. This actually is fully okay
+        true
+      case Some(maxBlocksNum) =>
+        // Everything is fine if our latest stored block is not newer than the latest block available
+        // to Ethereum node;
+        // false/bad otherwise
+        maxBlocksNum <= nodeSyncingStatus.currentBlock
     }
 
   /** Check if we even need to check the blockchain for reorganization. */
-  private[this] def reorgCheckCheck()(implicit session: DBSession): Boolean = {
-    false // TODO
+  private[this] def reorgCheckCheck(
+                                     dbProgressData: DBStorage.Progress.ProgressData,
+                                     nodeSyncingStatus: EthereumNodeStatus
+                                   )(implicit session: DBSession): Boolean = {
+    // Atomically get the value and unset it
+    if (state.nextIterationMustCheckReorg.getAndSet(false)) {
+      logger.debug("On previous iteration, the checkReorg was forced, so we must check for reorg")
+      true
+    } else {
+      // What is the maximum block number in ucg_block? Is it available (are there any blocks)?
+      dbProgressData.blocks.to match {
+        case None =>
+          // There are no blocks stored in the DB, so any reorg couldn’t have affected anything:
+          // no check needed
+          false
+        case Some(maxBlocksNum) =>
+          // Reorg check is needed (i.e. “return true”) if the maximum block number stored in the DB
+          // is in “danger zone” (closer than `syncers.max_reorg`) from `eth.syncing.currentBlock`.
+          maxBlocksNum >= nodeSyncingStatus.currentBlock - CherryPicker.MAX_REORG
+      }
+    }
   }
 
   /** Check if the blockchain reorganization happened.
@@ -226,6 +277,25 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
           }
       }
     }
+  }
+
+  /** Perform the “rewind” for the range of blocks by numbers in `badBlockRange`.
+   *
+   * @return Whether the rewind executed successfully. `false` means some error occured.
+   */
+  private[this] def reorgRewind(
+                                 badBlockRange: dlt.EthereumBlock.BlockNumberRange
+                               )(implicit session: DBSession): Boolean = {
+    logger.debug(s"Rewinding the blocks $badBlockRange")
+    require(
+      (badBlockRange.size <= CherryPicker.MAX_REORG) && (badBlockRange.head <= badBlockRange.end),
+      (badBlockRange, CherryPicker.MAX_REORG))
+    dbStorage.blocks.rewind(badBlockRange.head)
+
+  }
+
+  private[this] def headSync()(implicit session: DBSession): Behavior[HeadSyncerMessage] = {
+    Behaviors.unhandled // TODO!
   }
 }
 
