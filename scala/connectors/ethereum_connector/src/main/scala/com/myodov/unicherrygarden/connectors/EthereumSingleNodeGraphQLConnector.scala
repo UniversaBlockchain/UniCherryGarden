@@ -6,6 +6,7 @@ import akka.actor.typed.{ActorSystem => TypedActorSystem}
 import akka.actor.{ActorSystem => ClassicActorSystem}
 import caliban.client.CalibanClientError
 import com.myodov.unicherrygarden.api.dlt
+import com.myodov.unicherrygarden.api.dlt.EthereumBlock
 import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.SyncingStatus
 import com.myodov.unicherrygarden.connectors.graphql._
 import com.myodov.unicherrygarden.ethereum.EthUtils
@@ -17,6 +18,7 @@ import sttp.client3.{Response, SttpBackend, UriContext}
 import sttp.model.Uri
 
 import scala.annotation.switch
+import scala.collection.immutable.SortedMap
 import scala.concurrent.{Await, Future}
 import scala.util.control.NonFatal
 
@@ -101,7 +103,7 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
 
     val rq = query.toRequest(graphQLUri)
 
-    try {
+    val result: Option[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])] = try {
       val value: Response[Either[CalibanClientError, Option[BlockBasicView]]] =
         Await.result(rq.send(sttpBackend), AbstractEthereumNodeConnector.NETWORK_TIMEOUT)
 
@@ -214,6 +216,43 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
         logger.error(s"Some nonfatal error happened during GraphQL query for $blockNumber", e)
         None
     }
+    result
+  }
+
+  override def readBlockHashes(range: EthereumBlock.BlockNumberRange): Option[SortedMap[Int, String]] = {
+    import caliban.Geth._
+
+    val query = Query.blocks(from = Some(range.head), to = Some(range.end)) {
+      BlockMinimal.view
+    }
+
+    val rq = query.toRequest(graphQLUri)
+
+    val result: Option[SortedMap[Int, String]] = try {
+      val value: Response[Either[CalibanClientError, List[BlockMinimalView]]] =
+        Await.result(rq.send(sttpBackend), AbstractEthereumNodeConnector.NETWORK_TIMEOUT)
+
+      value.body match {
+        case Left(err) =>
+          logger.error(s"Error for GraphQL querying range $range", err)
+          None
+        case Right(optBlockMinimal: List[BlockMinimalView]) =>
+          // This is a legit response
+          val m = optBlockMinimal
+            .map(bl => Math.toIntExact(bl.number) -> bl.hash)
+            .to(SortedMap)
+          Some(m)
+        case other =>
+          logger.error(s"Unhandled GraphQL response for range $range: $other")
+          None
+      }
+    } catch {
+      case NonFatal(e) =>
+        logger.error(s"Some nonfatal error happened during GraphQL query for range $range", e)
+        None
+    }
+
+    validateBlockHashes(range, result)
   }
 }
 
