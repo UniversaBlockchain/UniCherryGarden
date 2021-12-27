@@ -20,15 +20,20 @@ object Tools {
       }
     )
 
+  /** Check if each pair of adjacent items in a sequence satisfies predicate `p`.
+   *
+   * Note: true for single-item collection.
+   */
+  def forAllPairs[T](p: (T, T) => Boolean)(seq: Iterable[T]): Boolean =
+    (seq.size == 1) || seq.sliding(2).map(_.toSeq).forall { case Seq(a, b) => p(a, b) }
+
   /** Check if a sequence of orderable items is strictly increasing on each step.
    * E.g. `5, 6, 17, 42` but not `5, 7, 6`.
    *
    * Note: true for single-item collection.
    */
   def seqIsIncreasing[T: Ordering](seq: Iterable[T]): Boolean =
-    (seq.size == 1) || seq.sliding(2).map(_.toSeq).forall { case Seq(a, b) =>
-      (a: T) <= (b: T)
-    }
+    forAllPairs((_: T) <= (_: T))(seq)
 
   /** Check if a sequence of orderable items is only incrementing on each step.
    * E.g. `5, 6, 7, 8` but not `5, 6, 8, 9, 10` and of course not `5, 7, 6`.
@@ -36,7 +41,5 @@ object Tools {
    * Note: true for single-item collection.
    */
   def seqIsIncrementing[T: Numeric](seq: Iterable[T]): Boolean =
-    (seq.size == 1) || seq.sliding(2).map(_.toSeq).forall { case Seq(a, b) =>
-      b == (a: T) + Numeric[T].one
-    }
+    forAllPairs((_: T) + Numeric[T].one == (_: T))(seq)
 }
