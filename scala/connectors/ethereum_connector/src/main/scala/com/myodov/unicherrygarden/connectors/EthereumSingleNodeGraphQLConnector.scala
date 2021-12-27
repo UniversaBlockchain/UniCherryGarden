@@ -14,7 +14,7 @@ import com.typesafe.scalalogging.LazyLogging
 import sttp.capabilities
 import sttp.capabilities.akka.AkkaStreams
 import sttp.client3.akkahttp.AkkaHttpBackend
-import sttp.client3.{Request, Response, SttpBackend, UriContext}
+import sttp.client3.{Request, SttpBackend, UriContext}
 import sttp.model.Uri
 
 import scala.annotation.switch
@@ -44,7 +44,7 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
    *
    * `QV` - either `(Option[SyncState.SyncStateView], Option[BlockMinimalView])` or List[BlockBasicView]`,
    * or something similar..
-   * */
+   **/
   private[this] def queryGraphQL[QV](query: SelectionBuilder[RootQuery, QV],
                                      argHint: String): Option[QV] = {
     val rq: Request[Either[CalibanClientError, QV], Any] = query.toRequest(graphQLUri)
@@ -73,14 +73,15 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
     import caliban.Geth._
 
     // Either we have some data in `syncing`; or we must get the most recent block as just `block {number hash}`
-    val query: SelectionBuilder[RootQuery, (Option[SyncState.SyncStateView], Option[BlockMinimalView])] = Query.syncing {
-      SyncState.view
-    } ~ Query.block() {
-      BlockMinimal.view
-    }
+    val query =
+      Query.syncing {
+        SyncState.view
+      } ~ Query.block() {
+        BlockMinimal.view
+      }
 
     // Received a valid response; do something with both paths:
-    queryGraphQL(query, argHint = "sync state").flatMap(_ match {
+    queryGraphQL(query, argHint = "ethSyncingBlockNumber").flatMap(_ match {
       case (Some(syncing), _) =>
         // The node is still syncing
         logger.debug(s"The node is still syncing: $syncing")
@@ -122,47 +123,17 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
 
     import caliban.Geth._
 
-    val query: SelectionBuilder[RootQuery, List[BlockBasicView]] = Query.blocks(from = Some(range.head), to = Some(range.end)) {
-      BlockBasic.view
-    }
+    val query =
+      Query.blocks(from = Some(range.head), to = Some(range.end)) {
+        BlockBasic.view
+      }
 
     // This is a legit response; but it may have no contents.
     // For None, return None; for Some return a result,... hey it’s a map!
-    queryGraphQL(query, argHint = s"blocks $range").map { // Option of Seq of Blocks
+    queryGraphQL(query, argHint = s"readBlocks($range)").map { // Option of Seq of Blocks
       _.map { blockBasic =>
         // Validate block
-        {
-          // Different validations depending on whether parent is Some(block) or None:
-          // “parent is absent” may happen only on the block 0;
-          // “parent is not absent” implies the parent block has number lower by one.
-          require(blockBasic.parent match {
-            case None => blockBasic.number == 0
-            case Some(parentBlock) => parentBlock.number == blockBasic.number - 1
-          },
-            blockBasic)
-          require(
-            blockBasic.transactions match {
-              // If the transactions are not available at all – that’s legit
-              case None => true
-              // If the transactions are available - all of them must refer to the same block
-              case Some(trs) => trs.forall { tr =>
-                // Inner block must refer to the outer block
-                (tr.block match {
-                  case Some(innerBlock) => innerBlock == blockBasic.asMinimalBlock
-                  case None => false
-                }) &&
-                  // All inner logs must refer to the outer transaction
-                  (tr.logs match {
-                    // If there are no logs at all, that’s okay
-                    case None => true
-                    // But if there are some logs, all of them must refer to the same transaction
-                    case Some(logs) => logs.forall(_.transaction == tr.asMinimalTransaction)
-                  })
-              }
-            },
-            blockBasic
-          )
-        }
+        require(BlockBasic.validateBlock(blockBasic), blockBasic)
 
         val blockNumber = Math.toIntExact(blockBasic.number)
 
@@ -230,37 +201,16 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
 
     import caliban.Geth._
 
-    val query = Query.blocks(from = Some(range.head), to = Some(range.end)) {
-      BlockMinimal.view
-    }
-
-    val rq = query.toRequest(graphQLUri)
-
-    val result: Option[SortedMap[Int, String]] = try {
-      val value: Response[Either[CalibanClientError, List[BlockMinimalView]]] =
-        Await.result(rq.send(sttpBackend), AbstractEthereumNodeConnector.NETWORK_TIMEOUT)
-
-      value.body match {
-        case Left(err) =>
-          logger.error(s"Error for GraphQL querying range $range", err)
-          None
-        case Right(optBlockMinimal: List[BlockMinimalView]) =>
-          // This is a legit response
-          val m = optBlockMinimal
-            .map(bl => Math.toIntExact(bl.number) -> bl.hash)
-            .to(SortedMap)
-          Some(m)
-        case other =>
-          logger.error(s"Unhandled GraphQL response for range $range: $other")
-          None
+    val query =
+      Query.blocks(from = Some(range.head), to = Some(range.end)) {
+        BlockMinimal.view
       }
-    } catch {
-      case NonFatal(e) =>
-        logger.error(s"Some nonfatal error happened during GraphQL query for range $range", e)
-        None
-    }
 
-    validateBlockHashes(range, result)
+    queryGraphQL(query, "readBlockHashes($range)").map {
+      // If result is present, convert the result list to result map
+      _.map(bl => Math.toIntExact(bl.number) -> bl.hash)
+        .to(SortedMap)
+    }
   }
 }
 

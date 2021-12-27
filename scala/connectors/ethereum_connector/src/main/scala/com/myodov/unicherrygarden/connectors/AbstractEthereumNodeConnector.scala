@@ -4,6 +4,7 @@ import com.myodov.unicherrygarden.Tools.{reduceOptionSeq, seqIsIncrementing}
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.dlt.{EthereumBlock, EthereumMinedTransaction}
 import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.{SingleBlockData, SyncingStatus}
+import com.myodov.unicherrygarden.connectors.Web3ReadOperations.validateBlockHashes
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.typesafe.scalalogging.LazyLogging
 
@@ -139,8 +140,44 @@ trait Web3ReadOperations extends LazyLogging {
         .map { case (bl, tr) => bl.number -> bl.hash }
         .to(SortedMap)
     }
-
     validateBlockHashes(range, result)
+  }
+}
+
+object AbstractEthereumNodeConnector extends LazyLogging {
+  /** The blockchain details from a single block. */
+  type SingleBlockData = (dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])
+
+  case class SyncingStatus(currentBlock: Int = 0, highestBlock: Int = 0) {
+    assert(currentBlock >= 0)
+    assert(highestBlock >= 0)
+  }
+
+  val NETWORK_TIMEOUT: FiniteDuration = 10 seconds
+}
+
+private object Web3ReadOperations extends LazyLogging {
+  /** The default implementation of filtering uses manual filtering of the input data. */
+  def filterSingleBlock(blockData: SingleBlockData,
+                        addressesOfInterest: Set[String]): SingleBlockData = {
+    assert(addressesOfInterest.forall(EthUtils.Addresses.isValidLowercasedAddress), addressesOfInterest)
+
+    val (block, transactionsUnfiltered) = blockData
+    // Convert the addresses (which should be used to filter) to their Uint256 representations
+    val addressesOfInterestUint256: Set[String] = addressesOfInterest.map(EthUtils.Uint256Str.fromAddress)
+
+    val transactionsFiltered =
+      for (tr: dlt.EthereumMinedTransaction <- transactionsUnfiltered
+           // We take a transaction if it is sent from any address of interest...
+           if addressesOfInterest.contains(tr.from) ||
+             // ... or sent to any address of interest...
+             (tr.to.nonEmpty && addressesOfInterest.contains(tr.to.get)) ||
+             // ... or any of addresses-of-interest matches any txlog topic.
+             addressesOfInterestUint256.exists(tr.anyTxLogContainsTopic)
+           )
+        yield tr
+
+    (block, transactionsFiltered)
   }
 
   /** Default validator for the [[readBlockHashes]] result. */
@@ -170,42 +207,5 @@ trait Web3ReadOperations extends LazyLogging {
             resultToValidate // Otherwise it is good, return the original result unmodified
         }
     }
-  }
-}
-
-object AbstractEthereumNodeConnector {
-  /** The blockchain details from a single block. */
-  type SingleBlockData = (dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])
-
-  case class SyncingStatus(currentBlock: Int = 0, highestBlock: Int = 0) {
-    assert(currentBlock >= 0)
-    assert(highestBlock >= 0)
-  }
-
-  val NETWORK_TIMEOUT: FiniteDuration = 10 seconds
-}
-
-private object Web3ReadOperations {
-  /** The default implementation of filtering uses manual filtering of the input data. */
-  def filterSingleBlock(blockData: SingleBlockData,
-                        addressesOfInterest: Set[String]): SingleBlockData = {
-    assert(addressesOfInterest.forall(EthUtils.Addresses.isValidLowercasedAddress), addressesOfInterest)
-
-    val (block, transactionsUnfiltered) = blockData
-    // Convert the addresses (which should be used to filter) to their Uint256 representations
-    val addressesOfInterestUint256: Set[String] = addressesOfInterest.map(EthUtils.Uint256Str.fromAddress)
-
-    val transactionsFiltered =
-      for (tr: dlt.EthereumMinedTransaction <- transactionsUnfiltered
-           // We take a transaction if it is sent from any address of interest...
-           if addressesOfInterest.contains(tr.from) ||
-             // ... or sent to any address of interest...
-             (tr.to.nonEmpty && addressesOfInterest.contains(tr.to.get)) ||
-             // ... or any of addresses-of-interest matches any txlog topic.
-             addressesOfInterestUint256.exists(tr.anyTxLogContainsTopic)
-           )
-        yield tr
-
-    (block, transactionsFiltered)
   }
 }

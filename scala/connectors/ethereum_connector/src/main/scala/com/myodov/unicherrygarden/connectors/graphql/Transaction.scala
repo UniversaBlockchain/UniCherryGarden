@@ -64,4 +64,23 @@ object TransactionFull {
         LogFull.view
       }
   }.mapN(TransactionFullView)
+
+  /** Check if a single transaction (from a single block) is well-formed. */
+  def validateTransaction(tr: TransactionFullView,
+                          block: BlockMinimalView): Boolean =
+    (tr.block match { // Inner block must refer to the outer block
+      case Some(innerBlock) => innerBlock == block
+      case None => false // there is a transaction that doesn’t refer to any block at all?
+    }) &&
+      (tr.logs match { // All inner logs must refer to the outer transaction
+        // If there are no logs at all, that’s okay
+        case None => true
+        // But if there are some logs, all of them must refer to the same transaction
+        case Some(logs) => logs.forall(_.transaction == tr.asMinimalTransaction)
+      })
+
+  /** Check if a sequence of transactions (from a single block) is well-formed. */
+  def validateTransactions(trs: Seq[TransactionFullView],
+                           block: BlockMinimalView): Boolean =
+    trs.forall(validateTransaction(_, block))
 }
