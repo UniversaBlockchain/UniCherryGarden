@@ -4,7 +4,7 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 import com.myodov.unicherrygarden.api.dlt
-import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.SyncingStatus
+import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.{SingleBlockData, SyncingStatus}
 import com.typesafe.scalalogging.LazyLogging
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameterNumber
@@ -147,7 +147,7 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
     }
   }
 
-  override def readBlock(blockNumber: BigInt): Option[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])] = {
+  override def readBlock(blockNumber: BigInt): Option[SingleBlockData] = {
     require(blockNumber >= 0, blockNumber)
 
     readBlockWeb3j(blockNumber) match {

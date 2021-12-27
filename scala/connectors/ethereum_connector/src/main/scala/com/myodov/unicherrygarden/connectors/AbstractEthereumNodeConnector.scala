@@ -3,7 +3,7 @@ package com.myodov.unicherrygarden.connectors
 import com.myodov.unicherrygarden.Tools.{reduceOptionSeq, seqIsIncrementing}
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.dlt.{EthereumBlock, EthereumMinedTransaction}
-import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.SyncingStatus
+import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.{SingleBlockData, SyncingStatus}
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.typesafe.scalalogging.LazyLogging
 
@@ -43,7 +43,7 @@ trait Web3ReadOperations extends LazyLogging {
    *
    * @param blockNumber what block to read (by its number). Must be 0 or higher!
    */
-  def readBlock(blockNumber: BigInt): Option[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])]
+  def readBlock(blockNumber: BigInt): Option[SingleBlockData]
 
   /** Read the block from Ethereum node (by the block number), filtering it for specific addresses.
    *
@@ -51,7 +51,7 @@ trait Web3ReadOperations extends LazyLogging {
    * @param addressesOfInterest list of address hashes (all lowercased); only these addresses are returned.
    */
   def readBlock(blockNumber: BigInt,
-                addressesOfInterest: Set[String]): Option[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])] = {
+                addressesOfInterest: Set[String]): Option[SingleBlockData] = {
     require(blockNumber >= 0)
 
     // None to None, Some[seq] to Some[seq] - this is map!
@@ -67,10 +67,12 @@ trait Web3ReadOperations extends LazyLogging {
    *         otherwise it contains the sequence with exactly the requested blocks (and the transactions in these blocks),
    *         in strictly increasing order.
    */
-  def readBlocks(range: EthereumBlock.BlockNumberRange): Option[Seq[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])]] = {
-    val seqOfOptions: Seq[Option[(EthereumBlock, Seq[EthereumMinedTransaction])]] = range.map(readBlock(_))
+  def readBlocks(range: EthereumBlock.BlockNumberRange): Option[Seq[SingleBlockData]] = {
+    val seqOfOptions: Seq[Option[(EthereumBlock, Seq[EthereumMinedTransaction])]] =
+      range.map(readBlock(_))
 
-    val optionOfSeqs: Option[Seq[(EthereumBlock, Seq[EthereumMinedTransaction])]] = reduceOptionSeq(seqOfOptions)
+    val optionOfSeqs: Option[Seq[(EthereumBlock, Seq[EthereumMinedTransaction])]] =
+      reduceOptionSeq(seqOfOptions)
 
     // Let’s do the extra validation of this result; and everything is fine, return it.
     // None to None, Some[seq] to Some[seq] - this is map!
@@ -102,7 +104,7 @@ trait Web3ReadOperations extends LazyLogging {
    *         in strictly increasing order.
    */
   def readBlocks(range: EthereumBlock.BlockNumberRange,
-                 addressesOfInterest: Set[String]): Option[Seq[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])]] = {
+                 addressesOfInterest: Set[String]): Option[Seq[SingleBlockData]] = {
     val optionOfSecs: Option[Seq[(EthereumBlock, Seq[EthereumMinedTransaction])]] = readBlocks(range)
 
     // None to None, Some to Some - this is map!
@@ -172,6 +174,8 @@ trait Web3ReadOperations extends LazyLogging {
 }
 
 object AbstractEthereumNodeConnector {
+  /** The blockchain details from a single block. */
+  type SingleBlockData = (dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])
 
   case class SyncingStatus(currentBlock: Int = 0, highestBlock: Int = 0) {
     assert(currentBlock >= 0)
@@ -183,11 +187,11 @@ object AbstractEthereumNodeConnector {
 
 private object Web3ReadOperations {
   /** The default implementation of filtering uses manual filtering of the input data. */
-  def filterSingleBlock(blockPair: (dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction]),
-                        addressesOfInterest: Set[String]): (dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction]) = {
+  def filterSingleBlock(blockData: SingleBlockData,
+                        addressesOfInterest: Set[String]): SingleBlockData = {
     assert(addressesOfInterest.forall(EthUtils.Addresses.isValidLowercasedAddress), addressesOfInterest)
 
-    val (block, transactionsUnfiltered) = blockPair
+    val (block, transactionsUnfiltered) = blockData
     // Convert the addresses (which should be used to filter) to their Uint256 representations
     val addressesOfInterestUint256: Set[String] = addressesOfInterest.map(EthUtils.Uint256Str.fromAddress)
 

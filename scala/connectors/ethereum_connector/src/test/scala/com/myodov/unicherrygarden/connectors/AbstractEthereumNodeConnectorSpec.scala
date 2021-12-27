@@ -88,7 +88,7 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
   // Blocks 1264, 120522 and 120545 are the only blocks for address 0x90d331f19e4ef54c4dc2710087ebd8536084a85a
   // In block 1264, it mined some ETH; in 120522 and 120545 it moved out some ETH
   // 60003 block has 4 transactions
-  "readBlock(120522) - pre-Byzantium" should "parse block and find some single ETH transfer from address" in {
+  "readBlock(120_522) - pre-Byzantium" should "parse block and find some single ETH transfer from address" in {
     assertResult(
       Some( // Option of Tuple
         (
@@ -198,7 +198,7 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
 
 
   // 60003 block has 4 transactions
-  "readBlock(60003) - pre-Byzantium" should "read and parse block (with some filters)" in {
+  "readBlock(60_003) - pre-Byzantium" should "read and parse block (with some filters)" in {
     assertResult(
       Some( // Option of Tuple
         (
@@ -218,7 +218,7 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
     )
   }
 
-  "readBlock(11906373) - post-Byzantium" should "read and parse some heavily used block (with some filters)" in {
+  "readBlock(11_906_373) - post-Byzantium" should "read and parse some heavily used block (with some filters)" in {
     assertResult(
       Some( // Option of Tuple
         (
@@ -266,7 +266,7 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
     )
   }
 
-  "readBlock(10381084) - post-Byzantium" should "find a transaction generating (5) ERC20 Transfer events from smart contract" in {
+  "readBlock(10_381_084) - post-Byzantium" should "find a transaction generating (5) ERC20 Transfer events from smart contract" in {
     assertResult(
       Some( // Option of Tuple
         (
@@ -354,7 +354,164 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
     )
   }
 
-  "readBlockHashes(6329969, 6329988)" should "read multiple hashes (20) at once" in {
+  "readBlocks(3_381_060 to 3_381_064)" should "read and parse multiple (5) blocks at once, and get all the transactions inside" in {
+    assertResult(
+      Some(List( // Option of List
+        (
+          EthereumBlock(
+            3_381_060,
+            hash = "0x957cde3ed021f6d06ee7f1d8fc2349068a79a87cd321d5a6cf3cd71a26bcfbfe",
+            parentHash = Some("0xa3a43a0c3e51208ab166db5db5e606d318f5e11a772034c028544e67c7ee7c8e"),
+            Instant.parse("2017-03-19T16:07:55Z") //2017-10-16T05:20:52Z
+          ),
+          List.empty
+        ),
+        (
+          EthereumBlock(
+            3_381_061,
+            hash = "0x6f3392db2df5a9a7525608e90f828090556b56100b412fa4e649443639a2caf4",
+            parentHash = Some("0x957cde3ed021f6d06ee7f1d8fc2349068a79a87cd321d5a6cf3cd71a26bcfbfe"),
+            Instant.parse("2017-03-19T16:08:36Z")
+          ),
+          List.empty
+        ),
+        (
+          EthereumBlock(
+            3_381_062,
+            hash = "0xed67fabd34f6bd71c3105fe0c345a0eda5a682781ed3ff6f7a1809c55b38eea6",
+            parentHash = Some("0x6f3392db2df5a9a7525608e90f828090556b56100b412fa4e649443639a2caf4"),
+            Instant.parse("2017-03-19T16:08:41Z")
+          ),
+          List.empty
+        ),
+        (
+          EthereumBlock(
+            3_381_063,
+            hash = "0xf57dcc8ae45112dc2616783db9f1e8bbf31d4908359a9bec6706b0f5c1ac8883",
+            parentHash = Some("0xed67fabd34f6bd71c3105fe0c345a0eda5a682781ed3ff6f7a1809c55b38eea6"),
+            Instant.parse("2017-03-19T16:08:47Z")
+          ),
+          List.empty
+        ),
+        (
+          EthereumBlock(
+            3_381_064,
+            hash = "0x6d4a9ffe9ec18a2c3c45a41a7b3a86a75ca1903759a017da212c04281ebeef8a",
+            parentHash = Some("0xf57dcc8ae45112dc2616783db9f1e8bbf31d4908359a9bec6706b0f5c1ac8883"),
+            Instant.parse("2017-03-19T16:08:51Z")
+          ),
+          List.empty
+        )
+      ))
+    )(
+      sharedConnector.readBlocks(
+        range = 3_381_060 to 3_381_064,
+        addressesOfInterest = Set.empty)
+    )
+  }
+
+  "readBlocks(4_369_995 to 4_370_004)" should "read and parse multiple (10) blocks at once, with no chosen addresses, and pass the Byzantium border" in {
+    assertResult(
+      Some(List( // Option of List
+        (
+          EthereumBlock(
+            4_369_995,
+            hash = "0x724060fbfeda6011888c785241880888f8ce5ef94b2baee698eb0ad5f5ffba22",
+            parentHash = Some("0xa35b0804c9281906cd9f4a3ac395bbc74e7d4f55db6c0c5674d9a0560b046c64"),
+            Instant.parse("2017-10-16T05:20:52Z")
+          ),
+          List.empty
+        ),
+        (
+          EthereumBlock(
+            4_369_996,
+            hash = "0x9969c6c74b86596b33a124088a419ccb29fd3b91c8ce80a982e84dc72c753eb3",
+            parentHash = Some("0x724060fbfeda6011888c785241880888f8ce5ef94b2baee698eb0ad5f5ffba22"),
+            Instant.parse("2017-10-16T05:21:14Z")
+          ),
+          List.empty
+        ),
+        (
+          EthereumBlock(
+            4_369_997,
+            hash = "0xdf2e22c1e2a8dea196ebc056af2db7f97b576a4a2420877203b406e0c34e8252",
+            parentHash = Some("0x9969c6c74b86596b33a124088a419ccb29fd3b91c8ce80a982e84dc72c753eb3"),
+            Instant.parse("2017-10-16T05:21:17Z")
+          ),
+          List.empty
+        ),
+        (
+          EthereumBlock(
+            4_369_998,
+            hash = "0x0c8afc74a5e5c7d19f8dd5f2ca13098f871e5b6fd8a6e237df111f935d777105",
+            parentHash = Some("0xdf2e22c1e2a8dea196ebc056af2db7f97b576a4a2420877203b406e0c34e8252"),
+            Instant.parse("2017-10-16T05:21:41Z")
+          ),
+          List.empty
+        ),
+        (
+          EthereumBlock(
+            4_369_999,
+            hash = "0x51bc754831f33817e755039d90af3b20ea1e21905529ddaa03d7ba9f5fc9e66f",
+            parentHash = Some("0x0c8afc74a5e5c7d19f8dd5f2ca13098f871e5b6fd8a6e237df111f935d777105"),
+            Instant.parse("2017-10-16T05:21:43Z")
+          ),
+          List.empty
+        ),
+        (
+          EthereumBlock(
+            4_370_000,
+            hash = "0xb1fcff633029ee18ab6482b58ff8b6e95dd7c82a954c852157152a7a6d32785e",
+            parentHash = Some("0x51bc754831f33817e755039d90af3b20ea1e21905529ddaa03d7ba9f5fc9e66f"),
+            Instant.parse("2017-10-16T05:22:11Z")
+          ),
+          List.empty
+        ),
+        (
+          EthereumBlock(
+            4_370_001,
+            hash = "0x40996e904604226a5c252f496238d4c70270e0a05c4cb5588987b32fe1c4a7f2",
+            parentHash = Some("0xb1fcff633029ee18ab6482b58ff8b6e95dd7c82a954c852157152a7a6d32785e"),
+            Instant.parse("2017-10-16T05:22:42Z")
+          ),
+          List.empty
+        ),
+        (
+          EthereumBlock(
+            4_370_002,
+            hash = "0xba986765117223ab785285b0cbd13c1c9cd06521db23fa5d4afeedab8d8a2cbe",
+            parentHash = Some("0x40996e904604226a5c252f496238d4c70270e0a05c4cb5588987b32fe1c4a7f2"),
+            Instant.parse("2017-10-16T05:22:47Z")
+          ),
+          List.empty
+        ),
+        (
+          EthereumBlock(
+            4_370_003,
+            hash = "0xdd3a18eceab9cdd26c96ad20b641f16d97d588e1b2dc649aa86417a9d766dbce",
+            parentHash = Some("0xba986765117223ab785285b0cbd13c1c9cd06521db23fa5d4afeedab8d8a2cbe"),
+            Instant.parse("2017-10-16T05:23:02Z")
+          ),
+          List.empty
+        ),
+        (
+          EthereumBlock(
+            4_370_004,
+            hash = "0x35905241b6ef73bb245538a184d36ea5dfde616379ce661526090b1b384ecfb1",
+            parentHash = Some("0xdd3a18eceab9cdd26c96ad20b641f16d97d588e1b2dc649aa86417a9d766dbce"),
+            Instant.parse("2017-10-16T05:23:24Z")
+          ),
+          List.empty
+        ),
+      ))
+    )(
+      sharedConnector.readBlocks(
+        range = 4_369_995 to 4_370_004,
+        addressesOfInterest = Set.empty)
+    )
+  }
+
+  "readBlockHashes(6_329_969 to 6_329_988)" should "read multiple hashes (20) at once" in {
     assertResult(
       Some(SortedMap(
         6329969 -> "0xf202ba73499ecc7e142f682c80244e26d43cee0c0e7b817e3bba70d825bfdfb8",

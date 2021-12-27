@@ -7,7 +7,7 @@ import akka.actor.{ActorSystem => ClassicActorSystem}
 import caliban.client.CalibanClientError
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.dlt.EthereumBlock
-import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.SyncingStatus
+import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.{SingleBlockData, SyncingStatus}
 import com.myodov.unicherrygarden.connectors.graphql._
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.typesafe.scalalogging.LazyLogging
@@ -94,7 +94,7 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
     }
   }
 
-  override def readBlock(blockNumber: BigInt): Option[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])] = {
+  override def readBlock(blockNumber: BigInt): Option[SingleBlockData] = {
     import caliban.Geth._
 
     val query = Query.block(number = Some(blockNumber.longValue)) {
@@ -103,7 +103,7 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
 
     val rq = query.toRequest(graphQLUri)
 
-    val result: Option[(dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])] = try {
+    val result: Option[SingleBlockData] = try {
       val value: Response[Either[CalibanClientError, Option[BlockBasicView]]] =
         Await.result(rq.send(sttpBackend), AbstractEthereumNodeConnector.NETWORK_TIMEOUT)
 
