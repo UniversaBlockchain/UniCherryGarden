@@ -61,10 +61,9 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
           decodeQuantity(highestBlockStr).intValueExact()))
       }
     } catch {
-      case NonFatal(e) => {
+      case NonFatal(e) =>
         logger.error("Cannot call eth.syncing/eth.blockNumber!", e)
         None
-      }
     }
   }
 
@@ -141,10 +140,9 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
         Some((block, transactions, receiptsByTrHash))
       }
     } catch {
-      case NonFatal(e) => {
+      case NonFatal(e) =>
         logger.error("On iteration, got a error", e)
         None
-      }
     }
   }
 

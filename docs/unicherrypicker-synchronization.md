@@ -221,7 +221,7 @@ This is the regular syncing of the latest blocks:
 * `syncStartBlock`: `ucg_block.number + 1` (or maybe from `ucg_state.synced_from_block_number` if there are no records in `ucg_block`)
 * `syncEndBlock`: `eth.syncing.currentBlock`, but with a batch no larger than `head_syncer.batch_size`.
 
-Interestingly, we don’t always do the actual sync, even if we can. If we received a notification from TailSyncer that its first block to sync is within `head_syncer.catch_up_brake_max_lead` from `syncStartBlock`, we assume that TailSyncer is very close, and can wait for it to reach us; so we go to `pauseThenMayCheckReorg` state instead.
+Interestingly, we don’t always do the actual sync, even if we can. If we received a notification from TailSyncer that its last block to sync is within `head_syncer.catch_up_brake_max_lead` from `syncStartBlock`, we assume that TailSyncer is very close, and can wait for it to reach us; so we go to `pauseThenMayCheckReorg` state instead.
 
 Otherwise, we just poll the blocks from Ethereum connector, and write them to DB.
 

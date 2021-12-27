@@ -312,31 +312,6 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
 
     Behaviors.empty
   }
-
-  /** FSM state: “and now let’s immediately run next syncing iterate”. */
-  //  private def reiterateImmediately(state: CherryPickerState): Behavior[CherryPickerRequest] = {
-  //    logger.debug("Next iteration will happen immediately: fast sync!")
-  //    val newState = state.advanceFastSync()
-  //
-  //    //    Behaviors.setup[CherryPickerRequest] { context =>
-  //    //      context.self ! DoSyncIteration(newState)
-  //    //      Behaviors.same
-  //    //    }
-  //    Behaviors.same
-  //  }
-
-  //  /** FSM state: “and now let’s run next syncing iterate after a short pause”. */
-  //  private def reiterateAfterDelay(state: CherryPickerState): Behavior[CherryPickerRequest] = {
-  //    logger.debug("Next iteration will happen after timer")
-  //    val newState = state.stopFastSync() // this is not a fast sync anymore
-  //
-  //    //    Behaviors.withTimers[CherryPickerRequest] { timers =>
-  //    //      timers.startSingleTimer(DoSyncIteration(newState), CherryPicker.BLOCK_ITERATION_PERIOD)
-  //    //      Behaviors.same
-  //    //    }
-  //    //  }
-  //    Behaviors.same
-  //  }
 }
 
 

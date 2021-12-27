@@ -512,14 +512,12 @@ class PostgreSQLStorage(jdbcUrl: String,
         """.execute.apply
         true
       } catch {
-        case ex: SQLException => {
+        case ex: SQLException =>
           logger.warn(s"Reinserting prevented: $address, $comment, $mode")
           false
-        }
-        case NonFatal(e) => {
+        case NonFatal(e) =>
           logger.error(s"Unexpected error", e)
           false
-        }
       }
     }
   }
@@ -642,14 +640,12 @@ class PostgreSQLStorage(jdbcUrl: String,
 
         true
       } catch {
-        case ex: SQLException => {
+        case ex: SQLException =>
           logger.warn(s"Rewind failed for blocks since $startBlockNumber")
           false
-        }
-        case NonFatal(e) => {
+        case NonFatal(e) =>
           logger.error(s"Unexpected error", e)
           false
-        }
       }
     }
   }

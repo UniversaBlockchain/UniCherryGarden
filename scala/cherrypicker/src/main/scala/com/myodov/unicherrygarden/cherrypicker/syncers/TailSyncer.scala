@@ -15,11 +15,7 @@ import scala.language.postfixOps
  */
 private class TailSyncer(dbStorage: DBStorageAPI,
                          ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
-  extends AbstractSyncer[
-    TailSyncerMessage,
-    //    TailSyncerState,
-    IterateTailSyncer
-  ](dbStorage, ethereumConnector) {
+  extends AbstractSyncer[TailSyncerMessage, IterateTailSyncer](dbStorage, ethereumConnector) {
 
   /** The overall state of the syncer.
    *
@@ -39,7 +35,6 @@ private class TailSyncer(dbStorage: DBStorageAPI,
     Behaviors.setup[TailSyncerMessage] { context =>
       Behaviors.receiveMessage[TailSyncerMessage] {
         case IterateTailSyncer() =>
-          //          iterate()
           logger.debug(s"Iteration in TailSyncer $state")
           Behaviors.same
         case message@EthereumNodeStatus(current, highest) =>
@@ -61,6 +56,7 @@ private class TailSyncer(dbStorage: DBStorageAPI,
   }
 }
 
+/** TailSyncer companion object. */
 object TailSyncer {
 
   val BATCH_SIZE = 100 // TODO: must be configured through application.conf

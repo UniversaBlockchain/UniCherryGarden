@@ -1,6 +1,6 @@
 package com.myodov.unicherrygarden.cherrypicker.syncers
 
-import com.myodov.unicherrygarden.api.dlt.EthereumBlock
+import com.myodov.unicherrygarden.api.dlt
 
 object SyncerMessages {
 
@@ -28,6 +28,6 @@ object SyncerMessages {
     extends TailSyncerMessage with IterateSyncer[TailSyncerMessage]
 
   /** The message from TailSyncer to HeadSyncer, notifying about what range HeadSyncer is going to sync. */
-  final case class GoingToTailSync(range: EthereumBlock.BlockNumberRange) extends HeadSyncerMessage
+  final case class GoingToTailSync(range: dlt.EthereumBlock.BlockNumberRange) extends HeadSyncerMessage
 
 }
