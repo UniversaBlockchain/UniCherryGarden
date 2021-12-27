@@ -1,4 +1,4 @@
-package com.myodov.unicherrygarden.connectors.graphql
+package com.myodov.unicherrygarden.connectors.graphql.types
 
 import caliban.Geth.{Bytes32, Transaction}
 import caliban.client.SelectionBuilder

@@ -1,7 +1,8 @@
-package com.myodov.unicherrygarden.connectors.graphql
+package com.myodov.unicherrygarden.connectors.graphql.types
 
 import caliban.Geth.Block
 import caliban.client.SelectionBuilder
+import com.myodov.unicherrygarden.Tools.Implicits._
 import com.typesafe.scalalogging.LazyLogging
 
 /** For a Block, get just its number and hash.
@@ -54,11 +55,11 @@ object BlockBasic extends LazyLogging {
     }
 
     val transactionsAreConsistent: Boolean = block.transactions match {
-        // If the transactions are not available at all – that’s legit
-        case None => true
-        // If the transactions are available - all of them must refer to the same block
-        case Some(trs) => TransactionFull.validateTransactions(trs, block.asMinimalBlock)
-      }
+      // If the transactions are not available at all – that’s legit
+      case None => true
+      // If the transactions are available - all of them must refer to the same block
+      case Some(trs) => TransactionFull.validateTransactions(trs, block.asMinimalBlock)
+    }
 
     if (!parentIsConsistent) {
       logger.error(s"For the following block, parent is inconsistent: $block")
@@ -73,6 +74,40 @@ object BlockBasic extends LazyLogging {
 
   /** Check if a sequence of blocks is well-formed. */
   def validateBlocks(blocks: Seq[BlockBasicView]): Boolean = {
-    blocks.forall(validateBlock)
+    val eachSingleBlockValid: Boolean = blocks.forall(validateBlock)
+    val blocksInTotalValid: Boolean = blocks.forAllPairs { (bl1, bl2) =>
+      bl2.parent match {
+        case None =>
+          logger.error(s"In block sequence of ${blocks.size} blocks, " +
+            s"block parent is missing: $bl2")
+          false
+        case Some(bl2Parent) =>
+          if (bl2.number != bl1.number + 1) {
+            logger.error(s"In block sequence of ${blocks.size} blocks, " +
+              s"these two blocks are not subsequent: $bl1 and $bl2")
+            false
+          } else if (bl2Parent.number != bl1.number || bl2Parent.hash != bl1.hash) {
+            logger.error(s"In block sequence of ${blocks.size} blocks, " +
+              s"the parent reference of second block is not the the first block: $bl1 and $bl2")
+            false
+          } else {
+            // Everything seems fine
+            true
+          }
+      }
+    }
+
+    if (!eachSingleBlockValid) {
+      logger.error(s"In block sequence of ${blocks.size} blocks, " +
+        s"some block is invalid")
+      false
+    } else if (!blocksInTotalValid) {
+      logger.error(s"In block sequence of ${blocks.size} blocks, " +
+        s"not all pairs are valid")
+      false
+    } else {
+      // Finally, we are cool
+      true
+    }
   }
 }

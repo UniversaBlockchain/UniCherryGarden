@@ -1,7 +1,7 @@
-package com.myodov.unicherrygarden.connectors
+package com.myodov.unicherrygarden.connectors.graphql
 
 import caliban.client.CalibanClientError.DecodingError
-import caliban.client.__Value._
+import caliban.client.__Value.{__NumberValue, __StringValue}
 
 import scala.util.Try
 

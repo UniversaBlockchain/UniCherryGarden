@@ -1,7 +1,6 @@
-package com.myodov.unicherrygarden.connectors
+package com.myodov.unicherrygarden.connectors.jsonrpc
 
-import com.myodov.unicherrygarden.api.dlt.events.Erc20TransferEvent
-import com.myodov.unicherrygarden.connectors.Erc20TransferEventParser.TopicParseResult
+import com.myodov.unicherrygarden.connectors.jsonrpc.Erc20TransferEventParser.TopicParseResult
 import org.scalatest.flatspec.AnyFlatSpec
 
 class Erc20TransferEventParserSpec extends AnyFlatSpec {
@@ -16,8 +15,8 @@ class Erc20TransferEventParserSpec extends AnyFlatSpec {
   "Log topics" should "be parseable when contain actual Transfer event" in {
     assertResult(
       Some(TopicParseResult(
-        from="0x5041ed759dd4afc3a72b8192c143f72f4724081a",
-        to="0xa34e0bbc51fdfe5e7bfc0544769d8072533600cf")),
+        from = "0x5041ed759dd4afc3a72b8192c143f72f4724081a",
+        to = "0xa34e0bbc51fdfe5e7bfc0544769d8072533600cf")),
       "Actual transfer event"
     )(
       Erc20TransferEventParser.parseTopics(List(
@@ -29,8 +28,8 @@ class Erc20TransferEventParserSpec extends AnyFlatSpec {
 
     assertResult(
       Some(TopicParseResult(
-        from="0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-        to="0x618a2750e5adaa56aa42db9f1c9af3c03675eaf0")),
+        from = "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+        to = "0x618a2750e5adaa56aa42db9f1c9af3c03675eaf0")),
       "Another real transfer event"
     )(
       Erc20TransferEventParser.parseTopics(List(

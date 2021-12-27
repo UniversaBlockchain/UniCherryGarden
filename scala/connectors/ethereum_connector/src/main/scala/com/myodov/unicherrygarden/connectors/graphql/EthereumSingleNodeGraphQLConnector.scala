@@ -1,4 +1,4 @@
-package com.myodov.unicherrygarden.connectors
+package com.myodov.unicherrygarden.connectors.graphql
 
 import java.time.Instant
 
@@ -8,7 +8,8 @@ import caliban.client.Operations.RootQuery
 import caliban.client.{CalibanClientError, SelectionBuilder}
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.{SingleBlockData, SyncingStatus}
-import com.myodov.unicherrygarden.connectors.graphql._
+import com.myodov.unicherrygarden.connectors.graphql.types.{BlockBasic, BlockMinimal, TransactionFullView}
+import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.typesafe.scalalogging.LazyLogging
 import sttp.capabilities
@@ -55,7 +56,7 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
         case Left(err) =>
           logger.error(s"Error for GraphQL querying $argHint", err)
           None
-        case Right(res: QV) =>
+        case Right(res) =>
           // Received a valid response
           Some(res)
         case other =>
@@ -130,68 +131,70 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
 
     // This is a legit response; but it may have no contents.
     // For None, return None; for Some return a result,... hey it’s a map!
-    queryGraphQL(query, argHint = s"readBlocks($range)").map { // Option of Seq of Blocks
-      _.map { blockBasic =>
-        // Validate block
-        require(BlockBasic.validateBlock(blockBasic), blockBasic)
+    queryGraphQL(query, argHint = s"readBlocks($range)").flatMap { blocks =>
+      if (!BlockBasic.validateBlocks(blocks)) {
+        None // validation failed, let’s consider reading failed too
+      } else {
+        val resultSeq = blocks.map { blockBasic =>
+          val blockNumber = Math.toIntExact(blockBasic.number)
 
-        val blockNumber = Math.toIntExact(blockBasic.number)
-
-        val block = dlt.EthereumBlock(
-          number = blockNumber,
-          hash = blockBasic.hash,
-          parentHash = blockBasic.parent match {
-            // We need some custom handling of parent
-            // to make it compatible with RPC/block explorers
-            case None => Some("0x0000000000000000000000000000000000000000000000000000000000000000")
-            case Some(parent) => Some(parent.hash)
-          },
-          timestamp = Instant.ofEpochSecond(blockBasic.timestamp)
-        )
-        val transactions = blockBasic.transactions match {
-          case None => Seq()
-          case Some(transactions) => transactions.map { (tr: TransactionFullView) =>
-            dlt.EthereumMinedTransaction(
-              // *** Before-mined transaction ***
-              txhash = tr.hash,
-              from = tr.from.address,
-              to = tr.to.map(_.address), // Option(nullable)
-              gas = tr.gas,
-              gasPrice = tr.gasPrice,
-              nonce = Math.toIntExact(tr.nonce),
-              value = tr.value,
-              // *** Mined transaction ***
-              // "status" – EIP 658, since Byzantium fork
-              // using Option(nullable).
-              // But there seems to be a bug in GraphQL handling pre-Byzantium statuses,
-              // (https://github.com/ethereum/go-ethereum/issues/24124)
-              // So need to handle this manually.
-              status = blockNumber match {
-                case preByzantium if preByzantium < EthUtils.BYZANTIUM_FIRST_BLOCK =>
-                  None
-                case byzantiumAndNewer =>
-                  tr.status.map(Math.toIntExact) // Option[Long] to Option[Int]
-              },
-              blockNumber = tr.block.get.number, // block must exist!
-              transactionIndex = tr.index.get, // transaction must exist!
-              gasUsed = tr.gasUsed.get, // presumed non-null if mined
-              effectiveGasPrice = tr.effectiveGasPrice.get, // presumed non-null if mined
-              cumulativeGasUsed = tr.cumulativeGasUsed.get, // presumed non-null if mined
-              txLogs = tr.logs match {
-                case None => Seq.empty
-                case Some(logs) => logs.map { log =>
-                  dlt.EthereumTxLog(
-                    logIndex = log.index,
-                    address = log.account.address,
-                    topics = log.topics,
-                    data = log.data
-                  )
+          val block = dlt.EthereumBlock(
+            number = blockNumber,
+            hash = blockBasic.hash,
+            parentHash = blockBasic.parent match {
+              // We need some custom handling of parent
+              // to make it compatible with RPC/block explorers
+              case None => Some("0x0000000000000000000000000000000000000000000000000000000000000000")
+              case Some(parent) => Some(parent.hash)
+            },
+            timestamp = Instant.ofEpochSecond(blockBasic.timestamp)
+          )
+          val transactions = blockBasic.transactions match {
+            case None => Seq()
+            case Some(transactions) => transactions.map { (tr: TransactionFullView) =>
+              dlt.EthereumMinedTransaction(
+                // *** Before-mined transaction ***
+                txhash = tr.hash,
+                from = tr.from.address,
+                to = tr.to.map(_.address), // Option(nullable)
+                gas = tr.gas,
+                gasPrice = tr.gasPrice,
+                nonce = Math.toIntExact(tr.nonce),
+                value = tr.value,
+                // *** Mined transaction ***
+                // "status" – EIP 658, since Byzantium fork
+                // using Option(nullable).
+                // But there seems to be a bug in GraphQL handling pre-Byzantium statuses,
+                // (https://github.com/ethereum/go-ethereum/issues/24124)
+                // So need to handle this manually.
+                status = blockNumber match {
+                  case preByzantium if preByzantium < EthUtils.BYZANTIUM_FIRST_BLOCK =>
+                    None
+                  case byzantiumAndNewer =>
+                    tr.status.map(Math.toIntExact) // Option[Long] to Option[Int]
+                },
+                blockNumber = tr.block.get.number, // block must exist!
+                transactionIndex = tr.index.get, // transaction must exist!
+                gasUsed = tr.gasUsed.get, // presumed non-null if mined
+                effectiveGasPrice = tr.effectiveGasPrice.get, // presumed non-null if mined
+                cumulativeGasUsed = tr.cumulativeGasUsed.get, // presumed non-null if mined
+                txLogs = tr.logs match {
+                  case None => Seq.empty
+                  case Some(logs) => logs.map { log =>
+                    dlt.EthereumTxLog(
+                      logIndex = log.index,
+                      address = log.account.address,
+                      topics = log.topics,
+                      data = log.data
+                    )
+                  }
                 }
-              }
-            )
+              )
+            }
           }
+          (block, transactions)
         }
-        (block, transactions)
+        Some(resultSeq)
       }
     }
   }

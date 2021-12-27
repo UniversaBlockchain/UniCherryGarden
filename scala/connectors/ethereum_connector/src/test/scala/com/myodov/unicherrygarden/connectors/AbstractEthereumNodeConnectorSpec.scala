@@ -20,6 +20,8 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
       blockNumberResult match {
         case Some(SyncingStatus(current, highest)) =>
           (current > 11500000) && (highest > 11500000)
+        case None =>
+          false
       },
       blockNumberResult
     )

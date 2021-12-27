@@ -1,4 +1,4 @@
-package com.myodov.unicherrygarden.connectors
+package com.myodov.unicherrygarden.connectors.jsonrpc
 
 import java.math.BigInteger
 

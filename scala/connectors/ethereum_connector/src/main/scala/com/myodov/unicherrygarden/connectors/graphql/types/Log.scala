@@ -1,4 +1,4 @@
-package com.myodov.unicherrygarden.connectors.graphql
+package com.myodov.unicherrygarden.connectors.graphql.types
 
 import caliban.Geth.{Bytes, Bytes32, Log}
 

@@ -5,7 +5,8 @@ import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.ClusterEvent.MemberEvent
 import akka.cluster.typed.{Cluster, Subscribe}
 import com.myodov.unicherrygarden.cherrygardener.CherryGardener
-import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, EthereumSingleNodeGraphQLConnector, Web3ReadOperations}
+import com.myodov.unicherrygarden.connectors.graphql.EthereumSingleNodeGraphQLConnector
+import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryGardenerResponse, CherryPickerRequest, CherryPlanterRequest}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI

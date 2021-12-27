@@ -1,4 +1,4 @@
-package com.myodov.unicherrygarden.connectors.graphql
+package com.myodov.unicherrygarden.connectors.graphql.types
 
 import caliban.Geth.{Account, Address}
 import caliban.client.SelectionBuilder
