@@ -163,12 +163,12 @@ object DBStorage {
 
   object Progress {
 
-    /** Sync status of whole UniCherrypicker.
+    /** Sync configuration of whole UniCherrypicker.
      *
-     * @param from : UniCherrypicker in general has been synced from this block (may be missing).
-     * @param to   : UniCherrypicker in general has been synced to this block (may be missing).
+     * @param from : UniCherrypicker in general should been synced from this block (may be missing).
+     *             No blocks earlier than this block will exist.
      */
-    sealed case class OverallSyncStatus(from: Option[Int], to: Option[Int])
+    sealed case class OverallSyncConfiguration(from: Option[Int])
 
     /** Whole-system syncing progress.
      *
@@ -178,7 +178,7 @@ object DBStorage {
      * @param trackedAddresses            : progress of syncing as per `ucg_tracked_address` table.
      * @param perCurrencyTrackedAddresses : progress of syncing as per `ucg_currency_tracked_address_progress` table.
      */
-    sealed case class ProgressData(overall: OverallSyncStatus,
+    sealed case class ProgressData(overall: OverallSyncConfiguration,
                                    currencies: CurrenciesSyncStatus,
                                    blocks: BlocksSyncStatus,
                                    trackedAddresses: TrackedAddressesSyncStatus,

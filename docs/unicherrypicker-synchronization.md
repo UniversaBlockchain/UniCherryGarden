@@ -88,8 +88,6 @@ The `ucg_state` stores the most important/most persistent “runtime state” of
 
 * `synced_from_block_number` field: integer value, specifies the earliest block of the blockchain we are interested in. It will be the first block stored in `ucg_block`. Choose carefully; most of the operations and blockchain data syncing do not allow to ever go earlier than this block. That is: if you specified value **1,000,000** for `synced_from_block_number`, no block, currency or address will be ever tracked earlier than that. This may change in the future though.   
 
-Note: `ucg_state.synced_to_block_number` value is not a configuration setting, but an element of runtime state: do not edit it manually. 
-
 
 ### Usage scenario settings (DB)
 
@@ -207,10 +205,9 @@ For each `blockNumberToRewind`, we:
 1. delete any `ucg_tx_log` records referring to any transactions referring to the block number `blockNumberToRewind`.
 2. delete any `ucg_transaction` records referring to the block number `blockNumberToRewind`.
 3. delete the `ucg_block` record `blockNumberToRewind`.
-4. set `ucg_state.synced_to_block_number` to `blockNumberToRewind - 1` if it was equal to `blockNumberToRewind` before.
-5. set any `ucg_tracked_address.synced_to_block_number` to `blockNumberToRewind - 1` if it was equal to `blockNumberToRewind` before. 
-6. set any `ucg_currency_tracked_address_progress.synced_to_block_number` to `blockNumberToRewind - 1` if it was equal to `blockNumberToRewind` before.
-7. commit the transaction. 
+4. set any `ucg_tracked_address.synced_to_block_number` to `blockNumberToRewind - 1` if it was equal to `blockNumberToRewind` before.
+5. set any `ucg_currency_tracked_address_progress.synced_to_block_number` to `blockNumberToRewind - 1` if it was equal to `blockNumberToRewind` before.
+6. commit the transaction.
 
 After the rewind it just switches to `syncBlocks`.
 

@@ -59,9 +59,9 @@ class PostgreSQLStorage(jdbcUrl: String,
       SELECT * FROM ucg_progress;
       """.map(rs => {
         ProgressData(
-          OverallSyncStatus(
-            from = rs.intOpt("overall_from"),
-            to = rs.intOpt("overall_to")),
+          OverallSyncConfiguration(
+            from = rs.intOpt("overall_from")
+          ),
           CurrenciesSyncStatus(
             minSyncFrom = rs.intOpt("currency_sync_from_min"),
             maxSyncFrom = rs.intOpt("currency_sync_from_max"),
@@ -616,13 +616,6 @@ class PostgreSQLStorage(jdbcUrl: String,
         WHERE number >= $startBlockNumber
         """.execute.apply
         logger.debug(s"Rewound ucg_block")
-
-        sql"""
-        UPDATE ucg_state
-        SET synced_to_block_number = $startBlockNumber - 1
-        WHERE synced_to_block_number >= $startBlockNumber
-        """.execute.apply
-        logger.debug(s"Rewound ucg_state")
 
         sql"""
         UPDATE ucg_tracked_address
