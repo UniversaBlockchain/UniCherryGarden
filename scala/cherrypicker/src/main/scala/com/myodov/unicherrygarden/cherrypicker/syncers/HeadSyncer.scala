@@ -358,9 +358,16 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
       } else {
         logger.debug(s"Ready to HeadSync $goingToHeadSync")
         if (syncBlocks(goingToHeadSync)) {
-          logger.debug(s"HeadSyncing success $goingToHeadSync")
+          // HeadSync completed successfully. Should we pause, or instantly go to the next round?
+
           dbStorage.state.setLastHeartbeatAt
-          pauseThenMayCheckReorg // TODO should we actually pause here?
+          if (goingToHeadSync.end >= nodeSyncingStatus.currentBlock) { // should be “==” rather than “>=”, but just to be safe
+            logger.debug(s"HeadSyncing success $goingToHeadSync, reached end")
+            pauseThenMayCheckReorg
+          } else {
+            logger.debug(s"HeadSyncing success $goingToHeadSync, not reached end")
+            iterateMayCheckReorg // go to the next round instantly
+          }
         } else {
           logger.error(s"HeadSyncing failure for $goingToHeadSync")
           pauseThenMustCheckReorg
