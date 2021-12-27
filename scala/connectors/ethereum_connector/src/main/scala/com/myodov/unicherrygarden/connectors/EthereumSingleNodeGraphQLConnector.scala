@@ -6,7 +6,7 @@ import akka.actor.typed.{ActorSystem => TypedActorSystem}
 import akka.actor.{ActorSystem => ClassicActorSystem}
 import caliban.client.CalibanClientError
 import com.myodov.unicherrygarden.api.dlt
-import com.myodov.unicherrygarden.api.dlt.EthereumBlock
+import com.myodov.unicherrygarden.api.dlt.{EthereumBlock, EthereumMinedTransaction}
 import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.{SingleBlockData, SyncingStatus}
 import com.myodov.unicherrygarden.connectors.graphql._
 import com.myodov.unicherrygarden.ethereum.EthUtils
@@ -95,26 +95,41 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
   }
 
   override def readBlock(blockNumber: BigInt): Option[SingleBlockData] = {
+    // Comparing to the default Web3ReadOperations implementation, we use an inverted implementation here:
+    // `readBlocks` is implemented in details, `readBlock` just calls it.
+
+    // Option of Seq can be easily converted to a single Option with just flatMap
+    readBlocks(blockNumber.intValue to blockNumber.intValue).flatMap { _ match {
+        case emptySeq if emptySeq.isEmpty => None
+        case Seq(singleItem) => Some(singleItem)
+        case tooLargeSeq => None
+      }
+    }
+  }
+
+  override def readBlocks(range: EthereumBlock.BlockNumberRange): Option[Seq[SingleBlockData]] = {
+    require(range.head <= range.end, range)
+
     import caliban.Geth._
 
-    val query = Query.block(number = Some(blockNumber.longValue)) {
+    val query = Query.blocks(from = Some(range.head), to = Some(range.end)) {
       BlockBasic.view
     }
 
     val rq = query.toRequest(graphQLUri)
 
-    val result: Option[SingleBlockData] = try {
-      val value: Response[Either[CalibanClientError, Option[BlockBasicView]]] =
+    val result = try {
+      val value: Response[Either[CalibanClientError, List[BlockBasicView]]] =
         Await.result(rq.send(sttpBackend), AbstractEthereumNodeConnector.NETWORK_TIMEOUT)
 
       value.body match {
         case Left(err) =>
-          logger.error(s"Error for GraphQL querying block $blockNumber", err)
+          logger.error(s"Error for GraphQL querying blocks $range", err)
           None
-        case Right(optBlockBasic) =>
+        case Right(optBlocksBasic: Seq[BlockBasicView]) =>
           // This is a legit response; but it may have no contents.
           // For None, return None; for Some return a result,... hey it’s a map!
-          optBlockBasic.map { blockBasic =>
+          val seq = optBlocksBasic.map { blockBasic =>
             // Validate block
             {
               // Different validations depending on whether parent is Some(block) or None:
@@ -207,19 +222,22 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
             }
             (block, transactions)
           }
+          Some(seq)
         case other =>
-          logger.error(s"Unhandled GraphQL response for block $blockNumber: $other")
+          logger.error(s"Unhandled GraphQL response for blocks $range: $other")
           None
       }
     } catch {
       case NonFatal(e) =>
-        logger.error(s"Some nonfatal error happened during GraphQL query for $blockNumber", e)
+        logger.error(s"Some nonfatal error happened during GraphQL query for $range", e)
         None
     }
     result
   }
 
   override def readBlockHashes(range: EthereumBlock.BlockNumberRange): Option[SortedMap[Int, String]] = {
+    require(range.head <= range.end, range)
+
     import caliban.Geth._
 
     val query = Query.blocks(from = Some(range.head), to = Some(range.end)) {
