@@ -122,7 +122,6 @@ public class ObserverImpl implements Observer {
                         actorSystem,
                         GetTrackedAddressesCommand.createReplier(
                                 false,
-                                false,
                                 false
                         ),
                         ConnectorActor.DEFAULT_CALL_TIMEOUT,
@@ -134,13 +133,11 @@ public class ObserverImpl implements Observer {
             // so they should not be present in the response.
             assert response.includeComment == false : response;
             assert response.includeSyncedFrom == false : response;
-            assert response.includeSyncedTo == false : response;
             return response.addresses.stream().map(trAddInf -> {
                 // We didn’t request the comments/syncedFrom/syncedTo,
                 // so they REALLY should not be present in the response.
                 assert trAddInf.comment == null : trAddInf;
                 assert trAddInf.syncedFrom == null : trAddInf;
-                assert trAddInf.syncedTo == null : trAddInf;
                 // But the address should be, and should be non-empty. And valid Ethereum address!
                 assert (trAddInf.address != null) && EthUtils.Addresses.isValidLowercasedAddress(trAddInf.address) : trAddInf;
                 return trAddInf.address;

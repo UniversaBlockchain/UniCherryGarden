@@ -70,22 +70,21 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
             .trackedAddresses
             .getTrackedAddresses(
               payload.includeComment,
-              payload.includeSyncedFrom,
-              payload.includeSyncedTo)
-            .map(item => new Response.TrackedAddressInformation(
-              item.address,
-              // The subsequent items may be Java-nullable
-              item.comment.orNull,
-              // Converting the Option[Int] to nullable Java Integers needs some cunning
-              item.syncedFrom.map(Integer.valueOf).orNull,
-              item.syncedTo.map(Integer.valueOf).orNull)
-            )
+              payload.includeSyncedFrom)
+            .map { item =>
+              new Response.TrackedAddressInformation(
+                item.address,
+                // The subsequent items may be Java-nullable
+                item.comment.orNull,
+                // Converting the Option[Int] to nullable Java Integers needs some cunning
+                item.syncedFrom.map(Integer.valueOf).orNull
+              )
+            }
 
           val response = new GetTrackedAddresses.Response(
             results.asJava,
             payload.includeComment,
-            payload.includeSyncedFrom,
-            payload.includeSyncedTo
+            payload.includeSyncedFrom
           )
           logger.debug(s"Replying with $response")
           message.replyTo ! response

@@ -204,10 +204,9 @@ For each `blockNumberToRewind`, we:
 
 1. delete any `ucg_tx_log` records referring to any transactions referring to the block number `blockNumberToRewind`.
 2. delete any `ucg_transaction` records referring to the block number `blockNumberToRewind`.
-3. delete the `ucg_block` record `blockNumberToRewind`.
-4. set any `ucg_tracked_address.synced_to_block_number` to `blockNumberToRewind - 1` if it was equal to `blockNumberToRewind` before.
-5. set any `ucg_currency_tracked_address_progress.synced_to_block_number` to `blockNumberToRewind - 1` if it was equal to `blockNumberToRewind` before.
-6. commit the transaction.
+3. delete the `ucg_block` record with number `blockNumberToRewind`.
+4. set any `ucg_currency_tracked_address_progress.synced_to_block_number` to `blockNumberToRewind - 1` if it was equal to `blockNumberToRewind` before.
+5. commit the transaction.
 
 After the rewind it just switches to `syncBlocks`.
 

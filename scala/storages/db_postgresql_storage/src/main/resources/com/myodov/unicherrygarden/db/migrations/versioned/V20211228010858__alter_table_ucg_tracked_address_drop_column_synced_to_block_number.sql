@@ -1,3 +1,4 @@
+DROP VIEW IF EXISTS ucg_progress;
 CREATE OR REPLACE VIEW ucg_progress AS
     WITH
         overall_state AS (
@@ -20,7 +21,7 @@ CREATE OR REPLACE VIEW ucg_progress AS
         tracked_address_state AS (
             SELECT
                 MIN(synced_from_block_number) AS address_from_min, -- NOT NULL
-                MAX(synced_from_block_number) AS address_from_max  -- NOT NULL
+                MAX(synced_from_block_number) AS address_from_max -- NOT NULL
             FROM ucg_tracked_address
         ),
         currency_tracked_address_state AS (
@@ -49,3 +50,6 @@ CREATE OR REPLACE VIEW ucg_progress AS
         tracked_address_state,
         currency_tracked_address_state,
         currency_tracked_address_has_nulls;
+
+ALTER TABLE ucg_tracked_address
+    DROP COLUMN synced_to_block_number;

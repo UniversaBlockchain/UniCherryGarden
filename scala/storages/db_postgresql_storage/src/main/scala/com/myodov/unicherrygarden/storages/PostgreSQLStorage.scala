@@ -72,10 +72,7 @@ class PostgreSQLStorage(jdbcUrl: String,
           ),
           TrackedAddressesSyncStatus(
             minFrom = rs.int("address_from_min"),
-            maxFrom = rs.int("address_from_max"),
-            minTo = rs.intOpt("address_to_min"),
-            maxTo = rs.intOpt("address_to_max"),
-            toHasNulls = rs.boolean("address_to_has_nulls")
+            maxFrom = rs.int("address_from_max")
           ),
           PerCurrencyTrackedAddressesSyncStatus(
             minFrom = rs.intOpt("currency_address_from_min"),
@@ -178,14 +175,6 @@ class PostgreSQLStorage(jdbcUrl: String,
       UPDATE ucg_state
       SET synced_from_block_number = $blockNumber
       WHERE synced_from_block_number != $blockNumber
-      """.execute.apply
-    }
-
-    def setSyncedToBlockNumber(blockNumber: Long)(implicit session: DBSession) = {
-      sql"""
-      UPDATE ucg_state
-      SET synced_to_block_number = $blockNumber
-      WHERE synced_to_block_number != $blockNumber
       """.execute.apply
     }
 
@@ -337,80 +326,6 @@ class PostgreSQLStorage(jdbcUrl: String,
             upd_cta_progress.tracked_address_id = data_to_update.tracked_address_id;
         """.execute.apply
       }
-
-      // 3. Update ucg_tracked_address records;
-      //    where the syncedBlockNumber has advanced by one or was NULL.
-      {
-        sql"""
-        WITH
-            arg(block_number) AS (
-                SELECT $syncedBlockNumber
-            ),
-            actually_tracked_address_arg(address) AS (
-                SELECT unnest(ARRAY [$trackedAddresses])
-            ),
-            actually_tracked_address(id, address, synced_from_block_number, synced_to_block_number) AS (
-                SELECT
-                    ucg_tracked_address.id,
-                    ucg_tracked_address.address,
-                    ucg_tracked_address.synced_from_block_number,
-                    ucg_tracked_address.synced_to_block_number
-                FROM
-                    actually_tracked_address_arg
-                    INNER JOIN ucg_tracked_address
-                               USING (address)
-            ),
-            data_to_update (id, synced_to_block_number) AS (
-                SELECT
-                    address.id,
-                    arg.block_number AS synced_to_block_number
-                FROM
-                    arg,
-                    actually_tracked_address address
-                WHERE
-                    -- We update the record differently depending on
-                    -- whether synced_to_block_number IS NULL or not.
-                    (
-                      -- We change the NULL to_block_number to non-NULL
-                      -- only if it the current block matches the synced_from_block_number
-                      -- for this specific address.
-                      (
-                        address.synced_to_block_number IS NULL AND
-                        arg.block_number = address.synced_from_block_number
-                      ) OR
-                      -- When synced_to_block_number IS NOT NULL:
-                      -- Non-NULL to_block_number can only be incremented.
-                      (arg.block_number = synced_to_block_number + 1)
-                    )
-            )
-        UPDATE ucg_tracked_address
-        SET
-            synced_to_block_number = data_to_update.synced_to_block_number
-        FROM data_to_update
-        WHERE
-            ucg_tracked_address.id = data_to_update.id;
-        """.execute.apply
-      }
-
-      // 4. Update ucg_state finally.
-      {
-        sql"""
-        WITH
-            arg(block_number) AS (
-                SELECT $syncedBlockNumber
-            )
-        UPDATE ucg_state
-        SET
-            synced_to_block_number = arg.block_number
-        FROM arg
-        WHERE
-            -- Either this is a very first successfully synced block, then we just accept this number,..
-            (synced_to_block_number IS NULL) OR
-            -- ... or this is some future syncing iteration;
-            -- but then we can only increment the synced_to_block_number by one.
-            (arg.block_number = ucg_state.synced_to_block_number + 1);
-        """.execute.apply
-      }
     }
   }
 
@@ -454,8 +369,7 @@ class PostgreSQLStorage(jdbcUrl: String,
 
     override def getTrackedAddresses(
                                       includeComment: Boolean,
-                                      includeSyncedFrom: Boolean,
-                                      includeSyncedTo: Boolean
+                                      includeSyncedFrom: Boolean
                                     )(implicit
                                       session: DBSession = ReadOnlyAutoSession
                                     ): List[TrackedAddress] = {
@@ -463,14 +377,12 @@ class PostgreSQLStorage(jdbcUrl: String,
       SELECT
        address,
        CASE WHEN $includeComment THEN ucg_comment ELSE NULL END AS ucg_comment,
-       CASE WHEN $includeSyncedFrom THEN synced_from_block_number ELSE NULL END AS synced_from_block_number,
-       CASE WHEN $includeSyncedTo THEN synced_to_block_number ELSE NULL END AS synced_to_block_number
+       CASE WHEN $includeSyncedFrom THEN synced_from_block_number ELSE NULL END AS synced_from_block_number
       FROM ucg_tracked_address;
       """.map(rs => TrackedAddress(
         rs.string("address"),
         rs.stringOpt("ucg_comment"),
-        rs.intOpt("synced_from_block_number"),
-        rs.intOpt("synced_to_block_number")
+        rs.intOpt("synced_from_block_number")
       )).list.apply
     }
 
@@ -616,13 +528,6 @@ class PostgreSQLStorage(jdbcUrl: String,
         WHERE number >= $startBlockNumber
         """.execute.apply
         logger.debug(s"Rewound ucg_block")
-
-        sql"""
-        UPDATE ucg_tracked_address
-        SET synced_to_block_number = $startBlockNumber - 1
-        WHERE synced_to_block_number >= $startBlockNumber
-        """.execute.apply
-        logger.debug(s"Rewound ucg_tracked_address") // ucg_tracked_address.synced_to_block_number is not seriously used
 
         sql"""
         UPDATE ucg_currency_tracked_address_progress

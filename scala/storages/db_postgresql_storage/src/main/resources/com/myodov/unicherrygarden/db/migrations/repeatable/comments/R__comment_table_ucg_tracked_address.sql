@@ -9,5 +9,3 @@ COMMENT ON COLUMN ucg_tracked_address.ucg_comment IS
     'Comment on tracked address, manually entered by UniCherryGarden admins.';
 COMMENT ON COLUMN ucg_tracked_address.synced_from_block_number IS
     'First block number since which the tracked address is being synced.';
-COMMENT ON COLUMN ucg_tracked_address.synced_to_block_number IS
-    'Last block number till which the tracked address is properly synced. NULL if syncing hasn''t started yet.';

@@ -87,8 +87,7 @@ object DBStorageAPI {
      */
     def getTrackedAddresses(
                              includeComment: Boolean,
-                             includeSyncedFrom: Boolean,
-                             includeSyncedTo: Boolean
+                             includeSyncedFrom: Boolean
                            )(implicit
                              session: DBSession = ReadOnlyAutoSession
                            ): List[TrackedAddress]
@@ -200,16 +199,10 @@ object DBStorage {
 
     /** Sync status of `ucg_tracked_address` table.
      *
-     * @param minFrom    : minimum `synced_from_block_number` value among all tracked addresses.
-     * @param maxFrom    : maximum `synced_from_block_number` value among all tracked addresses.
-     * @param minTo      : minimum `synced_to_block_number` value among all tracked addresses (may be missing).
-     * @param maxTo      : maximum `synced_to_block_number` value among all tracked addresses (may be missing).
-     * @param toHasNulls : whether `synced_to_block_number` has nulls;
-     *                   i.e., for some tracked addresses, the synced_to value is missing.
+     * @param minFrom : minimum `synced_from_block_number` value among all tracked addresses.
+     * @param maxFrom : maximum `synced_from_block_number` value among all tracked addresses.
      */
-    sealed case class TrackedAddressesSyncStatus(minFrom: Int, maxFrom: Int,
-                                                 minTo: Option[Int], maxTo: Option[Int],
-                                                 toHasNulls: Boolean)
+    sealed case class TrackedAddressesSyncStatus(minFrom: Int, maxFrom: Int)
 
     /** Sync status of `ucg_currency_tracked_address_progress` table.
      *
@@ -291,8 +284,7 @@ object DBStorage {
      */
     sealed case class TrackedAddress(address: String,
                                      comment: Option[String],
-                                     syncedFrom: Option[Int],
-                                     syncedTo: Option[Int]
+                                     syncedFrom: Option[Int]
                                     )
 
   }

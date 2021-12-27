@@ -20,21 +20,18 @@ public class GetTrackedAddresses {
             implements RequestPayload {
         public final boolean includeComment;
         public final boolean includeSyncedFrom;
-        public final boolean includeSyncedTo;
 
         @JsonCreator
         public GTARequestPayload(boolean includeComment,
-                                 boolean includeSyncedFrom,
-                                 boolean includeSyncedTo) {
+                                 boolean includeSyncedFrom) {
             this.includeComment = includeComment;
             this.includeSyncedFrom = includeSyncedFrom;
-            this.includeSyncedTo = includeSyncedTo;
         }
 
         @Override
         public String toString() {
-            return String.format("GetTrackedAddresses.GTARequestPayload(%s, %s, %s)",
-                    includeComment, includeSyncedFrom, includeSyncedTo);
+            return String.format("GetTrackedAddresses.GTARequestPayload(%s, %s)",
+                    includeComment, includeSyncedFrom);
         }
     }
 
@@ -67,25 +64,20 @@ public class GetTrackedAddresses {
             @Nullable
             public final Integer syncedFrom;
 
-            @Nullable
-            public final Integer syncedTo;
-
             @JsonCreator
             public TrackedAddressInformation(@NonNull String address,
                                              @Nullable String comment,
-                                             @Nullable Integer syncedFrom,
-                                             @Nullable Integer syncedTo) {
+                                             @Nullable Integer syncedFrom) {
                 assert (address != null) && EthUtils.Addresses.isValidLowercasedAddress(address) : address;
                 this.address = address;
                 this.comment = comment;
                 this.syncedFrom = syncedFrom;
-                this.syncedTo = syncedTo;
             }
 
             @Override
             public String toString() {
-                return String.format("GetTrackedAddresses.Response.TrackedAddressInformation(%s, %s, %s, %s)",
-                        address, comment, syncedFrom, syncedTo);
+                return String.format("GetTrackedAddresses.Response.TrackedAddressInformation(%s, %s, %s)",
+                        address, comment, syncedFrom);
             }
         }
 
@@ -105,28 +97,21 @@ public class GetTrackedAddresses {
          * Copied from the request.
          */
         public final boolean includeSyncedFrom;
-        /**
-         * Whether the {@link #addresses} contain the syncedTo data for each address.
-         * Copied from the request.
-         */
-        public final boolean includeSyncedTo;
 
         @JsonCreator
         public Response(@NonNull List<TrackedAddressInformation> addresses,
                         boolean includeComment,
-                        boolean includeSyncedFrom,
-                        boolean includeSyncedTo) {
+                        boolean includeSyncedFrom) {
             assert addresses != null;
             this.addresses = addresses;
             this.includeComment = includeComment;
             this.includeSyncedFrom = includeSyncedFrom;
-            this.includeSyncedTo = includeSyncedTo;
         }
 
         @Override
         public String toString() {
-            return String.format("GetTrackedAddresses.Response(%s, incComm=%s, incSyncFrom=%s, incSyncTo=%s)",
-                    addresses, includeComment, includeSyncedFrom, includeSyncedTo);
+            return String.format("GetTrackedAddresses.Response(%s, incComm=%s, incSyncFrom=%s)",
+                    addresses, includeComment, includeSyncedFrom);
         }
     }
 }

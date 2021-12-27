@@ -63,14 +63,12 @@ public class GetTrackedAddressesCommand
      */
     public static Function<ActorRef<Result>, ConnectorActorMessage> createReplier(
             boolean includeComment,
-            boolean includeSyncedFrom,
-            boolean includeSyncedTo) {
+            boolean includeSyncedFrom) {
         return (replyTo) -> new GetTrackedAddressesCommand(
                 replyTo,
                 new GetTrackedAddresses.GTARequestPayload(
                         includeComment,
-                        includeSyncedFrom,
-                        includeSyncedTo
+                        includeSyncedFrom
                 ));
     }
 
