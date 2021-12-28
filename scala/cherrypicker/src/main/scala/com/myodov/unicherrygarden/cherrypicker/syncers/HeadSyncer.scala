@@ -7,7 +7,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import com.myodov.unicherrygarden.CherryPicker
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.dlt.EthereumBlock
-import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{EthereumNodeStatus, GoingToTailSync, HeadSyncerMessage, IterateHeadSyncer}
+import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{GoingToTailSync, HeadSyncerMessage, IterateHeadSyncer}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
 import com.myodov.unicherrygarden.storages.api.{DBStorage, DBStorageAPI}
@@ -22,17 +22,11 @@ import scala.language.postfixOps
  */
 private class HeadSyncer(dbStorage: DBStorageAPI,
                          ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
-  extends AbstractSyncer[HeadSyncerMessage, IterateHeadSyncer](dbStorage, ethereumConnector) {
-
-  /** The overall state of the syncer.
-   *
-   * Unfortunately, we cannot go fully Akka-way having the system state passed through the methods, FSM states
-   * and behaviors. If we receive some state-changing message from outside (e.g. the latest state of Ethereum node
-   * syncing process; or, for HeadSyncer, the message from TailSyncer), we need to alter the state immediately.
-   * But the FSM may be in a 10-second delay after the latest block being processed, and after it a message
-   * with the previous state will be posted by the timer. So alas, `state` has to be variable.
-   */
-  private[this] val state: HeadSyncer.State = HeadSyncer.State() // initialized with default state
+  extends AbstractSyncer[HeadSyncerMessage, HeadSyncer.State, IterateHeadSyncer](
+    dbStorage,
+    ethereumConnector,
+    state = HeadSyncer.State()
+  ) {
 
   import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages._
 
@@ -356,9 +350,8 @@ object HeadSyncer {
   val BATCH_SIZE = 100 // TODO: must be configured through application.conf
   val CATCH_UP_BRAKE_MAX_LEAD = 10000 // TODO: must be configured through application.conf
 
-  private final case class State(@volatile var ethereumNodeStatus: Option[EthereumNodeStatus] = None,
-                                 nextIterationMustCheckReorg: AtomicBoolean = new AtomicBoolean(true),
-                                 @volatile var tailSyncStatus: Option[GoingToTailSync] = None)
+  protected final case class State(nextIterationMustCheckReorg: AtomicBoolean = new AtomicBoolean(true),
+                                   @volatile var tailSyncStatus: Option[GoingToTailSync] = None)
     extends AbstractSyncer.SyncerState
 
   /** Main constructor. */

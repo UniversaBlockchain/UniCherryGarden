@@ -21,15 +21,23 @@ import scala.util.control.NonFatal
  * <li>`M` – one of [[HeadSyncerMessage]], [[TailSyncerMessage]].</li>
  * <li>`S` – one of [[HeadSyncerState]], [[TailSyncerState]].</li>
  * <li>`IS` – one of [[IterateHeadSyncer]], [[IterateTailSyncer]].</li>
- * <li></li>
  * </ul>
+ *
+ * `state` contains the overall state of the syncer.
+ * Unfortunately, we cannot go fully Akka-way having the system state passed through the methods, FSM states
+ * and behaviors. If we receive some state-changing message from outside (e.g. the latest state of Ethereum node
+ * syncing process; or, for HeadSyncer, the message from TailSyncer), we need to alter the state immediately.
+ * But the FSM may be in a 10-second delay after the latest block being processed, and after it a message
+ * with the previous state will be posted by the timer. So alas, `state` has to be variable.
  */
 abstract private class AbstractSyncer[
   M <: SyncerMessages.Message,
+  S <: AbstractSyncer.SyncerState,
   IS <: SyncerMessages.IterateSyncer[M] with M
 ]
 (protected[this] val dbStorage: DBStorageAPI,
- protected[this] val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
+ protected[this] val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
+ protected[this] val state: S)
   extends LazyLogging {
 
   /** Most important method doing some next iteration of a syncer. */
@@ -161,6 +169,8 @@ abstract private class AbstractSyncer[
 
 object AbstractSyncer {
 
-  trait SyncerState
+  trait SyncerState {
+    @volatile var ethereumNodeStatus: Option[EthereumNodeStatus] = None
+  }
 
 }
