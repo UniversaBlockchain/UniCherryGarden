@@ -4,9 +4,10 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import com.myodov.unicherrygarden.CherryPicker
 import com.myodov.unicherrygarden.api.dlt
+import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{EthereumNodeStatus, TailSyncerMessage}
 import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.SingleBlockData
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
-import com.myodov.unicherrygarden.storages.api.DBStorageAPI
+import com.myodov.unicherrygarden.storages.api.{DBStorage, DBStorageAPI}
 import com.typesafe.scalalogging.LazyLogging
 import scalikejdbc.DBSession
 
@@ -37,14 +38,40 @@ abstract private class AbstractSyncer[
   /** Construct the specific implementation of `S` generic instance. */
   def makeIterateMessage(): IS
 
-  /** Go to the next iteration ([[iterate]] state), but after a pause. */
-  def pauseThenIterate(): Behavior[M] =
+  /** Most basic sanity test for the DB data;
+   * fails if we cannot even go further and must wait for the node to continue syncing.
+   */
+  protected[this] def isNodeReachable(dbProgressData: DBStorage.Progress.ProgressData,
+                                      nodeSyncingStatus: EthereumNodeStatus): Boolean =
+    dbProgressData.blocks.to match {
+      case None =>
+        // All data is available; but there is no blocks in the DB. This actually is fully okay
+        true
+      case Some(maxBlocksNum) =>
+        // Everything is fine if our latest stored block is not newer than the latest block available
+        // to Ethereum node;
+        // false/bad otherwise
+        maxBlocksNum <= nodeSyncingStatus.currentBlock
+    }
+
+  def reiterate(): Behavior[M] = {
+    logger.debug("FSM: reiterate")
+    Behaviors.setup { context =>
+      logger.debug("Sending iterate message to self")
+      context.self ! makeIterateMessage
+      Behaviors.same
+    }
+  }
+
+  def pauseThenReiterate(): Behavior[M] = {
+    logger.debug("FSM: pauseThenReiterate")
     Behaviors.withTimers[M] { timers =>
       timers.startSingleTimer(
-        makeIterateMessage(),
+        makeIterateMessage,
         CherryPicker.BLOCK_ITERATION_PERIOD)
       Behaviors.same
     }
+  }
 
   /** Perform the regular iteration for a specific block number:
    * read the block from the Ethereum connector, store it into the DB.
@@ -56,7 +83,7 @@ abstract private class AbstractSyncer[
                                 )(implicit session: DBSession): Boolean = {
     val trackedAddresses: Set[String] = dbStorage.trackedAddresses.getJustAddresses
 
-    logger.debug(s"Processing blocks $blocksToSync with tracked addresses $trackedAddresses")
+    logger.debug(s"FSM: syncBlocks - blocks $blocksToSync with tracked addresses $trackedAddresses")
 
     // Were all of the blocks read and stored well?
     val successes: Seq[Boolean] = ethereumConnector.readBlocks(blocksToSync, trackedAddresses) match {

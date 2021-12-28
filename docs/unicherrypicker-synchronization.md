@@ -127,18 +127,20 @@ On each iteration (assuming it has received the current Ethereum syncing status 
 
 1. First, it tries to reorg check/rewind the most recent blocks; but only if
   * this is the very first iteration of HeadSyncer since the launch (because who knows, maybe we have shut down the CherryPicker right on the blocks that were reorged); or
-  * if the most recent block in `ucg_block` is within the `syncers.max_reorg` distance (see the “Settings” section!) from the `eth.syncing.highestBlock`; this is what `iterateMayCheckReorg` (see below) decides on its “may” part.
+  * if the most recent block in `ucg_block` is within the `syncers.max_reorg` distance (see the “Settings” section!) from the `eth.syncing.highestBlock`; this is what `reiterateMayCheckReorg` (see below) decides on its “may” part.
 2. Then it iterates/resync the most recent blocks needed to sync.
 
 Inner FSM states related to the iterations:
 
-* `iterateMustCheckReorg` (on first launch) → `syncBlocks`; “run iteration but must check for reorg before it”;
-* `iterateMayCheckReorg` (on subsequent launches; may go → `iterateMustCheckReorg()` state directly);
+* **`reiterate`** (common with TailSyncer);
+* **`pauseThenReiterate`** (common with TailSyncer): timer → `iterate`;
+* `reiterateMustCheckReorg` – (on first launch, and on errors) → `syncBlocks`; “run iteration but must check for reorg before it”;
+* `reiterateMayCheckReorg` – (on subsequent launches) synonim to `reiterate`;
 * `syncBlocks`: do the actual block syncing;
 * `pauseThenMustCheckReorg`;
-* `pauseThenMayCheckReorg`.
+* `pauseThenMayCheckReorg` – synonym to `pauseThenReiterate`.
 
-Any error in any iteration causes HeadSyncer to delay (for like 10 seconds) and then switch to `iterateMustCheckReorg` state; i.e. going to `pauseThenMustCheckReorg` state.
+Any error in any iteration causes HeadSyncer to delay (for like 10 seconds) and then switch to `reiterateMustCheckReorg` state; i.e. going to `pauseThenMustCheckReorg` state.
 
 #### Reorg check/rewinding
 
@@ -221,10 +223,10 @@ Interestingly, we don’t always do the actual sync, even if we can. If we recei
 
 Otherwise, we just poll the blocks from Ethereum connector, and write them to DB.
 
-After writing the blocks to the DB, we decide should we go to `pauseThenMayCheckReorg` or to `iterateMayCheckReorg`:
+After writing the blocks to the DB, we decide should we go to `pauseThenMayCheckReorg` or to `reiterateMayCheckReorg`:
 
 * If we have reached `eth.syncing.currentBlock`, we go to `pauseThenMayCheckReorg` state.
-* Otherwise we go to `iterateMayCheckReorg` state.
+* Otherwise we go to `reiterateMayCheckReorg` state.
 
 ### TailSyncer
 
@@ -232,10 +234,11 @@ This is the subsystem that syncs the older data (e.g. when some currencies or to
 
 Inner FSM states related to the iterations:
 
-* `pauseThenIterate`: timer → `iterate`;
+* **`reiterate`** (common with HeadSyncer);
+* **`pauseThenReiterate`** (common with HeadSyncer): timer → `iterate`;
+* `reiterate`: → `iterate`;
 * `iterate`: → `syncBlocks`;
 * `syncBlocks`: do the actual block syncing.
-
 
 `syncStartBlock`: among all the (currency, tracked_address) M2M records (`ucg_currency_tracked_address_progress` table), find the least value of the following two:
 
@@ -244,22 +247,22 @@ Inner FSM states related to the iterations:
 
 `syncEndBlock`: `eth.syncing.currentBlock`, but with a batch no larger than `tail_syncer.batch_size`.
 
-As with HeadSyncer, any error (including cases like `syncEndBlock` < `syncStartBlock`) would lead to `pauseThenIterate` state.
+As with HeadSyncer, any error (including cases like `syncEndBlock` < `syncStartBlock`) would lead to `pauseThenReiterate` state.
 
 After calculating `syncStartBlock` and `syncEndBlock`, we should think, should we actually perform the sync? Won’t it actually reach/overlay the next HeadSyncer iteration? Did it reach the HeadSyncer?
 
 The answer is simple:
 
-* if `syncStartBlock` = `max(ucg_block.number) + 1` (that is, if all `ucg_currency_tracked_address_progress` records exist and have already reached the same end), we don’t do anything, it’s HeadSyncer task to sync further; → `pauseThenIterate`.
+* if `syncStartBlock` = `max(ucg_block.number) + 1` (that is, if all `ucg_currency_tracked_address_progress` records exist and have already reached the same end), we don’t do anything, it’s HeadSyncer task to sync further; → `pauseThenReiterate`.
 * otherwise → `syncBlocks`.
 
-**syncBlocks**:
+#### `syncBlocks`
 
 First, we send a message to our mate HeadSyncer to inform it about our `syncStartBlock` and `syncEndBlock` –what we are going to do. So the HeadSyncer can brake down to allow us to catch up if needed (see the `syncers.head_syncer.catch_up_brake_max_lead` setting).
 
 Then we sync these blocks.
 
-After it we switch to either `pauseThenIterate` or `iterate` state:
+After it we switch to either `pauseThenReiterate` or `iterate` state:
 
-* if `syncEndBlock` = `eth.syncing.currentBlock`, we’ve fast-synced as far as we can, not need to hurry anymore. → `pauseThenIterate`;
+* if `syncEndBlock` = `eth.syncing.currentBlock`, we’ve fast-synced as far as we can, not need to hurry anymore. → `pauseThenReiterate`;
 * otherwise, we need to fast-sync further: → `iterate`.

@@ -36,9 +36,9 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
 
   import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages._
 
-  def launch(): Behavior[HeadSyncerMessage] = {
+  final def launch(): Behavior[HeadSyncerMessage] = {
     Behaviors.setup { context =>
-      logger.debug(s"Syncer mainloop: ${this.getClass.getSimpleName}")
+      logger.debug(s"Launching syncer: ${this.getClass.getSimpleName}")
 
       // Start the iterations
       context.self ! makeIterateMessage
@@ -59,45 +59,32 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
     }
   }
 
-  override def makeIterateMessage(): IterateHeadSyncer = IterateHeadSyncer()
+  @inline override final def makeIterateMessage(): IterateHeadSyncer = IterateHeadSyncer()
 
-  def iterateMustCheckReorg(): Behavior[HeadSyncerMessage] = {
-    logger.debug("iterateMustCheckReorg")
+  @inline final def reiterateMustCheckReorg(): Behavior[HeadSyncerMessage] = {
+    logger.debug("FSM: reiterateMustCheckReorg")
     state.nextIterationMustCheckReorg.set(true)
-    iterateMayCheckReorg()
+    reiterateMayCheckReorg
   }
 
-  def iterateMayCheckReorg(): Behavior[HeadSyncerMessage] = {
-    logger.debug("iterateMayCheckReorg")
-    Behaviors.setup { context =>
-      logger.debug("Sending iterate message to self")
-      context.self ! makeIterateMessage
-      Behaviors.same
-    }
+  @inline final def reiterateMayCheckReorg(): Behavior[HeadSyncerMessage] = {
+    logger.debug("FSM: reiterateMayCheckReorg")
+    reiterate
   }
 
-  def pauseThenMustCheckReorg(): Behavior[HeadSyncerMessage] = {
-    state.synchronized {
-      state.nextIterationMustCheckReorg.set(true)
-    }
-    Behaviors.withTimers[HeadSyncerMessage] { timers =>
-      timers.startSingleTimer(
-        makeIterateMessage,
-        CherryPicker.BLOCK_ITERATION_PERIOD)
-      Behaviors.same
-    }
+  @inline final def pauseThenMustCheckReorg(): Behavior[HeadSyncerMessage] = {
+    logger.debug("FSM: pauseThenMustCheckReorg")
+    state.nextIterationMustCheckReorg.set(true)
+    pauseThenMayCheckReorg
   }
 
-  def pauseThenMayCheckReorg(): Behavior[HeadSyncerMessage] =
-    Behaviors.withTimers[HeadSyncerMessage] { timers =>
-      timers.startSingleTimer(
-        makeIterateMessage,
-        CherryPicker.BLOCK_ITERATION_PERIOD)
-      Behaviors.same
-    }
+  @inline final def pauseThenMayCheckReorg(): Behavior[HeadSyncerMessage] = {
+    logger.debug("FSM: pauseThenMayCheckReorg")
+    pauseThenReiterate
+  }
 
-  override def iterate(): Behavior[HeadSyncerMessage] = {
-    logger.debug(s"Running an iteration with $state")
+  override final def iterate(): Behavior[HeadSyncerMessage] = {
+    logger.debug(s"FSM: iterate - running an iteration with $state")
     // Since this moment, we may want to use DB in a single atomic DB transaction;
     // even though this will involve querying the Ethereum node, maybe even multiple times.
     DB localTx { implicit session =>
@@ -121,11 +108,13 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
             if !isNodeReachable(overallProgress, nodeSyncingStatus) =>
             // Reorg/rewind, phase 1/4: “is node reachable” – does the overall data sanity allows us to proceed?
             // No, sanity test failed
+            logger.error(s"Ethereum node is probably unavailable: $overallProgress, $nodeSyncingStatus")
             Some(pauseThenMustCheckReorg)
           case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncingStatus: EthereumNodeStatus)) =>
             // Sanity test passed, node is reachable. Only here we can proceed.
 
-            logger.debug(s"Node is reachable: $overallProgress, $nodeSyncingStatus")
+            logger.debug(s"Ethereum node is reachable: $overallProgress, $nodeSyncingStatus")
+
             // At this stage we either do or do not do the reorg check/rewind operations.
             // Any of the internal reorg/rewind operations may already decide to provide a Behavior
             // (i.e. maybe go to the next iteration).
@@ -167,7 +156,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
                   Some(pauseThenMustCheckReorg)
               }
             }
-        } // reorgRewindProvidedBehavior:
+        } // reorgRewindProvidedBehavior
 
       // Inside `reorgRewindProvidedBehavior`, we already have a suggested behavior to return... maybe.
       // If we don’t have it, we just go on with the regular `headSync`.
@@ -197,27 +186,11 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
     }
   }
 
-  /** Most basic sanity test for the DB data;
-   * fails if we cannot even go further and must wait for the node to continue syncing.
-   */
-  private[this] def isNodeReachable(dbProgressData: DBStorage.Progress.ProgressData,
-                                    nodeSyncingStatus: EthereumNodeStatus): Boolean =
-    dbProgressData.blocks.to match {
-      case None =>
-        // All data is available; but there is no blocks in the DB. This actually is fully okay
-        true
-      case Some(maxBlocksNum) =>
-        // Everything is fine if our latest stored block is not newer than the latest block available
-        // to Ethereum node;
-        // false/bad otherwise
-        maxBlocksNum <= nodeSyncingStatus.currentBlock
-    }
-
   /** Check if we even need to check the blockchain for reorganization. */
-  private[this] def reorgCheckCheck(
-                                     dbProgressData: DBStorage.Progress.ProgressData,
-                                     nodeSyncingStatus: EthereumNodeStatus
-                                   )(implicit session: DBSession): Boolean = {
+  private[this] final def reorgCheckCheck(
+                                           dbProgressData: DBStorage.Progress.ProgressData,
+                                           nodeSyncingStatus: EthereumNodeStatus
+                                         )(implicit session: DBSession): Boolean = {
     // Atomically get the value and unset it
     if (state.nextIterationMustCheckReorg.getAndSet(false)) {
       logger.debug("On previous iteration, the checkReorg was forced, so we must check for reorg")
@@ -247,7 +220,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
    *         if the reorg happened, and this BlockRange was affected.</li>
    *         </ul>
    */
-  private[this] def reorgCheck()(implicit session: DBSession): Either[Option[dlt.EthereumBlock.BlockNumberRange], String] = {
+  private[this] final def reorgCheck()(implicit session: DBSession): Either[Option[dlt.EthereumBlock.BlockNumberRange], String] = {
     val maxReorg = CherryPicker.MAX_REORG
     val blockHashesInDb: SortedMap[Int, String] = dbStorage.blocks.getLatestHashes(maxReorg)
     logger.debug(s"We have ${blockHashesInDb.size} blocks stored in DB, checking for reorg sized $maxReorg")
@@ -292,9 +265,9 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
    *
    * @return Whether the rewind executed successfully. `false` means some error occured.
    */
-  private[this] def reorgRewind(
-                                 badBlockRange: dlt.EthereumBlock.BlockNumberRange
-                               )(implicit session: DBSession): Boolean = {
+  private[this] final def reorgRewind(
+                                       badBlockRange: dlt.EthereumBlock.BlockNumberRange
+                                     )(implicit session: DBSession): Boolean = {
     logger.debug(s"Rewinding the blocks $badBlockRange")
     require(
       (badBlockRange.size <= CherryPicker.MAX_REORG) && (badBlockRange.head <= badBlockRange.end),
@@ -303,10 +276,10 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
   }
 
   /** Do the actual head sync syncing phase. */
-  private[this] def headSync(
-                              progress: Progress.ProgressData,
-                              nodeSyncingStatus: EthereumNodeStatus
-                            )(implicit session: DBSession): Behavior[HeadSyncerMessage] = {
+  private[this] final def headSync(
+                                    progress: Progress.ProgressData,
+                                    nodeSyncingStatus: EthereumNodeStatus
+                                  )(implicit session: DBSession): Behavior[HeadSyncerMessage] = {
     logger.debug(s"Now we are ready to do headSync for progress $progress, node $nodeSyncingStatus")
     lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
 
@@ -366,7 +339,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
             pauseThenMayCheckReorg
           } else {
             logger.debug(s"HeadSyncing success $goingToHeadSync, not reached end")
-            iterateMayCheckReorg // go to the next round instantly
+            reiterateMayCheckReorg // go to the next round instantly
           }
         } else {
           logger.error(s"HeadSyncing failure for $goingToHeadSync")
