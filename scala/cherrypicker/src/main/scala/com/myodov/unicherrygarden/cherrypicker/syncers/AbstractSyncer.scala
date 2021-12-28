@@ -4,9 +4,10 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import com.myodov.unicherrygarden.CherryPicker
 import com.myodov.unicherrygarden.api.dlt
-import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{EthereumNodeStatus, TailSyncerMessage}
+import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{EthereumNodeStatus, HeadSyncerMessage, TailSyncerMessage}
 import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.SingleBlockData
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
+import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
 import com.myodov.unicherrygarden.storages.api.{DBStorage, DBStorageAPI}
 import com.typesafe.scalalogging.LazyLogging
 import scalikejdbc.DBSession
@@ -62,6 +63,41 @@ abstract private class AbstractSyncer[
         maxBlocksNum <= nodeSyncingStatus.currentBlock
     }
 
+  /** Validate the syncing progress data/Ethereum node syncing state;
+   * and execute the `code` if they are valid, assuming it (maybe) returns some `Behavior`.
+   *
+   * `RES` is the expected return type from the function; may be `Option[Behavior]`, `[Behavior]` or something similar.
+   */
+  protected[this] def withValidatedProgressAndSyncingState[RES](
+                                                                 optProgress: Option[Progress.ProgressData],
+                                                                 optNodeSyncingStatus: Option[EthereumNodeStatus],
+                                                                 onError: RES
+                                                               )
+                                                               (
+                                                                 code: (Progress.ProgressData, EthereumNodeStatus) => RES
+                                                               )
+                                                               (implicit session: DBSession): RES = {
+    (optProgress, optNodeSyncingStatus) match {
+      case (None, _) =>
+        // we could not even get the DB progress – go to the next round
+        logger.error("Some unexpected error when reading the overall progress from the DB")
+        onError
+      case (_, None) =>
+        // we haven’t received the syncing state from the node
+        logger.error("Could not read the syncing status from Ethereum node")
+        onError
+      case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncingStatus: EthereumNodeStatus))
+        if !isNodeReachable(overallProgress, nodeSyncingStatus) =>
+        // Sanity test. Does the overall data sanity allows us to proceed?
+        // In HeadSyncer, this is Reorg/rewind, phase 1/4: “is node reachable”.
+        // In TailSyncer, this is just a sanity test.
+        logger.error(s"Ethereum node is probably unavailable: $overallProgress, $nodeSyncingStatus")
+        onError
+      case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncingStatus: EthereumNodeStatus)) =>
+        code(overallProgress, nodeSyncingStatus)
+    }
+  }
+
   def reiterate(): Behavior[M] = {
     logger.debug("FSM: reiterate")
     Behaviors.setup { context =>
@@ -80,6 +116,9 @@ abstract private class AbstractSyncer[
       Behaviors.same
     }
   }
+
+  /** The pause-then-reiterate method that must be implemented in each syncer specifically. */
+  def pauseThenReiterateOnError(): Behavior[M]
 
   /** Perform the regular iteration for a specific block number:
    * read the block from the Ethereum connector, store it into the DB.

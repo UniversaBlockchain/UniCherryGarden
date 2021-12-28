@@ -72,10 +72,11 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
     pauseThenMayCheckReorg
   }
 
-  @inline final def pauseThenMayCheckReorg(): Behavior[HeadSyncerMessage] = {
-    logger.debug("FSM: pauseThenMayCheckReorg")
+  @inline final def pauseThenMayCheckReorg(): Behavior[HeadSyncerMessage] =
     pauseThenReiterate
-  }
+
+  @inline override final def pauseThenReiterateOnError(): Behavior[HeadSyncerMessage] =
+    pauseThenMustCheckReorg
 
   override final def iterate(): Behavior[HeadSyncerMessage] = {
     logger.debug(s"FSM: iterate - running an iteration with $state")
@@ -85,96 +86,76 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
       // For more details on reorg handling phases, read the [[/docs/unicherrypicker-synchronization.md]] document.
 
       // Do the reorg-rewind phase; see if it already finalizes the behavior to return
-      val reorgRewindProvidedBehavior: Option[Behavior[HeadSyncerMessage]] =
-      // We could put the `dbStorage.progress.getProgress` and `state.ethereumNodeStatus` checks deeper
-      // into `isNodeReachable` method; but let’s enjoy the convenience of
-      // having the Progress.ProgressData and EthereumNodeStatus safely unwrapped from Options for simpler future usage
-        (dbStorage.progress.getProgress, state.ethereumNodeStatus) match {
-          case (None, _) =>
-            // we could not even get the DB progress – go to the next round
-            logger.error("Some unexpected error when reading the overall progress from the DB")
-            Some(pauseThenMustCheckReorg)
-          case (_, None) =>
-            // we haven’t received the syncing state from the node
-            logger.error("Could not read the syncing status from Ethereum node")
-            Some(pauseThenMustCheckReorg)
-          case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncingStatus: EthereumNodeStatus))
-            if !isNodeReachable(overallProgress, nodeSyncingStatus) =>
-            // Reorg/rewind, phase 1/4: “is node reachable” – does the overall data sanity allows us to proceed?
-            // No, sanity test failed
-            logger.error(s"Ethereum node is probably unavailable: $overallProgress, $nodeSyncingStatus")
-            Some(pauseThenMustCheckReorg)
-          case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncingStatus: EthereumNodeStatus)) =>
-            // Sanity test passed, node is reachable. Only here we can proceed.
+      val reorgRewindProvidedBehaviorOpt = withValidatedProgressAndSyncingState[Option[Behavior[HeadSyncerMessage]]](
+        dbStorage.progress.getProgress,
+        state.ethereumNodeStatus,
+        onError = Some(pauseThenReiterateOnError)
+      ) { (overallProgress, nodeSyncingStatus) =>
+        // Sanity test passed in withValidatedProgressAndSyncingState, node is reachable.
+        // Only now we can proceed.
+        logger.debug(s"Ethereum node is reachable: $overallProgress, $nodeSyncingStatus")
 
-            logger.debug(s"Ethereum node is reachable: $overallProgress, $nodeSyncingStatus")
+        // At this stage we either do or do not do the reorg check/rewind operations.
+        // Any of the internal reorg/rewind operations may already decide to provide a Behavior
+        // (i.e. maybe go to the next iteration).
+        // If they provide some final behavior, let’s use it; otherwise, let’s move on to the regular sync
+        // Reorg/rewind, phase 2/4: “reorg check check” – should we bother checking for reorg?
+        val isReorgCheckNeeded = reorgCheckCheck(overallProgress, nodeSyncingStatus)
+        logger.debug(s"Do we need to check for reorg? $isReorgCheckNeeded")
 
-            // At this stage we either do or do not do the reorg check/rewind operations.
-            // Any of the internal reorg/rewind operations may already decide to provide a Behavior
-            // (i.e. maybe go to the next iteration).
-            // If they provide some final behavior, let’s use it; otherwise, let’s move on to the regular sync
-            // Reorg/rewind, phase 2/4: “reorg check check” – should we bother checking for reorg?
-            val isReorgCheckNeeded = reorgCheckCheck(overallProgress, nodeSyncingStatus)
-            logger.debug(s"Do we need to check for reorg? $isReorgCheckNeeded")
-
-            if (!isReorgCheckNeeded) {
-              // No suggested behavior to return; let’s go proceed with the headSync
+        if (!isReorgCheckNeeded) {
+          // No suggested behavior to return; let’s go proceed with the headSync
+          None
+        } else {
+          // Reorg/rewind, phase 3/4: “reorg check” – did reorg happened?
+          reorgCheck match {
+            case Left(None) =>
+              logger.debug("No reorg needed")
+              // outer Option is None, meaning we can proceed with syncing
+              // (we don’t have a finished Behavior)
               None
-            } else {
-              // Reorg/rewind, phase 3/4: “reorg check” – did reorg happened?
-              reorgCheck match {
-                case Left(None) =>
-                  logger.debug("No reorg needed")
-                  // outer Option is None, meaning we can proceed with syncing
-                  // (we don’t have a finished Behavior)
-                  None
-                case Left(Some(invalidRange)) =>
-                  logger.debug(s"Need reorg rewind for $invalidRange")
-                  // Reorg/rewind, phase 4/4: “rewind”
-                  if (reorgRewind(invalidRange)) {
-                    logger.debug(s"We've successfully rewound $invalidRange; let’s go sync")
-                    // We’ve just completed rewind of some blocks, maybe like 100.
-                    // It seems obvious to go to `pauseThenMustCheckReorg()` phase,..
-                    // ... but if something broke completely, it may cause rewinding 100 more blocks,
-                    // and 100 more, and so on. We end up wiping all the database – and that’s definitely
-                    // not what we want.
-                    // So right after the rewind, we try to do actual `headSync`;
-                    // and for this, we return None (as “no Behavior suggested”) here.
-                    None
-                  } else {
-                    logger.error(s"Some error occured in rewinding $invalidRange; pause and retry")
-                    Some(pauseThenMustCheckReorg)
-                  }
-                case Right(error) =>
-                  logger.error(s"During reorgCheck, there was a problem: $error")
-                  Some(pauseThenMustCheckReorg)
+            case Left(Some(invalidRange)) =>
+              logger.debug(s"Need reorg rewind for $invalidRange")
+              // Reorg/rewind, phase 4/4: “rewind”
+              if (reorgRewind(invalidRange)) {
+                logger.debug(s"We've successfully rewound $invalidRange; let’s go sync")
+                // We’ve just completed rewind of some blocks, maybe like 100.
+                // It seems obvious to go to `pauseThenReiterateOnError()` phase,..
+                // ... but if something broke completely, it may cause rewinding 100 more blocks,
+                // and 100 more, and so on. We end up wiping all the database – and that’s definitely
+                // not what we want.
+                // So right after the rewind, we try to do actual `headSync`;
+                // and for this, we return None (as “no Behavior suggested”) here.
+                None
+              } else {
+                logger.error(s"Some error occured in rewinding $invalidRange; pause and retry")
+                Some(pauseThenReiterateOnError)
               }
-            }
-        } // reorgRewindProvidedBehavior
+            case Right(error) =>
+              logger.error(s"During reorgCheck, there was a problem: $error")
+              Some(pauseThenReiterateOnError)
+          }
+        }
+      } // reorgRewindProvidedBehaviorOpt
 
-      // Inside `reorgRewindProvidedBehavior`, we already have a suggested behavior to return... maybe.
+      // Inside `reorgRewindProvidedBehaviorOpt`, we already have a suggested behavior to return... maybe.
       // If we don’t have it, we just go on with the regular `headSync`.
       // Note that at this point `dbStorage.progress.getProgress` can be inactual (if rewind happened),
       // we cannot trust it and may need to re-read it.
-      reorgRewindProvidedBehavior match {
-        case Some(behavior) =>
-          behavior
+      reorgRewindProvidedBehaviorOpt match {
+        case Some(rrwBehavior) =>
+          rrwBehavior
         case None =>
           // Reorg/rewind thinks it is okay for us to move on with actual head-syncing;
           // so let’s head-sync what we can.
           // But we should do it after rereading `dbStorage.progress.getProgress`
           // (and `state.ethereumNodeStatus`, just to be sure)!
-          (dbStorage.progress.getProgress, state.ethereumNodeStatus) match {
-            case (None, _) =>
-              // We could not even get the DB progress – but it worked before!
-              logger.error("Some unexpected error when re-reading the overall progress from the DB (it worked before!)")
-              pauseThenMustCheckReorg
-            case (_, None) =>
-              // We haven’t received the syncing state from the node – but it worked before!
-              logger.error("Could not re-read the syncing status from Ethereum node (it worked before!)")
-              pauseThenMustCheckReorg
-            case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncingStatus: EthereumNodeStatus)) =>
-              headSync(overallProgress, nodeSyncingStatus)
+          withValidatedProgressAndSyncingState[Behavior[HeadSyncerMessage]](
+            dbStorage.progress.getProgress,
+            state.ethereumNodeStatus,
+            onError = pauseThenReiterateOnError
+          ) { (overallProgress, nodeSyncingStatus) =>
+            headSync(overallProgress, nodeSyncingStatus)
           }
       }
     }
@@ -279,18 +260,18 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
 
     if (progress.overall.from.isEmpty) {
       logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!")
-      pauseThenMustCheckReorg
+      pauseThenReiterateOnError
       // Since this point we can use overallFrom
     } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
       logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
         s"is ${progress.currencies.minSyncFrom.get}; " +
         s"it should not be lower than $overallFrom!")
-      pauseThenMustCheckReorg
+      pauseThenReiterateOnError
     } else if (progress.trackedAddresses.minFrom < overallFrom) {
       logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
         s"is ${progress.trackedAddresses.minFrom}; " +
         s"it should not be lower than $overallFrom!")
-      pauseThenMustCheckReorg
+      pauseThenReiterateOnError
       // ------------------------------------------------------------------------------
       // Since this point go all the options where the iteration should actually happen
       // ------------------------------------------------------------------------------
@@ -337,7 +318,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
           }
         } else {
           logger.error(s"HeadSyncing failure for $goingToHeadSync")
-          pauseThenMustCheckReorg
+          pauseThenReiterateOnError
         }
       }
     }

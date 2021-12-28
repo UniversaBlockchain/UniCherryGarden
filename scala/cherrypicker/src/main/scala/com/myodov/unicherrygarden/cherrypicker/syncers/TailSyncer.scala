@@ -4,7 +4,6 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{IterateTailSyncer, TailSyncerMessage}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
-import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import scalikejdbc.DB
 
@@ -32,7 +31,6 @@ private class TailSyncer(dbStorage: DBStorageAPI,
 
     // Then go to the mainLoop, with the initial state
     Behaviors.setup[TailSyncerMessage] { context =>
-
       // Start the iterations
       context.self ! makeIterateMessage
 
@@ -50,31 +48,23 @@ private class TailSyncer(dbStorage: DBStorageAPI,
 
   @inline override final def makeIterateMessage(): IterateTailSyncer = IterateTailSyncer()
 
+  @inline override final def pauseThenReiterateOnError(): Behavior[TailSyncerMessage] =
+    pauseThenReiterate
+
   override final def iterate(): Behavior[TailSyncerMessage] = {
     logger.debug(s"FSM: iterate - running an iteration with $state")
     // Since this moment, we may want to use DB in a single atomic DB transaction;
     // even though this will involve querying the Ethereum node, maybe even multiple times.
     DB localTx { implicit session =>
-      (dbStorage.progress.getProgress, state.ethereumNodeStatus) match {
-        case (None, _) =>
-          // we could not even get the DB progress – go to the next round
-          logger.error("Some unexpected error when reading the overall progress from the DB")
-          pauseThenReiterate
-        case (_, None) =>
-          // we haven’t received the syncing state from the node
-          logger.error("Could not read the syncing status from Ethereum node")
-          pauseThenReiterate
-        case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncingStatus: EthereumNodeStatus))
-          if !isNodeReachable(overallProgress, nodeSyncingStatus) =>
-          // Does the overall data sanity allows us to proceed?
-          // No, sanity test failed
-          logger.error(s"Ethereum node is probably unavailable: $overallProgress, $nodeSyncingStatus")
-          pauseThenReiterate
-        case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncingStatus: EthereumNodeStatus)) =>
-          // Sanity test passed, node is reachable. Only here we can proceed.
-          logger.debug(s"Ethereum node is reachable: $overallProgress, $nodeSyncingStatus")
+      withValidatedProgressAndSyncingState[Behavior[TailSyncerMessage]](
+        dbStorage.progress.getProgress,
+        state.ethereumNodeStatus,
+        onError = pauseThenReiterateOnError
+      ) { (overallProgress, nodeSyncingStatus) =>
+        // Sanity test passed, node is reachable. Only here we can proceed.
+        logger.debug(s"Ethereum node is reachable: $overallProgress, $nodeSyncingStatus")
 
-          Behaviors.empty // TODO!
+        Behaviors.empty // TODO!
       }
     }
   }
