@@ -98,6 +98,7 @@ class PostgreSQLStorage(jdbcUrl: String,
                     ON currency.id = cta_progress.currency_id AND
                        address.id = cta_progress.tracked_address_id
       WHERE
+          -- If no cta_progress record at all
           cta_progress.id IS NULL
       ORDER BY least_sync_from_block_number
       LIMIT 1;
@@ -119,6 +120,7 @@ class PostgreSQLStorage(jdbcUrl: String,
                     ON currency.id = cta_progress.currency_id AND
                        address.id = cta_progress.tracked_address_id
       WHERE
+          -- If no cta_progress record at all; or maybe even `synced_to_block_number` IS NULL
           cta_progress.synced_to_block_number IS NULL
       ORDER BY least_sync_from_block_number
       LIMIT 1;

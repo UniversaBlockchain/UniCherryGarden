@@ -7,7 +7,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import com.myodov.unicherrygarden.CherryPicker
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.dlt.EthereumBlock
-import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{GoingToTailSync, HeadSyncerMessage, IterateHeadSyncer}
+import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{HeadSyncerMessage, IterateHeadSyncer}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
 import com.myodov.unicherrygarden.storages.api.{DBStorage, DBStorageAPI}
@@ -45,9 +45,9 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
           logger.debug(s"HeadSyncer received Ethereum node syncing status: $message")
           state.ethereumNodeStatus = Some(message)
           Behaviors.same
-        case message@GoingToTailSync(range) =>
-          logger.debug(s"TailSyncer notified us it is going to sync $range.")
-          state.tailSyncStatus = Some(message);
+        case TailSyncing(optRange) =>
+          logger.debug(s"TailSyncer notified us it is going to sync $optRange")
+          state.tailSyncStatus = optRange
           Behaviors.same
       }
     }
@@ -256,70 +256,53 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
                                     nodeSyncingStatus: EthereumNodeStatus
                                   )(implicit session: DBSession): Behavior[HeadSyncerMessage] = {
     logger.debug(s"Now we are ready to do headSync for progress $progress, node $nodeSyncingStatus")
-    lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
+    // headSync is called from within `withValidatedProgressAndSyncingState`, so we can rely upon
+    // overall.from being non-empty
+    val overallFrom = progress.overall.from.get
 
-    if (progress.overall.from.isEmpty) {
-      logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!")
-      pauseThenReiterateOnError
-      // Since this point we can use overallFrom
-    } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
-      logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
-        s"is ${progress.currencies.minSyncFrom.get}; " +
-        s"it should not be lower than $overallFrom!")
-      pauseThenReiterateOnError
-    } else if (progress.trackedAddresses.minFrom < overallFrom) {
-      logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
-        s"is ${progress.trackedAddresses.minFrom}; " +
-        s"it should not be lower than $overallFrom!")
-      pauseThenReiterateOnError
-      // ------------------------------------------------------------------------------
-      // Since this point go all the options where the iteration should actually happen
-      // ------------------------------------------------------------------------------
+    val syncStartBlock = progress.blocks.to match { // do we have blocks stored? what is maximum stored one?
+      case None =>
+        logger.info(s"We have no blocks stored; starting from the very first block ($overallFrom)...")
+        overallFrom
+      case Some(maxStoredBlock) =>
+        logger.info(s"We have some blocks stored (${progress.blocks}); syncing from ${maxStoredBlock + 1}")
+        maxStoredBlock + 1
+    }
+    val syncEndBlock = Math.min(syncStartBlock + HeadSyncer.BATCH_SIZE, nodeSyncingStatus.currentBlock)
+
+    val goingToHeadSync: EthereumBlock.BlockNumberRange = syncStartBlock to syncEndBlock
+
+    val tailSyncStatus: Option[dlt.EthereumBlock.BlockNumberRange] = state.tailSyncStatus
+
+    // We are ready to headsync; but maybe we want to brake, to let the tail syncer to catch up
+    val shouldCatchUpBrake: Boolean = tailSyncStatus match {
+      case None =>
+        // Haven’t received anything from TailSyncer, so don’t brake for it
+        false
+      case Some(tailSyncing) =>
+        // We brake if the end of tail syncing operation is close to begin of head sync
+        tailSyncing.end >= goingToHeadSync.head - HeadSyncer.CATCH_UP_BRAKE_MAX_LEAD
+    }
+
+    if (shouldCatchUpBrake) {
+      logger.info(s"Was going to HeadSync $goingToHeadSync; but TailSyncer is close ($tailSyncStatus), so braking")
+      pauseThenMayCheckReorg
     } else {
-      val syncStartBlock = progress.blocks.to match { // do we have blocks stored? what is maximum stored one?
-        case None =>
-          logger.info(s"We have no blocks stored; starting from the very first block ($overallFrom)...")
-          overallFrom
-        case Some(maxStoredBlock) =>
-          logger.info(s"We have some blocks stored (${progress.blocks}); syncing from ${maxStoredBlock + 1}")
-          maxStoredBlock + 1
-      }
-      val syncEndBlock = Math.min(syncStartBlock + HeadSyncer.BATCH_SIZE, nodeSyncingStatus.currentBlock)
+      logger.debug(s"Ready to HeadSync $goingToHeadSync")
+      if (syncBlocks(goingToHeadSync)) {
+        // HeadSync completed successfully. Should we pause, or instantly go to the next round?
 
-      val goingToHeadSync: EthereumBlock.BlockNumberRange = syncStartBlock to syncEndBlock
-
-      val tailSyncStatus: Option[GoingToTailSync] = state.tailSyncStatus
-
-      // We are ready to headsync; but maybe we want to brake, to let the tail syncer to catch up
-      val shouldCatchUpBrake: Boolean = tailSyncStatus match {
-        case None =>
-          // Haven’t received anything from TailSyncer, so don’t brake for it
-          false
-        case Some(GoingToTailSync(goingToTailSync)) =>
-          // We brake if the end of tail sync plan is close to begin of head sync
-          goingToTailSync.end >= goingToHeadSync.head - HeadSyncer.CATCH_UP_BRAKE_MAX_LEAD
-      }
-
-      if (shouldCatchUpBrake) {
-        logger.info(s"Was going to HeadSync $goingToHeadSync; but TailSyncer is close ($tailSyncStatus), so braking")
-        pauseThenMayCheckReorg
-      } else {
-        logger.debug(s"Ready to HeadSync $goingToHeadSync")
-        if (syncBlocks(goingToHeadSync)) {
-          // HeadSync completed successfully. Should we pause, or instantly go to the next round?
-
-          dbStorage.state.setLastHeartbeatAt
-          if (goingToHeadSync.end >= nodeSyncingStatus.currentBlock) { // should be “==” rather than “>=”, but just to be safe
-            logger.debug(s"HeadSyncing success $goingToHeadSync, reached end")
-            pauseThenMayCheckReorg
-          } else {
-            logger.debug(s"HeadSyncing success $goingToHeadSync, not reached end")
-            reiterateMayCheckReorg // go to the next round instantly
-          }
+        dbStorage.state.setLastHeartbeatAt
+        if (goingToHeadSync.end >= nodeSyncingStatus.currentBlock) { // should be “==” rather than “>=”, but just to be safe
+          logger.debug(s"HeadSyncing success $goingToHeadSync, reached end")
+          pauseThenMayCheckReorg
         } else {
-          logger.error(s"HeadSyncing failure for $goingToHeadSync")
-          pauseThenReiterateOnError
+          logger.debug(s"HeadSyncing success $goingToHeadSync, not reached end")
+          reiterateMayCheckReorg // go to the next round instantly
         }
+      } else {
+        logger.error(s"HeadSyncing failure for $goingToHeadSync")
+        pauseThenReiterateOnError
       }
     }
   }
@@ -332,7 +315,7 @@ object HeadSyncer {
   val CATCH_UP_BRAKE_MAX_LEAD = 10000 // TODO: must be configured through application.conf
 
   protected final case class State(nextIterationMustCheckReorg: AtomicBoolean = new AtomicBoolean(true),
-                                   @volatile var tailSyncStatus: Option[GoingToTailSync] = None)
+                                   @volatile var tailSyncStatus: Option[dlt.EthereumBlock.BlockNumberRange] = None)
     extends AbstractSyncer.SyncerState
 
   /** Main constructor. */

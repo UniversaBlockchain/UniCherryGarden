@@ -27,7 +27,9 @@ object SyncerMessages {
   final case class IterateTailSyncer()
     extends TailSyncerMessage with IterateSyncer[TailSyncerMessage]
 
-  /** The message from TailSyncer to HeadSyncer, notifying about what range HeadSyncer is going to sync. */
-  final case class GoingToTailSync(range: dlt.EthereumBlock.BlockNumberRange) extends HeadSyncerMessage
+  /** The message from TailSyncer to HeadSyncer, notifying about what range HeadSyncer is tail syncing.
+   * If `Option` is `None`, it means TailSyncer is not going to sync anything.
+   */
+  final case class TailSyncing(range: Option[dlt.EthereumBlock.BlockNumberRange]) extends HeadSyncerMessage
 
 }

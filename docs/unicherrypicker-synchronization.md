@@ -237,8 +237,8 @@ Inner FSM states related to the iterations:
 * **`reiterate`** (common with HeadSyncer);
 * **`pauseThenReiterate`** (common with HeadSyncer): timer → `iterate`;
 * `reiterate`: → `iterate`;
-* `iterate`: → `syncBlocks`;
-* `syncBlocks`: do the actual block syncing.
+* `iterate`: → `headSync`;
+* `headSync`: do the actual block syncing.
 
 `syncStartBlock`: among all the (currency, tracked_address) M2M records (`ucg_currency_tracked_address_progress` table), find the least value of the following two:
 
@@ -254,9 +254,9 @@ After calculating `syncStartBlock` and `syncEndBlock`, we should think, should w
 The answer is simple:
 
 * if `syncStartBlock` = `max(ucg_block.number) + 1` (that is, if all `ucg_currency_tracked_address_progress` records exist and have already reached the same end), we don’t do anything, it’s HeadSyncer task to sync further; → `pauseThenReiterate`.
-* otherwise → `syncBlocks`.
+* otherwise → `tailSync` – do the actual block syncing.
 
-#### `syncBlocks`
+#### Sync blocks
 
 First, we send a message to our mate HeadSyncer to inform it about our `syncStartBlock` and `syncEndBlock` –what we are going to do. So the HeadSyncer can brake down to allow us to catch up if needed (see the `syncers.head_syncer.catch_up_brake_max_lead` setting).
 

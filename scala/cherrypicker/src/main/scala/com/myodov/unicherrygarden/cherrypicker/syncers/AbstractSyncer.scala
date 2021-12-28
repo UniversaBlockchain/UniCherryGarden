@@ -67,6 +67,9 @@ abstract private class AbstractSyncer[
    * and execute the `code` if they are valid, assuming it (maybe) returns some `Behavior`.
    *
    * `RES` is the expected return type from the function; may be `Option[Behavior]`, `[Behavior]` or something similar.
+   *
+   * @param code the function that will be passed the `ProgressData` and `EthereumNodeStatus` objects.
+   *             It can rely upon the fact that `progress.overall.from` is not `None` and contains something.
    */
   protected[this] def withValidatedProgressAndSyncingState[RES](
                                                                  optProgress: Option[Progress.ProgressData],
@@ -94,7 +97,35 @@ abstract private class AbstractSyncer[
         logger.error(s"Ethereum node is probably unavailable: $overallProgress, $nodeSyncingStatus")
         onError
       case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncingStatus: EthereumNodeStatus)) =>
-        code(overallProgress, nodeSyncingStatus)
+        // Both CherryPicker syncing progress and Ethereum node status are at least available;
+        // but let’s validate them, and only then launch the code.
+        if (!isConfigurationValid(overallProgress)) {
+          onError
+        } else {
+          code(overallProgress, nodeSyncingStatus)
+        }
+    }
+  }
+
+  private[this] def isConfigurationValid(progress: Progress.ProgressData): Boolean = {
+    lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
+
+    if (progress.overall.from.isEmpty) {
+      logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!")
+      false
+      // Since this point we can use overallFrom
+    } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
+      logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
+        s"is ${progress.currencies.minSyncFrom.get}; " +
+        s"it should not be lower than $overallFrom!")
+      false
+    } else if (progress.trackedAddresses.minFrom < overallFrom) {
+      logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
+        s"is ${progress.trackedAddresses.minFrom}; " +
+        s"it should not be lower than $overallFrom!")
+      false
+    } else {
+      true
     }
   }
 

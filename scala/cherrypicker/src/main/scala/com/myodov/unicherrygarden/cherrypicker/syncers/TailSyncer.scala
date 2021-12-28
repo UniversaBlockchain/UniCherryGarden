@@ -2,10 +2,11 @@ package com.myodov.unicherrygarden.cherrypicker.syncers
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{IterateTailSyncer, TailSyncerMessage}
+import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{IterateTailSyncer, TailSyncerMessage, TailSyncing}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
+import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
-import scalikejdbc.DB
+import scalikejdbc.{DB, DBSession}
 
 import scala.language.postfixOps
 
@@ -17,7 +18,7 @@ import scala.language.postfixOps
  */
 private class TailSyncer(dbStorage: DBStorageAPI,
                          ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
-                        (headSyncer: ActorRef[SyncerMessages.HeadSyncerMessage])
+                        (headSyncer: ActorRef[TailSyncing])
   extends AbstractSyncer[TailSyncerMessage, TailSyncer.State, IterateTailSyncer](
     dbStorage,
     ethereumConnector,
@@ -63,9 +64,28 @@ private class TailSyncer(dbStorage: DBStorageAPI,
       ) { (overallProgress, nodeSyncingStatus) =>
         // Sanity test passed, node is reachable. Only here we can proceed.
         logger.debug(s"Ethereum node is reachable: $overallProgress, $nodeSyncingStatus")
-
-        Behaviors.empty // TODO!
+        tailSync(overallProgress, nodeSyncingStatus)
       }
+    }
+  }
+
+  /** Do the actual tail sync syncing phase. */
+  private[this] final def tailSync(
+                                    progress: Progress.ProgressData,
+                                    nodeSyncingStatus: EthereumNodeStatus
+                                  )(implicit session: DBSession): Behavior[TailSyncerMessage] = {
+
+    val syncStartBlock = 0 // TODO
+    val syncEndBlock = Math.min(syncStartBlock + HeadSyncer.BATCH_SIZE, nodeSyncingStatus.currentBlock)
+
+    if (syncEndBlock == nodeSyncingStatus.currentBlock) {
+      // We actually reached HeadSync position.
+
+      logger.debug("TailSyncer reached the HeadSyncer; let HeadSyncer go on (if it was on brake)")
+      headSyncer ! TailSyncing(None)
+      pauseThenReiterate()
+    } else {
+      Behaviors.empty // TODO!
     }
   }
 }
@@ -84,6 +104,6 @@ object TailSyncer {
    */
   @inline def apply(dbStorage: DBStorageAPI,
                     ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
-                    headSyncer: ActorRef[SyncerMessages.HeadSyncerMessage]): Behavior[SyncerMessages.TailSyncerMessage] =
+                    headSyncer: ActorRef[TailSyncing]): Behavior[TailSyncerMessage] =
     new TailSyncer(dbStorage, ethereumConnector)(headSyncer).launch()
 }

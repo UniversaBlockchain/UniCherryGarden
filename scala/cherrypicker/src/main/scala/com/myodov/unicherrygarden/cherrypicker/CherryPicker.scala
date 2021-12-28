@@ -218,35 +218,10 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
             lazy val progress = optProgress.get
             lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
 
-            if (optProgress.isEmpty) {
-              logger.error("Cannot get the progress, something failed!")
-              dbStorage.state.setSyncState("Cannot get the progress state!")
-              //              reiterateAfterDelay(state)
-              Behaviors.empty
-
-            } else if (progress.overall.from.isEmpty) {
-              logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!");
-              //              reiterateAfterDelay(state)
-              Behaviors.empty
-
-            } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
-              logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
-                s"is ${progress.currencies.minSyncFrom.get}; " +
-                s"it should not be lower than $overallFrom!")
-              //              reiterateAfterDelay(state)
-              Behaviors.empty
-
-            } else if (progress.trackedAddresses.minFrom < overallFrom) {
-              logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
-                s"is ${progress.trackedAddresses.minFrom}; " +
-                s"it should not be lower than $overallFrom!")
-              //              reiterateAfterDelay(state)
-              Behaviors.empty
-
-              // ------------------------------------------------------------------------------
-              // Since this point go all the options where the iteration should actually happen
-              // ------------------------------------------------------------------------------
-            } else if (progress.blocks.from.isEmpty) {
+            // ------------------------------------------------------------------------------
+            // Since this point go all the options where the iteration should actually happen
+            // ------------------------------------------------------------------------------
+            if (progress.blocks.from.isEmpty) {
               // progress.overall.from is not Empty
               val blockToSync = progress.overall.from.get
               logger.info(s"Starting from the very first block ($blockToSync)...")
