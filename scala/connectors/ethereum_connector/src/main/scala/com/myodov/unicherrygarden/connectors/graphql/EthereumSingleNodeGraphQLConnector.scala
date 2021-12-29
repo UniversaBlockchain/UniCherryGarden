@@ -1,6 +1,7 @@
 package com.myodov.unicherrygarden.connectors.graphql
 
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 
 import akka.actor.typed.{ActorSystem => TypedActorSystem}
 import akka.actor.{ActorSystem => ClassicActorSystem}
@@ -20,6 +21,7 @@ import sttp.model.Uri
 
 import scala.annotation.switch
 import scala.collection.immutable.SortedMap
+import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.control.NonFatal
 
@@ -129,9 +131,14 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
         BlockBasic.view
       }
 
+    val queryStartTime = System.nanoTime
+
     // This is a legit response; but it may have no contents.
     // For None, return None; for Some return a result,... hey it’s a map!
     queryGraphQL(query, argHint = s"readBlocks($range)").flatMap { blocks =>
+      val queryDuration = Duration(System.nanoTime - queryStartTime, TimeUnit.NANOSECONDS)
+      logger.debug(s"Querying for blocks $range (${range.size} blocks) took ${queryDuration.toMillis} ms.")
+
       if (!BlockBasic.validateBlocks(blocks)) {
         None // validation failed, let’s consider reading failed too
       } else {

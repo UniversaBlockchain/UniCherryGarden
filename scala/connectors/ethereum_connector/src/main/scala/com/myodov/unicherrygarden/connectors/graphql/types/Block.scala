@@ -62,10 +62,10 @@ object BlockBasic extends LazyLogging {
     }
 
     if (!parentIsConsistent) {
-      logger.error(s"For the following block, parent is inconsistent: $block")
+      logger.error(s"For the following block, parent is inconsistent: ${block.number}/${block.hash}")
       false
     } else if (!transactionsAreConsistent) {
-      logger.error(s"For the following block, transactions are inconsistent: $block")
+      logger.error(s"For the following block, transactions are inconsistent: ${block.number}/${block.hash}")
       false
     } else {
       true

@@ -8,7 +8,7 @@ schema {
 "EIP-2718 "
 type AccessTuple {
     address: Address!
-    storageKeys: [Bytes32!]
+    storageKeys: [Bytes32!]!
 }
 
 "Account is an Ethereum account at a particular block."
@@ -235,18 +235,6 @@ type SyncState {
     currentBlock: Long!
     "HighestBlock is the latest known block number."
     highestBlock: Long!
-    """
-
-    KnownStates is the number of states the node knows of so far, or null
-    if this is not known or not relevant.
-    """
-    knownStates: Long
-    """
-
-    PulledStates is the number of state entries fetched so far, or null
-    if this is not known or not relevant.
-    """
-    pulledStates: Long
     "StartingBlock is the block number at which synchronisation started."
     startingBlock: Long!
 }

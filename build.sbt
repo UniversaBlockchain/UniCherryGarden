@@ -328,8 +328,8 @@ lazy val ethereum_connector = (project in file("scala/connectors/ethereum_connec
           .packageName("caliban")
           .genView(true)
           .imports(
-            "com.myodov.unicherrygarden.connectors.ScalarDecoder.long",
-            "com.myodov.unicherrygarden.connectors.ScalarDecoder.bigInt")
+            "com.myodov.unicherrygarden.connectors.graphql.ScalarDecoder.long",
+            "com.myodov.unicherrygarden.connectors.graphql.ScalarDecoder.bigInt")
       )
     ),
     Compile / resourceGenerators += versionFileTask("unicherrygarden_ethereum_connector.properties").taskValue,

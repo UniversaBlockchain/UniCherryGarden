@@ -87,7 +87,7 @@ abstract private class AbstractSyncer[
         onError
       case (_, None) =>
         // we haven’t received the syncing state from the node
-        logger.error("Could not read the syncing status from Ethereum node")
+        logger.debug("No syncing status from Ethereum node is available yet, waiting")
         onError
       case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncingStatus: EthereumNodeStatus))
         if !isNodeReachable(overallProgress, nodeSyncingStatus) =>
@@ -240,7 +240,7 @@ abstract private class AbstractSyncer[
 object AbstractSyncer {
 
   trait SyncerState {
-    @volatile var ethereumNodeStatus: Option[EthereumNodeStatus] = None
+    @volatile var ethereumNodeStatus: Option[EthereumNodeStatus]
   }
 
 }

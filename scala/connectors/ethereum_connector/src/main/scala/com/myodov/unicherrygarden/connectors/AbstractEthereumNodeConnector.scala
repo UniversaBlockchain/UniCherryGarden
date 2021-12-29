@@ -69,10 +69,10 @@ trait Web3ReadOperations extends LazyLogging {
    *         in strictly increasing order.
    */
   def readBlocks(range: EthereumBlock.BlockNumberRange): Option[Seq[SingleBlockData]] = {
-    val seqOfOptions: Seq[Option[(EthereumBlock, Seq[EthereumMinedTransaction])]] =
+    val seqOfOptions: Seq[Option[SingleBlockData]] =
       range.map(readBlock(_))
 
-    val optionOfSeqs: Option[Seq[(EthereumBlock, Seq[EthereumMinedTransaction])]] =
+    val optionOfSeqs: Option[Seq[SingleBlockData]] =
       reduceOptionSeq(seqOfOptions)
 
     // Let’s do the extra validation of this result; and everything is fine, return it.
@@ -106,7 +106,7 @@ trait Web3ReadOperations extends LazyLogging {
    */
   def readBlocks(range: EthereumBlock.BlockNumberRange,
                  addressesOfInterest: Set[String]): Option[Seq[SingleBlockData]] = {
-    val optionOfSecs: Option[Seq[(EthereumBlock, Seq[EthereumMinedTransaction])]] = readBlocks(range)
+    val optionOfSecs: Option[Seq[SingleBlockData]] = readBlocks(range)
 
     // None to None, Some to Some - this is map!
     optionOfSecs map { seq =>
@@ -129,7 +129,7 @@ trait Web3ReadOperations extends LazyLogging {
    *         for the real size of the response!
    */
   def readBlockHashes(range: EthereumBlock.BlockNumberRange): Option[SortedMap[Int, String]] = {
-    val optionOfSecs: Option[Seq[(EthereumBlock, Seq[EthereumMinedTransaction])]] =
+    val optionOfSecs: Option[Seq[SingleBlockData]] =
       readBlocks(range, Set.empty)
 
     // None to None, Some to Some - this is map!
@@ -153,7 +153,7 @@ object AbstractEthereumNodeConnector extends LazyLogging {
     assert(highestBlock >= 0)
   }
 
-  val NETWORK_TIMEOUT: FiniteDuration = 10 seconds
+  val NETWORK_TIMEOUT: FiniteDuration = 30 seconds
 }
 
 private object Web3ReadOperations extends LazyLogging {

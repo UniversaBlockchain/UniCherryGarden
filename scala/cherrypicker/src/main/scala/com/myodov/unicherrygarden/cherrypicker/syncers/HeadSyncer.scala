@@ -7,7 +7,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import com.myodov.unicherrygarden.CherryPicker
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.dlt.EthereumBlock
-import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{HeadSyncerMessage, IterateHeadSyncer}
+import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{EthereumNodeStatus, HeadSyncerMessage, IterateHeadSyncer}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
 import com.myodov.unicherrygarden.storages.api.{DBStorage, DBStorageAPI}
@@ -259,7 +259,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
     // headSync is called from within `withValidatedProgressAndSyncingState`, so we can rely upon
     // overall.from being non-empty (and thus `headSyncerStartBlock` too)
     val syncStartBlock = progress.headSyncerStartBlock.get
-    val syncEndBlock = Math.min(syncStartBlock + HeadSyncer.BATCH_SIZE, nodeSyncingStatus.currentBlock)
+    val syncEndBlock = Math.min(syncStartBlock + HeadSyncer.BATCH_SIZE - 1, nodeSyncingStatus.currentBlock)
 
     val headSyncingRange: EthereumBlock.BlockNumberRange = syncStartBlock to syncEndBlock
 
@@ -308,7 +308,8 @@ object HeadSyncer {
   val BATCH_SIZE = 100 // TODO: must be configured through application.conf
   val CATCH_UP_BRAKE_MAX_LEAD = 10000 // TODO: must be configured through application.conf
 
-  protected final case class State(nextIterationMustCheckReorg: AtomicBoolean = new AtomicBoolean(true),
+  protected final case class State(@volatile override var ethereumNodeStatus: Option[EthereumNodeStatus] = None,
+                                   nextIterationMustCheckReorg: AtomicBoolean = new AtomicBoolean(true),
                                    @volatile var tailSyncStatus: Option[dlt.EthereumBlock.BlockNumberRange] = None)
     extends AbstractSyncer.SyncerState
 

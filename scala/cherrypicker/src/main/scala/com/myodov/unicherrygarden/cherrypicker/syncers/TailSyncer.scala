@@ -3,7 +3,7 @@ package com.myodov.unicherrygarden.cherrypicker.syncers
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.api.dlt.EthereumBlock
-import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{IterateTailSyncer, TailSyncerMessage, TailSyncing}
+import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{EthereumNodeStatus, IterateTailSyncer, TailSyncerMessage, TailSyncing}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
@@ -108,7 +108,7 @@ private class TailSyncer(dbStorage: DBStorageAPI,
     logger.debug(s"Progress is $progress: choosing between $blocksToCompare")
 
     val syncStartBlock = blocksToCompare.flatten.min
-    val syncEndBlock = Math.min(syncStartBlock + HeadSyncer.BATCH_SIZE, nodeSyncingStatus.currentBlock)
+    val syncEndBlock = Math.min(syncStartBlock + TailSyncer.BATCH_SIZE - 1, nodeSyncingStatus.currentBlock)
 
     (syncStartBlock, syncEndBlock) match {
       case (start, endSmallerThanStart) if endSmallerThanStart < start =>
@@ -155,7 +155,7 @@ object TailSyncer {
 
   val BATCH_SIZE = 100 // TODO: must be configured through application.conf
 
-  protected final case class State()
+  protected final case class State(@volatile override var ethereumNodeStatus: Option[EthereumNodeStatus] = None)
     extends AbstractSyncer.SyncerState
 
   /** Main constructor.
