@@ -2,7 +2,6 @@ package com.myodov.unicherrygarden.connectors.graphql.types
 
 import caliban.Geth.Block
 import caliban.client.SelectionBuilder
-import com.myodov.unicherrygarden.Tools.Implicits._
 import com.typesafe.scalalogging.LazyLogging
 
 /** For a Block, get just its number and hash.
@@ -49,10 +48,12 @@ object BlockBasic extends LazyLogging {
     // Different validations depending on whether parent is Some(block) or None:
     // “parent is absent” may happen only on the block 0;
     // “parent is not absent” implies the parent block has number lower by one.
-    val parentIsConsistent: Boolean = block.parent match {
-      case None => block.number == 0
-      case Some(parentBlock) => parentBlock.number == block.number - 1
-    }
+    // TODO: logic is temporarily disabled until https://github.com/ethereum/go-ethereum/issues/24161 is fixed.
+    val parentIsConsistent = true
+    //    val parentIsConsistent: Boolean = block.parent match {
+    //      case None => block.number == 0
+    //      case Some(parentBlock) => parentBlock.number == block.number - 1
+    //    }
 
     val transactionsAreConsistent: Boolean = block.transactions match {
       // If the transactions are not available at all – that’s legit
@@ -75,27 +76,29 @@ object BlockBasic extends LazyLogging {
   /** Check if a sequence of blocks is well-formed. */
   def validateBlocks(blocks: Seq[BlockBasicView]): Boolean = {
     val eachSingleBlockValid: Boolean = blocks.forall(validateBlock)
-    val blocksInTotalValid: Boolean = blocks.forAllPairs { (bl1, bl2) =>
-      bl2.parent match {
-        case None =>
-          logger.error(s"In block sequence of ${blocks.size} blocks, " +
-            s"block parent is missing: $bl2")
-          false
-        case Some(bl2Parent) =>
-          if (bl2.number != bl1.number + 1) {
-            logger.error(s"In block sequence of ${blocks.size} blocks, " +
-              s"these two blocks are not subsequent: $bl1 and $bl2")
-            false
-          } else if (bl2Parent.number != bl1.number || bl2Parent.hash != bl1.hash) {
-            logger.error(s"In block sequence of ${blocks.size} blocks, " +
-              s"the parent reference of second block is not the the first block: $bl1 and $bl2")
-            false
-          } else {
-            // Everything seems fine
-            true
-          }
-      }
-    }
+    // TODO: logic is temporarily disabled until https://github.com/ethereum/go-ethereum/issues/24161 is fixed.
+    val blocksInTotalValid = true
+    //    val blocksInTotalValid: Boolean = blocks.forAllPairs { (bl1, bl2) =>
+    //      bl2.parent match {
+    //        case None =>
+    //          logger.error(s"In block sequence of ${blocks.size} blocks, " +
+    //            s"block parent is missing: $bl2")
+    //          false
+    //        case Some(bl2Parent) =>
+    //          if (bl2.number != bl1.number + 1) {
+    //            logger.error(s"In block sequence of ${blocks.size} blocks, " +
+    //              s"these two blocks are not subsequent: $bl1 and $bl2")
+    //            false
+    //          } else if (bl2Parent.number != bl1.number || bl2Parent.hash != bl1.hash) {
+    //            logger.error(s"In block sequence of ${blocks.size} blocks, " +
+    //              s"the parent reference of second block is not the the first block: $bl1 and $bl2")
+    //            false
+    //          } else {
+    //            // Everything seems fine
+    //            true
+    //          }
+    //      }
+    //    }
 
     if (!eachSingleBlockValid) {
       logger.error(s"In block sequence of ${blocks.size} blocks, " +
@@ -110,4 +113,5 @@ object BlockBasic extends LazyLogging {
       true
     }
   }
+
 }

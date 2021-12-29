@@ -46,8 +46,8 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
   /** Perform a GraphQL query with all the necessary error handling.
    *
    * `QV` - either `(Option[SyncState.SyncStateView], Option[BlockMinimalView])` or List[BlockBasicView]`,
-   * or something similar..
-   **/
+   * or something similar.
+   */
   private[this] def queryGraphQL[QV](query: SelectionBuilder[RootQuery, QV],
                                      argHint: String): Option[QV] = {
     val rq: Request[Either[CalibanClientError, QV], Any] = query.toRequest(graphQLUri)
@@ -122,12 +122,21 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
   }
 
   override def readBlocks(range: dlt.EthereumBlock.BlockNumberRange): Option[Seq[SingleBlockData]] = {
-    require(range.head <= range.end, range)
+    require(range.head <= range.last, range)
 
     import caliban.Geth._
 
+    // Geth is prone to not provide the `parent` reference sometimes.
+    // (https://github.com/ethereum/go-ethereum/issues/24161)
+    // So, like, instead of requesting a range “from 10 to 19”, we will request a range “9 to 19”;
+    // and, instead of taking the `parentHash` in each block, we’ll take the hash of the previous block.
+    // So the `range = 10 to 19` turns into `requestRange = 9 to 19`;
+    // but note that `range = 0 to 19` should still be `requestRange = 0 to 19`, as there is no parent block
+    // for block 0.
+    val requestRange = Math.max(0, range.head - 1) to range.last
+
     val query =
-      Query.blocks(from = Some(range.head), to = Some(range.end)) {
+      Query.blocks(from = Some(requestRange.head), to = Some(requestRange.last)) {
         BlockBasic.view
       }
 
@@ -135,84 +144,110 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
 
     // This is a legit response; but it may have no contents.
     // For None, return None; for Some return a result,... hey it’s a map!
-    queryGraphQL(query, argHint = s"readBlocks($range)").flatMap { blocks =>
+    queryGraphQL(query, argHint = s"readBlocks($range)").flatMap { requestedRangeBlocks =>
       val queryDuration = Duration(System.nanoTime - queryStartTime, TimeUnit.NANOSECONDS)
-      logger.debug(s"Querying for blocks $range (${range.size} blocks) took ${queryDuration.toMillis} ms.")
+      logger.debug(s"Querying for blocks $range (${range.size} blocks) (but actually $requestRange) " +
+        s"took ${queryDuration.toMillis} ms.")
 
-      if (!BlockBasic.validateBlocks(blocks)) {
-        None // validation failed, let’s consider reading failed too
-      } else {
-        val resultSeq = blocks.map { blockBasic =>
-          val blockNumber = Math.toIntExact(blockBasic.number)
-
-          val block = dlt.EthereumBlock(
-            number = blockNumber,
-            hash = blockBasic.hash,
-            parentHash = blockBasic.parent match {
-              // We need some custom handling of parent
-              // to make it compatible with RPC/block explorers
-              case None => Some("0x0000000000000000000000000000000000000000000000000000000000000000")
-              case Some(parent) => Some(parent.hash)
-            },
-            timestamp = Instant.ofEpochSecond(blockBasic.timestamp)
-          )
-          val transactions = blockBasic.transactions match {
-            case None => Seq()
-            case Some(transactions) => transactions.map { (tr: TransactionFullView) =>
-              dlt.EthereumMinedTransaction(
-                // *** Before-mined transaction ***
-                txhash = tr.hash,
-                from = tr.from.address,
-                to = tr.to.map(_.address), // Option(nullable)
-                gas = tr.gas,
-                gasPrice = tr.gasPrice,
-                nonce = Math.toIntExact(tr.nonce),
-                value = tr.value,
-                // *** Mined transaction ***
-                // "status" – EIP 658, since Byzantium fork
-                // using Option(nullable).
-                // But there seems to be a bug in GraphQL handling pre-Byzantium statuses,
-                // (https://github.com/ethereum/go-ethereum/issues/24124)
-                // So need to handle this manually.
-                status = blockNumber match {
-                  case preByzantium if preByzantium < EthUtils.BYZANTIUM_FIRST_BLOCK =>
-                    None
-                  case byzantiumAndNewer =>
-                    tr.status.map(Math.toIntExact) // Option[Long] to Option[Int]
-                },
-                blockNumber = tr.block.get.number, // block must exist!
-                transactionIndex = tr.index.get, // transaction must exist!
-                gasUsed = tr.gasUsed.get, // presumed non-null if mined
-                effectiveGasPrice = tr.effectiveGasPrice.get, // presumed non-null if mined
-                cumulativeGasUsed = tr.cumulativeGasUsed.get, // presumed non-null if mined
-                txLogs = tr.logs match {
-                  case None => Seq.empty
-                  case Some(logs) => logs.map { log =>
-                    dlt.EthereumTxLog(
-                      logIndex = log.index,
-                      address = log.account.address,
-                      topics = log.topics,
-                      data = log.data
-                    )
-                  }
-                }
-              )
-            }
+      requestedRangeBlocks match {
+        case invalidResult if !BlockBasic.validateBlocks(invalidResult) =>
+          logger.error(s"Queried $range (${range.size} blocks) (but actually $requestRange) " +
+            "returned invalid result")
+          None // validation failed, let’s consider reading failed too
+        case emptyResult@Seq() =>
+          logger.debug(s"Querying for blocks $range (${range.size} blocks) (but actually $requestRange) " +
+            "returned empty result")
+          None
+        case nonEmptyResults =>
+          // All this just to avoid using `.parent` in a block, which may not work well.
+          val hashByBlockNumber = requestedRangeBlocks.map(bl => bl.number -> bl.hash).toMap
+          // If `range` was like `10 to 19`, the `requestedRangeBlocks` will be like `9 to 19`,
+          // and, to get `blocks`, we need to drop the first one.
+          // If `range` was like `0 to 19`, the `requestedRangeBlocks` will be like `0 to 19`,
+          // so we don’t drop anything
+          val blocks = range.head match {
+            case 0 => requestedRangeBlocks
+            case other => requestedRangeBlocks.tail
           }
-          (block, transactions)
-        }
-        Some(resultSeq)
+
+          if (!BlockBasic.validateBlocks(blocks)) {
+            None // validation failed, let’s consider reading failed too
+          } else {
+            val resultSeq = blocks.map { blockBasic =>
+              val blockNumber = Math.toIntExact(blockBasic.number)
+
+              val block = dlt.EthereumBlock(
+                number = blockNumber,
+                hash = blockBasic.hash,
+                // Again, due to https://github.com/ethereum/go-ethereum/issues/24161 bug,
+                // we will not use `.parent`; but do the workaround using `hashByBlockNumber`.
+                parentHash = hashByBlockNumber.get(blockNumber - 1) match {
+                  // We need some custom handling of parent
+                  // to make it compatible with RPC/block explorers
+                  case None => Some("0x0000000000000000000000000000000000000000000000000000000000000000")
+                  case Some(hash) => Some(hash)
+                },
+                timestamp = Instant.ofEpochSecond(blockBasic.timestamp)
+              )
+              val transactions = blockBasic.transactions match {
+                case None => Seq()
+                case Some(transactions) => transactions.map { (tr: TransactionFullView) =>
+                  dlt.EthereumMinedTransaction(
+                    // *** Before-mined transaction ***
+                    txhash = tr.hash,
+                    from = tr.from.address,
+                    to = tr.to.map(_.address), // Option(nullable)
+                    gas = tr.gas,
+                    gasPrice = tr.gasPrice,
+                    nonce = Math.toIntExact(tr.nonce),
+                    value = tr.value,
+                    // *** Mined transaction ***
+                    // "status" – EIP 658, since Byzantium fork
+                    // using Option(nullable).
+                    // But there seems to be a bug in GraphQL handling pre-Byzantium statuses,
+                    // (https://github.com/ethereum/go-ethereum/issues/24124)
+                    // So need to handle this manually.
+                    status = blockNumber match {
+                      case preByzantium if preByzantium < EthUtils.BYZANTIUM_FIRST_BLOCK =>
+                        None
+                      case byzantiumAndNewer =>
+                        tr.status.map(Math.toIntExact) // Option[Long] to Option[Int]
+                    },
+                    blockNumber = tr.block.get.number, // block must exist!
+                    transactionIndex = tr.index.get, // transaction must exist!
+                    gasUsed = tr.gasUsed.get, // presumed non-null if mined
+                    effectiveGasPrice = tr.effectiveGasPrice.get, // presumed non-null if mined
+                    cumulativeGasUsed = tr.cumulativeGasUsed.get, // presumed non-null if mined
+                    txLogs = tr.logs match {
+                      case None => Seq.empty
+                      case Some(logs) => logs.map { log =>
+                        dlt.EthereumTxLog(
+                          logIndex = log.index,
+                          address = log.account.address,
+                          topics = log.topics,
+                          data = log.data
+                        )
+                      }
+                    }
+                  )
+                }
+              }
+              (block, transactions)
+            }
+            Some(resultSeq)
+          }
+
       }
     }
   }
 
   override def readBlockHashes(range: dlt.EthereumBlock.BlockNumberRange): Option[SortedMap[Int, String]] = {
-    require(range.head <= range.end, range)
+    require(range.head <= range.last, range)
 
     import caliban.Geth._
 
     val query =
-      Query.blocks(from = Some(range.head), to = Some(range.end)) {
+      Query.blocks(from = Some(range.head), to = Some(range.last)) {
         BlockMinimal.view
       }
 

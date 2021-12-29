@@ -245,7 +245,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
                                      )(implicit session: DBSession): Boolean = {
     logger.debug(s"Rewinding the blocks $badBlockRange")
     require(
-      (badBlockRange.size <= CherryPicker.MAX_REORG) && (badBlockRange.head <= badBlockRange.end),
+      (badBlockRange.size <= CherryPicker.MAX_REORG) && (badBlockRange.head <= badBlockRange.last),
       (badBlockRange, CherryPicker.MAX_REORG))
     dbStorage.blocks.rewind(badBlockRange.head)
   }
@@ -272,7 +272,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
         false
       case Some(tailSyncing) =>
         // We brake if the end of tail syncing operation is close to begin of head sync
-        tailSyncing.end >= headSyncingRange.head - HeadSyncer.CATCH_UP_BRAKE_MAX_LEAD
+        tailSyncing.last >= headSyncingRange.head - HeadSyncer.CATCH_UP_BRAKE_MAX_LEAD
     }
 
     if (shouldCatchUpBrake) {
@@ -287,7 +287,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
         // HeadSync completed successfully. Should we pause, or instantly go to the next round?
         dbStorage.state.setLastHeartbeatAt
 
-        if (headSyncingRange.end >= nodeSyncingStatus.currentBlock) { // should be “==” rather than “>=”, but just to be safe
+        if (headSyncingRange.last >= nodeSyncingStatus.currentBlock) { // should be “==” rather than “>=”, but just to be safe
           logger.debug(s"HeadSyncing success $headSyncingRange, reached end")
           pauseThenMayCheckReorg
         } else {

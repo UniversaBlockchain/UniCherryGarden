@@ -7,13 +7,13 @@ class EthereumSingleNodeGraphQLConnectorSpec extends AbstractEthereumNodeConnect
 
   "readBlocks(20 blocks)" should "work well" in {
     assert(
-      sharedConnector.readBlocks(12_129_000 to 12_129_019).get.size == 20
+      sharedConnector.readBlocks(12_129_000 until 12_129_020).get.size == 20
     )
   }
 
-  "readBlocks(100 blocks)" should "work well" in {
+  "readBlocks(50 blocks)" should "work well" in {
     assert(
-      sharedConnector.readBlocks(12_329_000 to 12_329_999).get.size == 100
+      sharedConnector.readBlocks(12_329_000 until 12_329_050).get.size == 50
     )
   }
 }
