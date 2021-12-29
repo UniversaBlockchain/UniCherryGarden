@@ -257,20 +257,11 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
                                   )(implicit session: DBSession): Behavior[HeadSyncerMessage] = {
     logger.debug(s"Now we are ready to do headSync for progress $progress, node $nodeSyncingStatus")
     // headSync is called from within `withValidatedProgressAndSyncingState`, so we can rely upon
-    // overall.from being non-empty
-    val overallFrom = progress.overall.from.get
-
-    val syncStartBlock = progress.blocks.to match { // do we have blocks stored? what is maximum stored one?
-      case None =>
-        logger.info(s"We have no blocks stored; starting from the very first block ($overallFrom)...")
-        overallFrom
-      case Some(maxStoredBlock) =>
-        logger.info(s"We have some blocks stored (${progress.blocks}); syncing from ${maxStoredBlock + 1}")
-        maxStoredBlock + 1
-    }
+    // overall.from being non-empty (and thus `headSyncerStartBlock` too)
+    val syncStartBlock = progress.headSyncerStartBlock.get
     val syncEndBlock = Math.min(syncStartBlock + HeadSyncer.BATCH_SIZE, nodeSyncingStatus.currentBlock)
 
-    val goingToHeadSync: EthereumBlock.BlockNumberRange = syncStartBlock to syncEndBlock
+    val headSyncingRange: EthereumBlock.BlockNumberRange = syncStartBlock to syncEndBlock
 
     val tailSyncStatus: Option[dlt.EthereumBlock.BlockNumberRange] = state.tailSyncStatus
 
@@ -281,27 +272,30 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
         false
       case Some(tailSyncing) =>
         // We brake if the end of tail syncing operation is close to begin of head sync
-        tailSyncing.end >= goingToHeadSync.head - HeadSyncer.CATCH_UP_BRAKE_MAX_LEAD
+        tailSyncing.end >= headSyncingRange.head - HeadSyncer.CATCH_UP_BRAKE_MAX_LEAD
     }
 
     if (shouldCatchUpBrake) {
-      logger.info(s"Was going to HeadSync $goingToHeadSync; but TailSyncer is close ($tailSyncStatus), so braking")
+      logger.info(s"Was going to HeadSync $headSyncingRange; but TailSyncer is close ($tailSyncStatus), so braking")
       pauseThenMayCheckReorg
     } else {
-      logger.debug(s"Ready to HeadSync $goingToHeadSync")
-      if (syncBlocks(goingToHeadSync)) {
-        // HeadSync completed successfully. Should we pause, or instantly go to the next round?
+      logger.debug(s"Ready to HeadSync $headSyncingRange")
 
+      // Do the actual syncing
+
+      if (syncBlocks(headSyncingRange)) {
+        // HeadSync completed successfully. Should we pause, or instantly go to the next round?
         dbStorage.state.setLastHeartbeatAt
-        if (goingToHeadSync.end >= nodeSyncingStatus.currentBlock) { // should be “==” rather than “>=”, but just to be safe
-          logger.debug(s"HeadSyncing success $goingToHeadSync, reached end")
+
+        if (headSyncingRange.end >= nodeSyncingStatus.currentBlock) { // should be “==” rather than “>=”, but just to be safe
+          logger.debug(s"HeadSyncing success $headSyncingRange, reached end")
           pauseThenMayCheckReorg
         } else {
-          logger.debug(s"HeadSyncing success $goingToHeadSync, not reached end")
+          logger.debug(s"HeadSyncing success $headSyncingRange, not reached end")
           reiterateMayCheckReorg // go to the next round instantly
         }
       } else {
-        logger.error(s"HeadSyncing failure for $goingToHeadSync")
+        logger.error(s"HeadSyncing failure for $headSyncingRange")
         pauseThenReiterateOnError
       }
     }

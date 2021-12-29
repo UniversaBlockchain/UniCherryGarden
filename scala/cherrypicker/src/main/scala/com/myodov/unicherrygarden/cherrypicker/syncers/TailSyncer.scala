@@ -2,6 +2,7 @@ package com.myodov.unicherrygarden.cherrypicker.syncers
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
+import com.myodov.unicherrygarden.api.dlt.EthereumBlock
 import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{IterateTailSyncer, TailSyncerMessage, TailSyncing}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
@@ -69,23 +70,82 @@ private class TailSyncer(dbStorage: DBStorageAPI,
     }
   }
 
-  /** Do the actual tail sync syncing phase. */
+  /** Do the actual  tail sync syncing phase.
+   *
+   * Due to being called from `withValidatedProgressAndSyncingState`,
+   * `progress.overall.from` may be safely assumed non-None.
+   */
   private[this] final def tailSync(
                                     progress: Progress.ProgressData,
                                     nodeSyncingStatus: EthereumNodeStatus
                                   )(implicit session: DBSession): Behavior[TailSyncerMessage] = {
+    // There may be multiple options of blocks to choose:
+    // 1. Just the next block to read.
+    val firstUnreadBlock: Option[Int] = progress.blocks.to.map(_ + 1)
+    // 2. We never started some (currency, tracked address) pair?
+    // Use the smallest from_block (from either currency or tracked address).
+    val firstNeverCTAStartedBlock: Option[Int] = dbStorage.progress.getFirstBlockResolvingSomeNeverStartedCTAddress
+    // 3. We never completed some (currency, tracked address) pair?
+    // Use the least from_block (from either currency or tracked address).
+    val firstNeverCTASyncedBlock: Option[Int] = dbStorage.progress.getFirstBlockResolvingSomeNeverSyncedCTAddress
+    // 4. Some of CTA to-blocks is smaller than others?
+    // Use it.
+    val firstMismatchingCTAToBlock: Option[Int] = (progress.perCurrencyTrackedAddresses.minTo, progress.perCurrencyTrackedAddresses.maxTo) match {
+      case (Some(minTo), Some(maxTo)) if minTo < maxTo =>
+        Some(minTo + 1)
+      case _ =>
+        None
+    }
 
-    val syncStartBlock = 0 // TODO
+    val blocksToCompare = List(
+      firstUnreadBlock,
+      firstNeverCTAStartedBlock,
+      firstNeverCTASyncedBlock,
+      firstMismatchingCTAToBlock,
+      progress.overall.from // safe default; at this point
+    )
+
+    logger.debug(s"Progress is $progress: choosing between $blocksToCompare")
+
+    val syncStartBlock = blocksToCompare.flatten.min
     val syncEndBlock = Math.min(syncStartBlock + HeadSyncer.BATCH_SIZE, nodeSyncingStatus.currentBlock)
 
-    if (syncEndBlock == nodeSyncingStatus.currentBlock) {
-      // We actually reached HeadSync position.
+    (syncStartBlock, syncEndBlock) match {
+      case (start, endSmallerThanStart) if endSmallerThanStart < start =>
+        logger.error(s"When choosing between blocks $blocksToCompare to tailsync, found $syncStartBlock/$syncEndBlock: " +
+          "end block is earlier than start!")
+        pauseThenReiterateOnError
+      case (startReachedHeadSync, end) if progress.headSyncerStartBlock == Some(startReachedHeadSync) =>
+        // We actually reached HeadSync position
+        logger.debug(s"When choosing between blocks $blocksToCompare to tailsync, found $syncStartBlock/$syncEndBlock: " +
+          s"deciding to tailsync since $startReachedHeadSync which reached HeadSyncer ($progress); " +
+          "let HeadSyncer go on (if it was on brake)")
+        headSyncer ! TailSyncing(None)
+        pauseThenReiterate
+      case (validStart, validEnd) =>
+        val tailSyncingRange: EthereumBlock.BlockNumberRange = validStart to validEnd
+        logger.debug(s"Ready to TailSync $tailSyncingRange")
+        // Inform HeadSyncer early, so maybe it will brake early
+        headSyncer ! TailSyncing(Some(tailSyncingRange))
 
-      logger.debug("TailSyncer reached the HeadSyncer; let HeadSyncer go on (if it was on brake)")
-      headSyncer ! TailSyncing(None)
-      pauseThenReiterate()
-    } else {
-      Behaviors.empty // TODO!
+        // Do the actual syncing
+
+        if (syncBlocks(tailSyncingRange)) {
+          // TailSync completed successfully. Should we pause, or instantly go to the next round?
+          dbStorage.state.setLastHeartbeatAt
+
+          if (validEnd == nodeSyncingStatus.currentBlock) {
+            logger.info(s"TailSyncer reached eth.syncing.currentBlock! Let HeadSyncer go on.")
+            headSyncer ! TailSyncing(None)
+            pauseThenReiterate
+          } else {
+            logger.debug(s"TailSyncer just synced $tailSyncingRange; let's proceed")
+            reiterate
+          }
+        } else {
+          logger.error(s"TailSyncing failure for $tailSyncingRange")
+          pauseThenReiterateOnError
+        }
     }
   }
 }

@@ -7,6 +7,7 @@ import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.Star
 import com.myodov.unicherrygarden.storages.api.DBStorage.Currencies.DBCurrency
 import com.myodov.unicherrygarden.storages.api.DBStorage.Progress.ProgressData
 import com.myodov.unicherrygarden.storages.api.DBStorage.TrackedAddresses.TrackedAddress
+import com.typesafe.scalalogging.LazyLogging
 import scalikejdbc.{AutoSession, DBSession, ReadOnlyAutoSession}
 
 import scala.collection.immutable.SortedMap
@@ -181,7 +182,25 @@ object DBStorage {
                                    currencies: CurrenciesSyncStatus,
                                    blocks: BlocksSyncStatus,
                                    trackedAddresses: TrackedAddressesSyncStatus,
-                                   perCurrencyTrackedAddresses: PerCurrencyTrackedAddressesSyncStatus)
+                                   perCurrencyTrackedAddresses: PerCurrencyTrackedAddressesSyncStatus) extends LazyLogging {
+
+      /** The block from which the HeadSyncer iteration should start.
+       *
+       * `None` if cannot be calculated.
+       */
+      lazy val headSyncerStartBlock: Option[Int] = (overall.from, blocks.to) match {
+        case (None, _) =>
+          // Cannot proceed
+          logger.error(s"`ucg_state.synced_from_block_number` is not configured!")
+          None
+        case (Some(overallFrom), None) =>
+          logger.debug(s"We have no blocks stored; starting from the very first block ($overallFrom)...")
+          Some(overallFrom)
+        case (Some(_), Some(maxStoredBlock)) =>
+          logger.info(s"We have some blocks stored ($blocks); syncing from ${maxStoredBlock + 1}")
+          Some(maxStoredBlock + 1)
+      }
+    }
 
     /** Sync status of `ucg_currency` table.
      *

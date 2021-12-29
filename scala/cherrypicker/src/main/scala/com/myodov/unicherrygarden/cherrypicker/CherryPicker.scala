@@ -2,7 +2,6 @@ package com.myodov.unicherrygarden
 
 import java.time
 import java.time.Instant
-import java.util.concurrent.TimeUnit
 
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
@@ -16,12 +15,10 @@ import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.Resp
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses, GetTransfers}
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging
-import scalikejdbc.DB
 
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
-import scala.util.control.NonFatal
 
 /** The main actor “cherry-picking” the data from the Ethereum blockchain into the DB.
  *
@@ -198,93 +195,6 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
         }
       }
     }
-  }
-
-  /** FSM state: “Run the next iteration; and reschedule it”. */
-  private def nextIteration(state: CherryPickerState): Behavior[CherryPickerRequest] = {
-    try {
-      // It is `synchronized`, so that if some iteration takes too long, the next iteration won’t intervene
-      // and work on the partially-updated state.
-      this.synchronized {
-        logger.debug("Iteration...")
-        val startTime = System.nanoTime
-        // First, let's ask the Ethereum node what's the status of the syncing process
-
-        val behavior: Behavior[CherryPickerRequest] = {
-          // Since this moment, we may want to use DB in a single atomic DB transaction;
-          // even though this will involve querying the Ethereum node, maybe even multiple times.
-          DB localTx { implicit session =>
-            val optProgress = dbStorage.progress.getProgress
-            lazy val progress = optProgress.get
-            lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
-
-            // ------------------------------------------------------------------------------
-            // Since this point go all the options where the iteration should actually happen
-            // ------------------------------------------------------------------------------
-            if (progress.blocks.from.isEmpty) {
-              // progress.overall.from is not Empty
-              val blockToSync = progress.overall.from.get
-              logger.info(s"Starting from the very first block ($blockToSync)...")
-              //              handleSyncedBlock(blockToSync)
-              //              reiterateImmediately(state)
-              Behaviors.empty
-
-            } else { // Fast sync
-              // progress.overall.from is not Empty
-
-              // There may be multiple options of blocks to choose:
-              // 1. Just the next block to read.
-              val firstUnreadBlock: Option[Int] = progress.blocks.to.map(_ + 1)
-              // 2. We never started some (currency, tracked address) pair?
-              // Use the least from_block (from either currency or tracked address).
-              val firstNeverCTAStartedBlock: Option[Int] =
-              dbStorage.progress.getFirstBlockResolvingSomeNeverStartedCTAddress
-              // 3. We never completed some (currency, tracked address) pair?
-              // Use the least from_block (from either currency or tracked address).
-              val firstNeverCTASyncedBlock: Option[Int] =
-              dbStorage.progress.getFirstBlockResolvingSomeNeverSyncedCTAddress
-              // 4. Some of CTA to-blocks is smaller than others?
-              // Use it.
-              val firstMismatchingCTAToBlock: Option[Int] =
-              (progress.perCurrencyTrackedAddresses.minTo, progress.perCurrencyTrackedAddresses.maxTo) match {
-                case (Some(minTo), Some(maxTo)) if minTo < maxTo =>
-                  Some(minTo + 1)
-                case _ =>
-                  None
-              }
-
-              val blocksToCompare = List(
-                firstUnreadBlock,
-                firstNeverCTAStartedBlock,
-                firstNeverCTASyncedBlock,
-                firstMismatchingCTAToBlock
-              )
-
-              logger.debug(s"Progress is $progress: " +
-                s"choosing between $blocksToCompare")
-
-              val blockToSync = blocksToCompare.flatten.min
-
-              logger.info(s"Fast-syncing $blockToSync block")
-              //              handleSyncedBlock(blockToSync)
-              //              reiterateImmediately(state)
-              Behaviors.empty
-            }
-          } // DB localTx
-        }
-
-        dbStorage.state.setLastHeartbeatAt
-        val duration = Duration(System.nanoTime - startTime, TimeUnit.NANOSECONDS)
-        logger.debug(s"Iteration completed in ${duration.toMillis} ms.")
-        behavior
-      }
-    } catch {
-      case NonFatal(e) =>
-        logger.error("On iteration, got a error", e)
-      //        reiterateAfterDelay(state)
-    }
-
-    Behaviors.empty
   }
 }
 
