@@ -20,7 +20,7 @@ The native Java API, in the form of `ClientConnectorImpl`, is available in the `
 
 ### Setting CherryGardener Connector as a dependency
 
-The packages are being built and published to Sonatype Central repository, so most of the times you can use in the Java build tool of your choice very easily. For example, if the currently published version is **0.1.5**, you can use this package in the following way:
+The packages are being built and published to Sonatype Central repository, so most of the times you can use in the Java build tool of your choice very easily. For example, if the currently published version is **0.8.0**, you can use this package in the following way:
 
 
 #### Maven
@@ -29,7 +29,7 @@ The packages are being built and published to Sonatype Central repository, so mo
 <dependency>
     <groupId>com.myodov.unicherrygarden</groupId>
     <artifactId>cherrygardener_connector</artifactId>
-    <version>0.1.5</version>
+    <version>0.8.0</version>
 </dependency>
 
 ~~~
@@ -37,19 +37,19 @@ The packages are being built and published to Sonatype Central repository, so mo
 #### Gradle
 
 ~~~gradle
-implementation group: 'com.myodov.unicherrygarden', name: 'cherrygardener_connector', version: '0.1.5'
+implementation group: 'com.myodov.unicherrygarden', name: 'cherrygardener_connector', version: '0.8.0'
 ~~~
 
 #### sbt
 
 ~~~sbt
-libraryDependencies += "com.myodov.unicherrygarden" % "cherrygardener_connector" % "0.1.5"
+libraryDependencies += "com.myodov.unicherrygarden" % "cherrygardener_connector" % "0.8.0"
 ~~~
 
 #### ivy
 
 ~~~ivy
-<dependency org="com.myodov.unicherrygarden" name="cherrygardener_connector" rev="0.1.5"/>
+<dependency org="com.myodov.unicherrygarden" name="cherrygardener_connector" rev="0.8.0"/>
 ~~~
 
 ### Usage in the code
