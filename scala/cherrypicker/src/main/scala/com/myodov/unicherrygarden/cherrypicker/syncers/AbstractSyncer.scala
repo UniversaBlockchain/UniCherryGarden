@@ -41,11 +41,11 @@ abstract private class AbstractSyncer[
  protected[this] val state: S)
   extends LazyLogging {
 
-  /** Most important method doing some next iteration of a syncer. */
+  /** Most important method doing some next iteration of a syncer; must be implemented. */
   def iterate(): Behavior[M]
 
-  /** Construct the specific implementation of `S` generic instance. */
-  def makeIterateMessage(): IS
+  /** Construct the specific implementation of `S` generic instance; must be implemented. */
+  val iterateMessage: IS
 
   /** Most basic sanity test for the DB data;
    * fails if we cannot even go further and must wait for the node to continue syncing.
@@ -68,13 +68,15 @@ abstract private class AbstractSyncer[
    *
    * `RES` is the expected return type from the function; may be `Option[Behavior]`, `[Behavior]` or something similar.
    *
-   * @param code the function that will be passed the `ProgressData` and `EthereumNodeStatus` objects.
-   *             It can rely upon the fact that `progress.overall.from` is not `None` and contains something.
+   * @param onError the behavior generator that should be invoked in case of error; the result of invokation
+   *                will be returned
+   * @param code    the function that will be passed the `ProgressData` and `EthereumNodeStatus` objects.
+   *                It can rely upon the fact that `progress.overall.from` is not `None` and contains something.
    */
   protected[this] def withValidatedProgressAndSyncingState[RES](
                                                                  optProgress: Option[Progress.ProgressData],
                                                                  optNodeSyncingStatus: Option[EthereumNodeStatus],
-                                                                 onError: RES
+                                                                 onError: () => RES
                                                                )
                                                                (
                                                                  code: (Progress.ProgressData, EthereumNodeStatus) => RES
@@ -84,23 +86,23 @@ abstract private class AbstractSyncer[
       case (None, _) =>
         // we could not even get the DB progress – go to the next round
         logger.error("Some unexpected error when reading the overall progress from the DB")
-        onError
+        onError()
       case (_, None) =>
         // we haven’t received the syncing state from the node
         logger.debug("No syncing status from Ethereum node is available yet, waiting")
-        onError
+        onError()
       case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncingStatus: EthereumNodeStatus))
         if !isNodeReachable(overallProgress, nodeSyncingStatus) =>
         // Sanity test. Does the overall data sanity allows us to proceed?
         // In HeadSyncer, this is Reorg/rewind, phase 1/4: “is node reachable”.
         // In TailSyncer, this is just a sanity test.
         logger.error(s"Ethereum node is probably unavailable: $overallProgress, $nodeSyncingStatus")
-        onError
+        onError()
       case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncingStatus: EthereumNodeStatus)) =>
         // Both CherryPicker syncing progress and Ethereum node status are at least available;
         // but let’s validate them, and only then launch the code.
         if (!isConfigurationValid(overallProgress)) {
-          onError
+          onError()
         } else {
           code(overallProgress, nodeSyncingStatus)
         }
@@ -133,7 +135,7 @@ abstract private class AbstractSyncer[
     logger.debug("FSM: reiterate")
     Behaviors.setup { context =>
       logger.debug("Sending iterate message to self")
-      context.self ! makeIterateMessage
+      context.self ! iterateMessage
       Behaviors.same
     }
   }
@@ -142,7 +144,7 @@ abstract private class AbstractSyncer[
     logger.debug("FSM: pauseThenReiterate")
     Behaviors.withTimers[M] { timers =>
       timers.startSingleTimer(
-        makeIterateMessage,
+        iterateMessage,
         CherryPicker.BLOCK_ITERATION_PERIOD)
       Behaviors.same
     }

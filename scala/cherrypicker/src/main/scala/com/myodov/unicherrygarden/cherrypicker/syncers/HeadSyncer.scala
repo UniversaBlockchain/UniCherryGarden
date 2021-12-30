@@ -32,10 +32,10 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
 
   final def launch(): Behavior[HeadSyncerMessage] = {
     Behaviors.setup { context =>
-      logger.debug(s"Launching syncer: ${this.getClass.getSimpleName}")
+      logger.debug(s"FSM: launch - ${this.getClass.getSimpleName}")
 
       // Start the iterations
-      context.self ! makeIterateMessage
+      context.self ! iterateMessage
 
       Behaviors.receiveMessage[HeadSyncerMessage] {
         case IterateHeadSyncer() =>
@@ -53,30 +53,30 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
     }
   }
 
-  @inline override final def makeIterateMessage(): IterateHeadSyncer = IterateHeadSyncer()
+  @inline override val iterateMessage: IterateHeadSyncer = IterateHeadSyncer()
 
   @inline final def reiterateMustCheckReorg(): Behavior[HeadSyncerMessage] = {
     logger.debug("FSM: reiterateMustCheckReorg")
     state.nextIterationMustCheckReorg.set(true)
-    reiterateMayCheckReorg
+    reiterateMayCheckReorg()
   }
 
   @inline final def reiterateMayCheckReorg(): Behavior[HeadSyncerMessage] = {
     logger.debug("FSM: reiterateMayCheckReorg")
-    reiterate
+    reiterate()
   }
 
   @inline final def pauseThenMustCheckReorg(): Behavior[HeadSyncerMessage] = {
     logger.debug("FSM: pauseThenMustCheckReorg")
     state.nextIterationMustCheckReorg.set(true)
-    pauseThenMayCheckReorg
+    pauseThenMayCheckReorg()
   }
 
   @inline final def pauseThenMayCheckReorg(): Behavior[HeadSyncerMessage] =
-    pauseThenReiterate
+    pauseThenReiterate()
 
   @inline override final def pauseThenReiterateOnError(): Behavior[HeadSyncerMessage] =
-    pauseThenMustCheckReorg
+    pauseThenMustCheckReorg()
 
   override final def iterate(): Behavior[HeadSyncerMessage] = {
     logger.debug(s"FSM: iterate - running an iteration with $state")
@@ -89,7 +89,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
       val reorgRewindProvidedBehaviorOpt = withValidatedProgressAndSyncingState[Option[Behavior[HeadSyncerMessage]]](
         dbStorage.progress.getProgress,
         state.ethereumNodeStatus,
-        onError = Some(pauseThenReiterateOnError)
+        onError = () => Some(pauseThenReiterateOnError())
       ) { (overallProgress, nodeSyncingStatus) =>
         // Sanity test passed in withValidatedProgressAndSyncingState, node is reachable.
         // Only now we can proceed.
@@ -129,11 +129,11 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
                 None
               } else {
                 logger.error(s"Some error occured in rewinding $invalidRange; pause and retry")
-                Some(pauseThenReiterateOnError)
+                Some(pauseThenReiterateOnError())
               }
             case Right(error) =>
               logger.error(s"During reorgCheck, there was a problem: $error")
-              Some(pauseThenReiterateOnError)
+              Some(pauseThenReiterateOnError())
           }
         }
       } // reorgRewindProvidedBehaviorOpt

@@ -29,12 +29,12 @@ private class TailSyncer(dbStorage: DBStorageAPI,
   import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages._
 
   final def launch(): Behavior[TailSyncerMessage] = {
-    logger.debug(s"Launching syncer: ${this.getClass.getSimpleName}")
+    logger.debug(s"FSM: launch - ${this.getClass.getSimpleName}")
 
     // Then go to the mainLoop, with the initial state
     Behaviors.setup[TailSyncerMessage] { context =>
       // Start the iterations
-      context.self ! makeIterateMessage
+      context.self ! iterateMessage
 
       Behaviors.receiveMessage[TailSyncerMessage] {
         case IterateTailSyncer() =>
@@ -48,10 +48,10 @@ private class TailSyncer(dbStorage: DBStorageAPI,
     }
   }
 
-  @inline override final def makeIterateMessage(): IterateTailSyncer = IterateTailSyncer()
+  @inline override val iterateMessage: IterateTailSyncer = IterateTailSyncer()
 
   @inline override final def pauseThenReiterateOnError(): Behavior[TailSyncerMessage] =
-    pauseThenReiterate
+    pauseThenReiterate()
 
   override final def iterate(): Behavior[TailSyncerMessage] = {
     logger.debug(s"FSM: iterate - running an iteration with $state")
@@ -105,7 +105,7 @@ private class TailSyncer(dbStorage: DBStorageAPI,
       progress.overall.from // safe default; at this point
     )
 
-    logger.debug(s"Progress is $progress: choosing between $blocksToCompare")
+    logger.debug(s"Progress is $progress: choosing between $blocksToCompare; headsyncer will start from ${progress.headSyncerStartBlock}")
 
     val syncStartBlock = blocksToCompare.flatten.min
     val syncEndBlock = Math.min(syncStartBlock + TailSyncer.BATCH_SIZE - 1, nodeSyncingStatus.currentBlock)
