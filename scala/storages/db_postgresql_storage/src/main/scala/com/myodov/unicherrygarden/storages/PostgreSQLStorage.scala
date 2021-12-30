@@ -419,7 +419,7 @@ class PostgreSQLStorage(jdbcUrl: String,
             WHEN 'FROM_BLOCK' THEN $fromBlock
             WHEN 'LATEST_KNOWN_BLOCK' THEN (SELECT eth_node_highest_block FROM ucg_state)
             WHEN 'LATEST_NODE_SYNCED_BLOCK' THEN (SELECT eth_node_current_block FROM ucg_state)
-            WHEN 'LATEST_CHERRYGARDEN_SYNCED_BLOCK' THEN (SELECT synced_to_block_number FROM ucg_state)
+            WHEN 'LATEST_CHERRYGARDEN_SYNCED_BLOCK' THEN (SELECT block_to FROM ucg_progress)
             ELSE NULL -- should fail
           END
         );

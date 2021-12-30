@@ -100,7 +100,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
                   addr.address,
                   Option(addr.comment), // nullable
                   payload.trackingMode,
-                  // The next line needs cunning processing of java.lang.Integer,
+                  // The next line needs cunning processing of java.lang.Integer using .map(_.toInt),
                   // as otherwise Option(null:Integer): Option[Int]
                   // will be evaluated as Some(0)
                   Option(payload.fromBlock).map(_.toInt) // nullable
