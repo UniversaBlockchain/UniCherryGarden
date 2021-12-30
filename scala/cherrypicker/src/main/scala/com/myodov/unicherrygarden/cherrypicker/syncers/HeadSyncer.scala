@@ -1,5 +1,6 @@
 package com.myodov.unicherrygarden.cherrypicker.syncers
 
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.actor.typed.Behavior
@@ -14,6 +15,7 @@ import com.myodov.unicherrygarden.storages.api.{DBStorage, DBStorageAPI}
 import scalikejdbc.{DB, DBSession}
 
 import scala.collection.immutable.SortedMap
+import scala.concurrent.duration.Duration
 import scala.language.postfixOps
 
 /** Performs the “Head sync” – syncing the newest blocks, which haven’t been synced yet.
@@ -82,6 +84,9 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
     logger.debug(s"FSM: iterate - running an iteration with $state")
     // Since this moment, we may want to use DB in a single atomic DB transaction;
     // even though this will involve querying the Ethereum node, maybe even multiple times.
+
+    val iterationStartTime = System.nanoTime
+
     DB localTx { implicit session =>
       // For more details on reorg handling phases, read the [[/docs/unicherrypicker-synchronization.md]] document.
 
@@ -155,7 +160,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
             state.ethereumNodeStatus,
             onError = pauseThenReiterateOnError
           ) { (overallProgress, nodeSyncingStatus) =>
-            headSync(overallProgress, nodeSyncingStatus)
+            headSync(overallProgress, nodeSyncingStatus, iterationStartTime)
           }
       }
     }
@@ -250,11 +255,21 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
     dbStorage.blocks.rewind(badBlockRange.head)
   }
 
-  /** Do the actual head sync syncing phase. */
+  /** Do the actual head sync syncing phase.
+   *
+   * Due to being called from `withValidatedProgressAndSyncingState`,
+   * `progress.overall.from` may be safely assumed non-None.
+   *
+   * @param iterationStartNanotime : the time of iteration start (to estimate the performance);
+   *                               result of calling `System.nanoTime` at the beginning.
+   */
   private[this] final def headSync(
                                     progress: Progress.ProgressData,
-                                    nodeSyncingStatus: EthereumNodeStatus
+                                    nodeSyncingStatus: EthereumNodeStatus,
+                                    iterationStartNanotime: Long
                                   )(implicit session: DBSession): Behavior[HeadSyncerMessage] = {
+    val overallFrom = progress.overall.from.get // `progress.overall.from` safely assumed non-None
+
     logger.debug(s"Now we are ready to do headSync for progress $progress, node $nodeSyncingStatus")
     // headSync is called from within `withValidatedProgressAndSyncingState`, so we can rely upon
     // overall.from being non-empty (and thus `headSyncerStartBlock` too)
@@ -277,7 +292,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
 
     if (shouldCatchUpBrake) {
       logger.info(s"Was going to HeadSync $headSyncingRange; but TailSyncer is close ($tailSyncStatus), so braking")
-      pauseThenMayCheckReorg
+      pauseThenMayCheckReorg()
     } else {
       logger.debug(s"Ready to HeadSync $headSyncingRange")
 
@@ -287,16 +302,31 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
         // HeadSync completed successfully. Should we pause, or instantly go to the next round?
         dbStorage.state.setLastHeartbeatAt
 
-        if (headSyncingRange.last >= nodeSyncingStatus.currentBlock) { // should be “==” rather than “>=”, but just to be safe
-          logger.debug(s"HeadSyncing success $headSyncingRange, reached end")
-          pauseThenMayCheckReorg
+        val iterationDuration = Duration(System.nanoTime - iterationStartNanotime, TimeUnit.NANOSECONDS)
+        val durationStr = s"${iterationDuration.toMillis} ms"
+
+        val remainingBlocks = nodeSyncingStatus.currentBlock - headSyncingRange.last
+
+        if (remainingBlocks <= 0) { // should be “==” rather than “<=”, but just to be safe
+          logger.debug(s"HeadSyncing success $headSyncingRange in $durationStr, reached end")
+          pauseThenMayCheckReorg()
         } else {
-          logger.debug(s"HeadSyncing success $headSyncingRange, not reached end")
-          reiterateMayCheckReorg // go to the next round instantly
+          // We haven’t synced to the end. Let’s calculate how long do we need.
+          assert(remainingBlocks > 0, remainingBlocks)
+          val processedBlocks = headSyncingRange.size
+          val remainingTime = remainingBlocks.doubleValue / processedBlocks * iterationDuration
+          val remainingStr = s"${remainingTime.toMillis} ms/${remainingTime.toMinutes} min/${remainingTime.toHours} h"
+
+          val blocksPerSec = processedBlocks.doubleValue / iterationDuration.toMillis * 1000
+          val blocksPerSecStr = f"$blocksPerSec%.1f"
+
+          logger.debug(s"HeadSyncing success $headSyncingRange in $durationStr, $blocksPerSecStr blocks per s, not reached end; " +
+            s"let's immediately proceed. Completion estimated in $remainingStr")
+          reiterateMayCheckReorg() // go to the next round instantly
         }
       } else {
         logger.error(s"HeadSyncing failure for $headSyncingRange")
-        pauseThenReiterateOnError
+        pauseThenReiterateOnError()
       }
     }
   }

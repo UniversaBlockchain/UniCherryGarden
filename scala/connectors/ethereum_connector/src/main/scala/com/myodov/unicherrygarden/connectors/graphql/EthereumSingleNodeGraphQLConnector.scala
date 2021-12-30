@@ -147,7 +147,7 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
     queryGraphQL(query, argHint = s"readBlocks($range)").flatMap { requestedRangeBlocks =>
       val queryDuration = Duration(System.nanoTime - queryStartTime, TimeUnit.NANOSECONDS)
       logger.debug(s"Querying for blocks $range (${range.size} blocks) (but actually $requestRange) " +
-        s"took ${queryDuration.toMillis} ms.")
+        s"took ${queryDuration.toMillis} ms")
 
       requestedRangeBlocks match {
         case invalidResult if !BlockBasic.validateBlocks(invalidResult) =>
