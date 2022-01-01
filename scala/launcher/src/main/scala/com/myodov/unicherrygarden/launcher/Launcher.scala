@@ -10,7 +10,7 @@ import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web
 import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryGardenerResponse, CherryPickerRequest, CherryPlanterRequest}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
-import com.myodov.unicherrygarden.{CherryPicker, CherryPlanter, LoggingConfigurator, UnicherrygardenVersion}
+import com.myodov.unicherrygarden.{CherryPicker, CherryPlanter, UnicherrygardenVersion}
 import com.typesafe.config.{ConfigException, ConfigFactory}
 import com.typesafe.scalalogging.LazyLogging
 import scopt.OParser
@@ -64,12 +64,12 @@ You can choose a different HOCON configuration file instead of the regular appli
   }
 
   private[this] def getDbStorage(wipe: Boolean): DBStorageAPI = {
-    val jdbcUrl = config.getString("db.jdbc_url")
-    val dbUser = config.getString("db.user")
-    val dbPassword = config.getString("db.password")
+    val jdbcUrl = config.getString("unicherrygarden.db.jdbc_url")
+    val dbUser = config.getString("unicherrygarden.db.user")
+    val dbPassword = config.getString("unicherrygarden.db.password")
     // This setting contains the optional database migrations, but may be omitted
     val dbMigrations: List[String] = try {
-      config.getStringList("db.migrations").asScala.toList
+      config.getStringList("unicherrygarden.db.migrations").asScala.toList
     } catch {
       case _: ConfigException.Missing => List.empty[String]
     }
@@ -77,7 +77,7 @@ You can choose a different HOCON configuration file instead of the regular appli
   }
 
   private[this] def getEthereumConnector(): AbstractEthereumNodeConnector with Web3ReadOperations = {
-    val nodeUrls = config.getStringList("ethereum.rpc_servers")
+    val nodeUrls = config.getStringList("unicherrygarden.ethereum.rpc_servers")
     if (nodeUrls.size > 1) {
       logger.warn(s"There are ${nodeUrls.size} Ethereum node URLs listed; only 1 is supported yet")
     } else if (nodeUrls.size == 0) {
@@ -92,9 +92,7 @@ You can choose a different HOCON configuration file instead of the regular appli
   }
 
   def init(wipe: Boolean): Unit = {
-    logger.info("Done!\nMultiline launch message.\nInitializing...")
-    val rpcServers = config.getList("ethereum.rpc_servers")
-
+    logger.info("Done!\nInitializing...") // Note this is a multi-line message
     val dbStorage = getDbStorage(wipe)
 
     dbStorage.state.setSyncState("Launched, using SQL")
@@ -115,8 +113,6 @@ You can choose a different HOCON configuration file instead of the regular appli
   }
 
   private[this] def mainLaunch(args: Array[String]): Unit = {
-    LoggingConfigurator.configure()
-
     handleCLI(args) match {
       case Some(cliConfig) =>
         // Config parsed successfully

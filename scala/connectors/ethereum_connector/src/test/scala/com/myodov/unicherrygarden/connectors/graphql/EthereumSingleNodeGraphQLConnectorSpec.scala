@@ -3,7 +3,7 @@ package com.myodov.unicherrygarden.connectors.graphql
 import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnectorSpec
 
 class EthereumSingleNodeGraphQLConnectorSpec extends AbstractEthereumNodeConnectorSpec {
-  lazy val sharedConnector = EthereumSingleNodeGraphQLConnector(config.getStringList("ethereum.rpc_servers").get(0))
+  lazy val sharedConnector = EthereumSingleNodeGraphQLConnector(config.getStringList("unicherrygarden.ethereum.rpc_servers").get(0))
 
   "readBlocks(20 blocks)" should "work well" in {
     assert(

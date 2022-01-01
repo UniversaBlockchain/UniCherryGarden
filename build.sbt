@@ -17,9 +17,7 @@ val scalaParallelCollectionsVersion = "1.0.0"
 val scalaTestVersion = "3.1.0"
 val scalikeJdbcVersion = "4.0.0"
 val scoptVersion = "4.0.0"
-//val sttpClientVersion = "2.2.10"
 val sttpClient3Version = "3.3.18"
-val syslogAppenderVersion = "1.0.0"
 val web3jVersion = "4.8.8"
 val jacksonCoreVersion = "2.11.4" // same version as used by akka-serialization-jackson for Scala 2.13
 
@@ -274,8 +272,6 @@ lazy val logging = (project in file("scala/logging"))
     libraryDependencies ++= Seq(
       // Default logging output
       "ch.qos.logback" % "logback-classic" % logbackVersion,
-      // Support for logging output to syslog - disabled for now, as there is no publicly hosted artifact
-      //      "com.github.serioussam" % "syslogappender" % syslogAppenderVersion,
     ),
   )
   .dependsOn(commonScala)
@@ -312,15 +308,10 @@ lazy val ethereum_connector = (project in file("scala/connectors/ethereum_connec
       // GraphQL client
       "com.github.ghostdogpr" %% "caliban-client" % calibanVersion,
       // Used by Caliban Client for outgoing queries
-
-      //      "com.softwaremill.sttp.client" %% "core" % sttpClientVersion,
-      //      "com.softwaremill.sttp.client" %% "akka-http-backend" % sttpClientVersion,
-
       "com.softwaremill.sttp.client3" %% "core" % sttpClient3Version,
       "com.softwaremill.sttp.client3" %% "akka-http-backend" % sttpClient3Version, // backend of choice
       "com.typesafe.akka" %% "akka-http" % akkaHttpVersion, // needed for "akka-http-backend
       "com.typesafe.akka" %% "akka-stream" % akkaVersion, // needed for akka-http explicitly
-
     ),
     Compile / caliban / calibanSettings ++= Seq(
       calibanSetting(file("scala/connectors/ethereum_connector/src/main/graphql/Geth.graphql"))(
