@@ -25,7 +25,8 @@ import scala.language.postfixOps
 private class HeadSyncer(dbStorage: DBStorageAPI,
                          ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
                          maxReorg: Int)
-                        (batchSize: Int)
+                        (batchSize: Int,
+                         catchUpBrakeMaxLead: Int)
   extends AbstractSyncer[HeadSyncerMessage, HeadSyncer.State, IterateHeadSyncer](
     dbStorage,
     ethereumConnector,
@@ -288,7 +289,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
         false
       case Some(tailSyncing) =>
         // We brake if the end of tail syncing operation is close to begin of head sync
-        tailSyncing.last >= headSyncingRange.head - HeadSyncer.CATCH_UP_BRAKE_MAX_LEAD
+        tailSyncing.last >= headSyncingRange.head - catchUpBrakeMaxLead
     }
 
     if (shouldCatchUpBrake) {
@@ -335,8 +336,6 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
 
 /** HeadSyncer companion object. */
 object HeadSyncer {
-  val CATCH_UP_BRAKE_MAX_LEAD = 10000 // TODO: must be configured through application.conf
-
   protected final case class State(@volatile override var ethereumNodeStatus: Option[EthereumNodeStatus] = None,
                                    nextIterationMustCheckReorg: AtomicBoolean = new AtomicBoolean(true),
                                    @volatile var tailSyncStatus: Option[dlt.EthereumBlock.BlockNumberRange] = None)
@@ -346,6 +345,7 @@ object HeadSyncer {
   @inline def apply(dbStorage: DBStorageAPI,
                     ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
                     maxReorg: Int)
-                   (batchSize: Int): Behavior[SyncerMessages.HeadSyncerMessage] =
-    new HeadSyncer(dbStorage, ethereumConnector, maxReorg)(batchSize).launch()
+                   (batchSize: Int,
+                    catchUpBrakeMaxLead: Int): Behavior[SyncerMessages.HeadSyncerMessage] =
+    new HeadSyncer(dbStorage, ethereumConnector, maxReorg)(batchSize, catchUpBrakeMaxLead).launch()
 }

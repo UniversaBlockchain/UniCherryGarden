@@ -29,11 +29,15 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
                            protected[this] val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
                            maxReorg: Int,
                            headSyncerBatchSize: Int,
-                           tailSyncerBatchSize: Int)
+                           tailSyncerBatchSize: Int,
+                           catchUpBrakeMaxLeadSetting: Int
+                          )
   extends LazyLogging {
   assert(maxReorg >= 1, maxReorg)
   assert(headSyncerBatchSize >= 1, headSyncerBatchSize)
   assert(tailSyncerBatchSize >= 1, tailSyncerBatchSize)
+  assert(catchUpBrakeMaxLeadSetting >= 1 && catchUpBrakeMaxLeadSetting >= Math.max(headSyncerBatchSize, tailSyncerBatchSize),
+    (catchUpBrakeMaxLeadSetting, headSyncerBatchSize, tailSyncerBatchSize))
 
   import CherryPicker._
 
@@ -44,7 +48,8 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
 
       logger.debug("CherryPicker: Launching HeadSyncer...")
       val headSyncer: ActorRef[SyncerMessages.HeadSyncerMessage] = context.spawn(
-        HeadSyncer(dbStorage, ethereumConnector, maxReorg)(headSyncerBatchSize), "HeadSyncer")
+        HeadSyncer(dbStorage, ethereumConnector, maxReorg)(headSyncerBatchSize, catchUpBrakeMaxLeadSetting),
+        "HeadSyncer")
       logger.debug("CherryPicker: Launching TailSyncer...")
       val tailSyncer: ActorRef[SyncerMessages.TailSyncerMessage] = context.spawn(
         TailSyncer(dbStorage, ethereumConnector, maxReorg)(tailSyncerBatchSize, headSyncer),
@@ -216,11 +221,14 @@ object CherryPicker extends LazyLogging {
                     ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
                     maxReorg: Int,
                     headSyncerBatchSize: Int,
-                    tailSyncerBatchSize: Int): Behavior[CherryPickerRequest] =
+                    tailSyncerBatchSize: Int,
+                    catchUpBrakeMaxLeadSetting: Int): Behavior[CherryPickerRequest] =
     new CherryPicker(
       dbStorage,
       ethereumConnector,
       maxReorg,
       headSyncerBatchSize,
-      tailSyncerBatchSize).launch()
+      tailSyncerBatchSize,
+      catchUpBrakeMaxLeadSetting
+    ).launch()
 }

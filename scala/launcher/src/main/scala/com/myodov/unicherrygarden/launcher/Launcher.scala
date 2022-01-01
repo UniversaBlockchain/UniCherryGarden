@@ -96,22 +96,21 @@ You can choose a different HOCON configuration file instead of the regular appli
 
   /** Any config setting containing some number of blocks related to reorg; with validations. */
   private[this] def blocksNumberSetting(path: String): Int = {
-    val candidate = config.getInt(path)
     val default = 100
-    candidate match {
-      case tooLittle if tooLittle <= 1 =>
-        logger.error(s"$path setting is $tooLittle, " +
+    config.getInt(path) match {
+      case tooSmall if tooSmall <= 1 =>
+        logger.error(s"$path setting is $tooSmall, " +
           s"should be 1 or higher; using default $default")
         default
-      case dangerouslySmall if dangerouslySmall < 6 =>
-        logger.warn(s"$path setting is $dangerouslySmall, " +
+      case dangerouslySmallCandidate if dangerouslySmallCandidate < 6 =>
+        logger.warn(s"$path setting is $dangerouslySmallCandidate, " +
           s"6–12 at least is recommended; safe default is even $default; but will use it")
-        candidate
-      case smallButOk if smallButOk < default =>
-        logger.warn(s"$path setting is $smallButOk, " +
+        dangerouslySmallCandidate
+      case smallButOkCandidate if smallButOkCandidate < default =>
+        logger.info(s"$path setting is $smallButOkCandidate, " +
           s"safe default is $default; but will use it")
-        candidate
-      case other =>
+        smallButOkCandidate
+      case candidate =>
         candidate
     }
 
@@ -132,6 +131,26 @@ You can choose a different HOCON configuration file instead of the regular appli
     syncerBatchSizeSetting("head_syncer")
   private[launcher] lazy val tailSyncerBatchSizeSetting: Int =
     syncerBatchSizeSetting("tail_syncer")
+
+  private[launcher] lazy val catchUpBrakeMaxLeadSetting: Int = {
+    val path = "unicherrygarden.cherrypicker.syncers.head_syncer.catch_up_brake_max_lead"
+    val minSafeValue = Math.max(headSyncerBatchSizeSetting, tailSyncerBatchSizeSetting)
+    val default = 10_000
+
+    blocksNumberSetting(path) match {
+      case tooSmall if tooSmall < minSafeValue =>
+        logger.error(s"$path setting is $tooSmall, " +
+          s"should be higher than both head_syncer.batch_size ($headSyncerBatchSizeSetting) " +
+          s"and tail_syncer.batch_size ($tailSyncerBatchSizeSetting); using $minSafeValue")
+        minSafeValue
+      case smallButOkCandidate if smallButOkCandidate < default =>
+        logger.info(s"$path setting is $smallButOkCandidate, " +
+          s"safe default is $default; but will use it")
+        smallButOkCandidate
+      case candidate =>
+        candidate
+    }
+  }
 
   def init(wipe: Boolean): Unit = {
     logger.info("Done!\nInitializing...") // Note this is a multi-line message
@@ -210,7 +229,13 @@ object LauncherActor extends LazyLogging {
           logger.debug(s"Launching sub-actor CherryPicker ($dbStorage, $ethereumConnector)")
           val cherryPicker: ActorRef[CherryPickerRequest] =
             context.spawn(
-              CherryPicker(dbStorage, ethereumConnector, maxReorgSetting, headSyncerBatchSizeSetting, tailSyncerBatchSizeSetting),
+              CherryPicker(
+                dbStorage,
+                ethereumConnector,
+                maxReorgSetting,
+                headSyncerBatchSizeSetting,
+                tailSyncerBatchSizeSetting,
+                catchUpBrakeMaxLeadSetting),
               "CherryPicker")
 
           logger.debug(s"Launching sub-actor CherryPlanter")
