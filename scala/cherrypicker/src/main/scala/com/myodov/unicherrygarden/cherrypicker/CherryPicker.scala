@@ -1,8 +1,5 @@
 package com.myodov.unicherrygarden
 
-import java.time
-import java.time.Instant
-
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
@@ -26,9 +23,11 @@ import scala.language.postfixOps
  * which both work independently but assume the other counterpart does its job too.
  *
  * @note For more details please read [[/docs/unicherrypicker-synchronization.md]] document.
+ * @param maxReorg maximum lenmaxReorggth of reorganization in Ethereum blockchain that we support and allow.
  */
 private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
-                           protected[this] val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
+                           protected[this] val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
+                           maxReorg: Int)
   extends LazyLogging {
 
   import CherryPicker._
@@ -40,10 +39,10 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
 
       logger.debug("CherryPicker: Launching HeadSyncer...")
       val headSyncer: ActorRef[SyncerMessages.HeadSyncerMessage] = context.spawn(
-        HeadSyncer(dbStorage, ethereumConnector), "HeadSyncer")
+        HeadSyncer(dbStorage, ethereumConnector, maxReorg), "HeadSyncer")
       logger.debug("CherryPicker: Launching TailSyncer...")
       val tailSyncer: ActorRef[SyncerMessages.TailSyncerMessage] = context.spawn(
-        TailSyncer(dbStorage, ethereumConnector, headSyncer),
+        TailSyncer(dbStorage, ethereumConnector, maxReorg)(headSyncer),
         "TailSyncer")
       val ethereumStatePoller = context.spawn(
         EthereumStatePoller(ethereumConnector, Seq(headSyncer, tailSyncer)),
@@ -207,10 +206,9 @@ object CherryPicker extends LazyLogging {
 
   val BLOCK_ITERATION_PERIOD = 10 seconds // Each block is generated about once per 13 seconds, let’s be safe
 
-  val MAX_REORG = 100 // TODO: must be configured through application.conf
-
   /** Main constructor. */
   @inline def apply(dbStorage: DBStorageAPI,
-                    ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations): Behavior[CherryPickerRequest] =
-    new CherryPicker(dbStorage, ethereumConnector).launch()
+                    ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
+                    maxReorg: Int): Behavior[CherryPickerRequest] =
+    new CherryPicker(dbStorage, ethereumConnector, maxReorg).launch()
 }

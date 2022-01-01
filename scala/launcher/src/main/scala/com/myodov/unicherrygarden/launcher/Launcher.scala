@@ -7,7 +7,7 @@ import akka.cluster.typed.{Cluster, Subscribe}
 import com.myodov.unicherrygarden.cherrygardener.CherryGardener
 import com.myodov.unicherrygarden.connectors.graphql.EthereumSingleNodeGraphQLConnector
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
-import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryGardenerResponse, CherryPickerRequest, CherryPlanterRequest}
+import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryPickerRequest, CherryPlanterRequest}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.myodov.unicherrygarden.{CherryPicker, CherryPlanter, UnicherrygardenVersion}
@@ -63,7 +63,7 @@ You can choose a different HOCON configuration file instead of the regular appli
     OParser.parse(parser, args, CLIConfig())
   }
 
-  private[this] def getDbStorage(wipe: Boolean): DBStorageAPI = {
+  private[this] def dbStorage(wipe: Boolean): DBStorageAPI = {
     val jdbcUrl = config.getString("unicherrygarden.db.jdbc_url")
     val dbUser = config.getString("unicherrygarden.db.user")
     val dbPassword = config.getString("unicherrygarden.db.password")
@@ -76,7 +76,10 @@ You can choose a different HOCON configuration file instead of the regular appli
     PostgreSQLStorage(jdbcUrl, dbUser, dbPassword, wipe, dbMigrations)
   }
 
-  private[this] def getEthereumConnector(): AbstractEthereumNodeConnector with Web3ReadOperations = {
+  /** Create an instance of [[AbstractEthereumNodeConnector]],
+   * according to the application configuration.
+   */
+  private[this] lazy val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations = {
     val nodeUrls = config.getStringList("unicherrygarden.ethereum.rpc_servers")
     if (nodeUrls.size > 1) {
       logger.warn(s"There are ${nodeUrls.size} Ethereum node URLs listed; only 1 is supported yet")
@@ -91,9 +94,33 @@ You can choose a different HOCON configuration file instead of the regular appli
     //    EthereumSingleNodeJsonRpcConnector(nodeUrl)
   }
 
+  /** Get the maximum supported number of Ethereum blockchain reorganizations,
+   * according to the application configuration.
+   */
+  private[this] lazy val maxReorgSetting: Int = {
+    val candidate = config.getInt("unicherrygarden.cherrypicker.syncers.max_reorg")
+    val default = 100
+    candidate match {
+      case tooLittle if tooLittle <= 1 =>
+        logger.error(s"unicherrygarden.cherrypicker.syncers.max_reorg setting is $tooLittle, " +
+          s"should be 1 or higher; using default $default")
+        default
+      case dangerouslySmall if dangerouslySmall < 6 =>
+        logger.warn(s"unicherrygarden.cherrypicker.syncers.max_reorg setting is $dangerouslySmall, " +
+          s"6–12 at least is recommended; safe default is even $default; but will use it")
+        candidate
+      case smallButOk if smallButOk < default =>
+        logger.warn(s"unicherrygarden.cherrypicker.syncers.max_reorg setting is $smallButOk, " +
+          s"safe default is $default; but will use it")
+        candidate
+      case other =>
+        candidate
+    }
+  }
+
   def init(wipe: Boolean): Unit = {
     logger.info("Done!\nInitializing...") // Note this is a multi-line message
-    val dbStorage = getDbStorage(wipe)
+    val dbStorage = dbStorage(wipe)
 
     dbStorage.state.setSyncState("Launched, using SQL")
   }
@@ -109,7 +136,11 @@ You can choose a different HOCON configuration file instead of the regular appli
   /** Launches the CherryGardener (and, inside it, CherryPicker and CherryPlanter) Akka actors
    * (which are usually launcher together at the moment). */
   private[this] def launchGardener(): Unit = {
-    actorSystem ! LauncherActor.LaunchCherryGardener(getDbStorage(wipe = false), getEthereumConnector)
+    actorSystem ! LauncherActor.LaunchCherryGardener(
+      dbStorage(wipe = false),
+      ethereumConnector,
+      maxReorgSetting
+    )
   }
 
   private[this] def mainLaunch(args: Array[String]): Unit = {
@@ -142,26 +173,28 @@ object LauncherActor extends LazyLogging {
   lazy val propVersionStr = props.getProperty("version", "N/A");
   lazy val propBuildTimestampStr = props.getProperty("build_timestamp", "");
 
-  trait Message {}
+  sealed trait Message {}
 
-  trait LaunchComponent extends Message {}
+  sealed trait LaunchComponent extends Message {}
 
   /** Akka message to launch GardenWatcher. */
   final case class LaunchGardenWatcher() extends LaunchComponent
 
   /** Akka message to launch CherryGardener. */
   final case class LaunchCherryGardener(dbStorage: DBStorageAPI,
-                                        ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations) extends LaunchComponent
+                                        ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
+                                        maxReorg: Int
+                                       ) extends LaunchComponent
 
   def apply(): Behavior[Message] =
     Behaviors.receive { (context, message) =>
       message match {
         case LauncherActor.LaunchGardenWatcher() =>
           logger.info(s"Launching GardenWatcher (pure launcher, no actor): launcher v. $propVersionStr, built at $propBuildTimestampStr")
-        case LauncherActor.LaunchCherryGardener(dbStorage, ethereumConnector) =>
+        case LauncherActor.LaunchCherryGardener(dbStorage, ethereumConnector, maxReorg) =>
           logger.debug(s"Launching sub-actor CherryPicker ($dbStorage, $ethereumConnector)")
           val cherryPicker: ActorRef[CherryPickerRequest] =
-            context.spawn(CherryPicker(dbStorage, ethereumConnector), "CherryPicker")
+            context.spawn(CherryPicker(dbStorage, ethereumConnector, maxReorg), "CherryPicker")
 
           logger.debug(s"Launching sub-actor CherryPlanter")
           val cherryPlanter: ActorRef[CherryPlanterRequest] =
@@ -178,17 +211,6 @@ object LauncherActor extends LazyLogging {
 
           val cluster = Cluster(context.system)
           cluster.subscriptions ! Subscribe(clusterSubscriber: ActorRef[MemberEvent], classOf[MemberEvent])
-
-        // CherryGardenerResponse and further are Java interfaces, so we cannot use convenient
-        // unapply-based pattern matching.
-        case response: CherryGardenerResponse =>
-          response match {
-            //            case getBalanceResp: Balances.GetBalanceResp => {
-            //              logger.debug(s"Received GetBalanceResponse: $getBalanceResp")
-            //            }
-            case unknownResponse =>
-              logger.error(s"Unexpected CherryGardener response: $unknownResponse")
-          }
         case unexpectedComponent =>
           logger.error(s"Unexpected component to launch: $unexpectedComponent")
       }

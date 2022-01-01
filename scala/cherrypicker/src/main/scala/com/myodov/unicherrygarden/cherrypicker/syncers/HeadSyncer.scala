@@ -5,7 +5,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
-import com.myodov.unicherrygarden.CherryPicker
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.dlt.EthereumBlock
 import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{EthereumNodeStatus, HeadSyncerMessage, IterateHeadSyncer}
@@ -20,10 +19,12 @@ import scala.language.postfixOps
 
 /** Performs the “Head sync” – syncing the newest blocks, which haven’t been synced yet.
  *
+ * @param maxReorg maximum lenmaxReorggth of reorganization in Ethereum blockchain that we support and allow.
  * @note For more details please read [[/docs/unicherrypicker-synchronization.md]] document.
  */
 private class HeadSyncer(dbStorage: DBStorageAPI,
-                         ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
+                         ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
+                         maxReorg: Int)
   extends AbstractSyncer[HeadSyncerMessage, HeadSyncer.State, IterateHeadSyncer](
     dbStorage,
     ethereumConnector,
@@ -185,7 +186,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
         case Some(maxBlocksNum) =>
           // Reorg check is needed (i.e. “return true”) if the maximum block number stored in the DB
           // is in “danger zone” (closer than `syncers.max_reorg`) from `eth.syncing.currentBlock`.
-          maxBlocksNum >= nodeSyncingStatus.currentBlock - CherryPicker.MAX_REORG
+          maxBlocksNum >= nodeSyncingStatus.currentBlock - maxReorg
       }
     }
   }
@@ -201,7 +202,6 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
    *         </ul>
    */
   private[this] final def reorgCheck()(implicit session: DBSession): Either[Option[dlt.EthereumBlock.BlockNumberRange], String] = {
-    val maxReorg = CherryPicker.MAX_REORG
     val blockHashesInDb: SortedMap[Int, String] = dbStorage.blocks.getLatestHashes(maxReorg)
     logger.debug(s"We have ${blockHashesInDb.size} blocks stored in DB, checking for reorg sized $maxReorg")
     if (blockHashesInDb.isEmpty) {
@@ -250,8 +250,8 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
                                      )(implicit session: DBSession): Boolean = {
     logger.debug(s"Rewinding the blocks $badBlockRange")
     require(
-      (badBlockRange.size <= CherryPicker.MAX_REORG) && (badBlockRange.head <= badBlockRange.last),
-      (badBlockRange, CherryPicker.MAX_REORG))
+      (badBlockRange.size <= maxReorg) && (badBlockRange.head <= badBlockRange.last),
+      (badBlockRange, maxReorg))
     dbStorage.blocks.rewind(badBlockRange.head)
   }
 
@@ -345,6 +345,7 @@ object HeadSyncer {
 
   /** Main constructor. */
   @inline def apply(dbStorage: DBStorageAPI,
-                    ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations): Behavior[SyncerMessages.HeadSyncerMessage] =
-    new HeadSyncer(dbStorage, ethereumConnector).launch()
+                    ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
+                    maxReorg: Int): Behavior[SyncerMessages.HeadSyncerMessage] =
+    new HeadSyncer(dbStorage, ethereumConnector, maxReorg).launch()
 }

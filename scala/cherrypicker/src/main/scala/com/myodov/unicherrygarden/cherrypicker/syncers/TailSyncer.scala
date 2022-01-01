@@ -18,10 +18,12 @@ import scala.language.postfixOps
  * due to some currencies or tokens added.
  *
  * @note For more details please read [[/docs/unicherrypicker-synchronization.md]] document.
+ * @param maxReorg   maximum length of reorganization in Ethereum blockchain that we support and allow.
  * @param headSyncer the actor of HeadSyncer, to which this TailSyncer will report about its syncing plans.
  */
 private class TailSyncer(dbStorage: DBStorageAPI,
-                         ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations)
+                         ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
+                         maxReorg: Int)
                         (headSyncer: ActorRef[TailSyncing])
   extends AbstractSyncer[TailSyncerMessage, TailSyncer.State, IterateTailSyncer](
     dbStorage,
@@ -178,6 +180,7 @@ object TailSyncer {
    */
   @inline def apply(dbStorage: DBStorageAPI,
                     ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
-                    headSyncer: ActorRef[TailSyncing]): Behavior[TailSyncerMessage] =
-    new TailSyncer(dbStorage, ethereumConnector)(headSyncer).launch()
+                    maxReorg: Int)
+                   (headSyncer: ActorRef[TailSyncing]): Behavior[TailSyncerMessage] =
+    new TailSyncer(dbStorage, ethereumConnector, maxReorg)(headSyncer).launch()
 }
