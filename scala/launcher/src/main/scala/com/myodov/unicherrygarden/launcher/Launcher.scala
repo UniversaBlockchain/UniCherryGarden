@@ -63,7 +63,7 @@ You can choose a different HOCON configuration file instead of the regular appli
     OParser.parse(parser, args, CLIConfig())
   }
 
-  private[this] def dbStorage(wipe: Boolean): DBStorageAPI = {
+  private[launcher] def getDbStorage(wipe: Boolean): DBStorageAPI = {
     val jdbcUrl = config.getString("unicherrygarden.db.jdbc_url")
     val dbUser = config.getString("unicherrygarden.db.user")
     val dbPassword = config.getString("unicherrygarden.db.password")
@@ -79,7 +79,7 @@ You can choose a different HOCON configuration file instead of the regular appli
   /** Create an instance of [[AbstractEthereumNodeConnector]],
    * according to the application configuration.
    */
-  private[this] lazy val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations = {
+  private[launcher] lazy val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations = {
     val nodeUrls = config.getStringList("unicherrygarden.ethereum.rpc_servers")
     if (nodeUrls.size > 1) {
       logger.warn(s"There are ${nodeUrls.size} Ethereum node URLs listed; only 1 is supported yet")
@@ -94,33 +94,48 @@ You can choose a different HOCON configuration file instead of the regular appli
     //    EthereumSingleNodeJsonRpcConnector(nodeUrl)
   }
 
-  /** Get the maximum supported number of Ethereum blockchain reorganizations,
-   * according to the application configuration.
-   */
-  private[this] lazy val maxReorgSetting: Int = {
-    val candidate = config.getInt("unicherrygarden.cherrypicker.syncers.max_reorg")
+  /** Any config setting containing some number of blocks related to reorg; with validations. */
+  private[this] def blocksNumberSetting(path: String): Int = {
+    val candidate = config.getInt(path)
     val default = 100
     candidate match {
       case tooLittle if tooLittle <= 1 =>
-        logger.error(s"unicherrygarden.cherrypicker.syncers.max_reorg setting is $tooLittle, " +
+        logger.error(s"$path setting is $tooLittle, " +
           s"should be 1 or higher; using default $default")
         default
       case dangerouslySmall if dangerouslySmall < 6 =>
-        logger.warn(s"unicherrygarden.cherrypicker.syncers.max_reorg setting is $dangerouslySmall, " +
+        logger.warn(s"$path setting is $dangerouslySmall, " +
           s"6–12 at least is recommended; safe default is even $default; but will use it")
         candidate
       case smallButOk if smallButOk < default =>
-        logger.warn(s"unicherrygarden.cherrypicker.syncers.max_reorg setting is $smallButOk, " +
+        logger.warn(s"$path setting is $smallButOk, " +
           s"safe default is $default; but will use it")
         candidate
       case other =>
         candidate
     }
+
   }
+
+  /** Get the maximum supported number of Ethereum blockchain reorganizations,
+   * according to the application configuration.
+   */
+  private[launcher] lazy val maxReorgSetting: Int =
+    blocksNumberSetting("unicherrygarden.cherrypicker.syncers.max_reorg")
+
+  private[this] def syncerBatchSizeSetting(configSectionName: String): Int = {
+    assert(Seq("head_syncer", "tail_syncer").contains(configSectionName), configSectionName)
+    blocksNumberSetting(s"unicherrygarden.cherrypicker.syncers.$configSectionName.batch_size")
+  }
+
+  private[launcher] lazy val headSyncerBatchSizeSetting: Int =
+    syncerBatchSizeSetting("head_syncer")
+  private[launcher] lazy val tailSyncerBatchSizeSetting: Int =
+    syncerBatchSizeSetting("tail_syncer")
 
   def init(wipe: Boolean): Unit = {
     logger.info("Done!\nInitializing...") // Note this is a multi-line message
-    val dbStorage = dbStorage(wipe)
+    val dbStorage = getDbStorage(wipe)
 
     dbStorage.state.setSyncState("Launched, using SQL")
   }
@@ -136,11 +151,7 @@ You can choose a different HOCON configuration file instead of the regular appli
   /** Launches the CherryGardener (and, inside it, CherryPicker and CherryPlanter) Akka actors
    * (which are usually launcher together at the moment). */
   private[this] def launchGardener(): Unit = {
-    actorSystem ! LauncherActor.LaunchCherryGardener(
-      dbStorage(wipe = false),
-      ethereumConnector,
-      maxReorgSetting
-    )
+    actorSystem ! LauncherActor.LaunchCherryGardener()
   }
 
   private[this] def mainLaunch(args: Array[String]): Unit = {
@@ -169,6 +180,9 @@ You can choose a different HOCON configuration file instead of the regular appli
 
 /** The Akka guardian actor that launches all necessary components of CherryGarden. */
 object LauncherActor extends LazyLogging {
+
+  import LauncherApp._
+
   lazy val props = UnicherrygardenVersion.loadPropsFromNamedResource("unicherrygarden_launcher.properties")
   lazy val propVersionStr = props.getProperty("version", "N/A");
   lazy val propBuildTimestampStr = props.getProperty("build_timestamp", "");
@@ -181,20 +195,23 @@ object LauncherActor extends LazyLogging {
   final case class LaunchGardenWatcher() extends LaunchComponent
 
   /** Akka message to launch CherryGardener. */
-  final case class LaunchCherryGardener(dbStorage: DBStorageAPI,
-                                        ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
-                                        maxReorg: Int
-                                       ) extends LaunchComponent
+  final case class LaunchCherryGardener() extends LaunchComponent
+
 
   def apply(): Behavior[Message] =
     Behaviors.receive { (context, message) =>
       message match {
         case LauncherActor.LaunchGardenWatcher() =>
           logger.info(s"Launching GardenWatcher (pure launcher, no actor): launcher v. $propVersionStr, built at $propBuildTimestampStr")
-        case LauncherActor.LaunchCherryGardener(dbStorage, ethereumConnector, maxReorg) =>
+        case LauncherActor.LaunchCherryGardener() =>
+          val dbStorage = getDbStorage(wipe = false)
+          //          ethereumConnector
+
           logger.debug(s"Launching sub-actor CherryPicker ($dbStorage, $ethereumConnector)")
           val cherryPicker: ActorRef[CherryPickerRequest] =
-            context.spawn(CherryPicker(dbStorage, ethereumConnector, maxReorg), "CherryPicker")
+            context.spawn(
+              CherryPicker(dbStorage, ethereumConnector, maxReorgSetting, headSyncerBatchSizeSetting, tailSyncerBatchSizeSetting),
+              "CherryPicker")
 
           logger.debug(s"Launching sub-actor CherryPlanter")
           val cherryPlanter: ActorRef[CherryPlanterRequest] =

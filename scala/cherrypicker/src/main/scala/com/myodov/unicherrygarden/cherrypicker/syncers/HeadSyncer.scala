@@ -25,6 +25,7 @@ import scala.language.postfixOps
 private class HeadSyncer(dbStorage: DBStorageAPI,
                          ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
                          maxReorg: Int)
+                        (batchSize: Int)
   extends AbstractSyncer[HeadSyncerMessage, HeadSyncer.State, IterateHeadSyncer](
     dbStorage,
     ethereumConnector,
@@ -274,7 +275,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
     // headSync is called from within `withValidatedProgressAndSyncingState`, so we can rely upon
     // overall.from being non-empty (and thus `headSyncerStartBlock` too)
     val syncStartBlock = progress.headSyncerStartBlock.get
-    val syncEndBlock = Math.min(syncStartBlock + HeadSyncer.BATCH_SIZE - 1, nodeSyncingStatus.currentBlock)
+    val syncEndBlock = Math.min(syncStartBlock + batchSize - 1, nodeSyncingStatus.currentBlock)
 
     val headSyncingRange: EthereumBlock.BlockNumberRange = syncStartBlock to syncEndBlock
 
@@ -334,8 +335,6 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
 
 /** HeadSyncer companion object. */
 object HeadSyncer {
-
-  val BATCH_SIZE = 100 // TODO: must be configured through application.conf
   val CATCH_UP_BRAKE_MAX_LEAD = 10000 // TODO: must be configured through application.conf
 
   protected final case class State(@volatile override var ethereumNodeStatus: Option[EthereumNodeStatus] = None,
@@ -346,6 +345,7 @@ object HeadSyncer {
   /** Main constructor. */
   @inline def apply(dbStorage: DBStorageAPI,
                     ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
-                    maxReorg: Int): Behavior[SyncerMessages.HeadSyncerMessage] =
-    new HeadSyncer(dbStorage, ethereumConnector, maxReorg).launch()
+                    maxReorg: Int)
+                   (batchSize: Int): Behavior[SyncerMessages.HeadSyncerMessage] =
+    new HeadSyncer(dbStorage, ethereumConnector, maxReorg)(batchSize).launch()
 }

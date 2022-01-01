@@ -24,7 +24,8 @@ import scala.language.postfixOps
 private class TailSyncer(dbStorage: DBStorageAPI,
                          ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
                          maxReorg: Int)
-                        (headSyncer: ActorRef[TailSyncing])
+                        (batchSize: Int,
+                         headSyncer: ActorRef[TailSyncing])
   extends AbstractSyncer[TailSyncerMessage, TailSyncer.State, IterateTailSyncer](
     dbStorage,
     ethereumConnector,
@@ -120,7 +121,7 @@ private class TailSyncer(dbStorage: DBStorageAPI,
     logger.debug(s"Progress is $progress: choosing between $blocksToCompare; headsyncer will start from ${progress.headSyncerStartBlock}")
 
     val syncStartBlock = blocksToCompare.flatten.minOption.getOrElse(overallFrom)
-    val syncEndBlock = Math.min(syncStartBlock + TailSyncer.BATCH_SIZE - 1, nodeSyncingStatus.currentBlock)
+    val syncEndBlock = Math.min(syncStartBlock + batchSize - 1, nodeSyncingStatus.currentBlock)
 
     (syncStartBlock, syncEndBlock) match {
       case (start, endSmallerThanStart) if endSmallerThanStart < start =>
@@ -169,8 +170,6 @@ private class TailSyncer(dbStorage: DBStorageAPI,
 /** TailSyncer companion object. */
 object TailSyncer {
 
-  val BATCH_SIZE = 100 // TODO: must be configured through application.conf
-
   protected final case class State(@volatile override var ethereumNodeStatus: Option[EthereumNodeStatus] = None)
     extends AbstractSyncer.SyncerState
 
@@ -181,6 +180,7 @@ object TailSyncer {
   @inline def apply(dbStorage: DBStorageAPI,
                     ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
                     maxReorg: Int)
-                   (headSyncer: ActorRef[TailSyncing]): Behavior[TailSyncerMessage] =
-    new TailSyncer(dbStorage, ethereumConnector, maxReorg)(headSyncer).launch()
+                   (batchSize: Int,
+                    headSyncer: ActorRef[TailSyncing]): Behavior[TailSyncerMessage] =
+    new TailSyncer(dbStorage, ethereumConnector, maxReorg)(batchSize, headSyncer).launch()
 }

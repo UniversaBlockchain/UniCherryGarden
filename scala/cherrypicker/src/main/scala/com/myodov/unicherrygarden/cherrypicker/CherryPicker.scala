@@ -27,8 +27,13 @@ import scala.language.postfixOps
  */
 private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
                            protected[this] val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
-                           maxReorg: Int)
+                           maxReorg: Int,
+                           headSyncerBatchSize: Int,
+                           tailSyncerBatchSize: Int)
   extends LazyLogging {
+  assert(maxReorg >= 1, maxReorg)
+  assert(headSyncerBatchSize >= 1, headSyncerBatchSize)
+  assert(tailSyncerBatchSize >= 1, tailSyncerBatchSize)
 
   import CherryPicker._
 
@@ -39,10 +44,10 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
 
       logger.debug("CherryPicker: Launching HeadSyncer...")
       val headSyncer: ActorRef[SyncerMessages.HeadSyncerMessage] = context.spawn(
-        HeadSyncer(dbStorage, ethereumConnector, maxReorg), "HeadSyncer")
+        HeadSyncer(dbStorage, ethereumConnector, maxReorg)(headSyncerBatchSize), "HeadSyncer")
       logger.debug("CherryPicker: Launching TailSyncer...")
       val tailSyncer: ActorRef[SyncerMessages.TailSyncerMessage] = context.spawn(
-        TailSyncer(dbStorage, ethereumConnector, maxReorg)(headSyncer),
+        TailSyncer(dbStorage, ethereumConnector, maxReorg)(tailSyncerBatchSize, headSyncer),
         "TailSyncer")
       val ethereumStatePoller = context.spawn(
         EthereumStatePoller(ethereumConnector, Seq(headSyncer, tailSyncer)),
@@ -209,6 +214,13 @@ object CherryPicker extends LazyLogging {
   /** Main constructor. */
   @inline def apply(dbStorage: DBStorageAPI,
                     ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
-                    maxReorg: Int): Behavior[CherryPickerRequest] =
-    new CherryPicker(dbStorage, ethereumConnector, maxReorg).launch()
+                    maxReorg: Int,
+                    headSyncerBatchSize: Int,
+                    tailSyncerBatchSize: Int): Behavior[CherryPickerRequest] =
+    new CherryPicker(
+      dbStorage,
+      ethereumConnector,
+      maxReorg,
+      headSyncerBatchSize,
+      tailSyncerBatchSize).launch()
 }
