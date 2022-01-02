@@ -275,58 +275,63 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
     // overall.from being non-empty (and thus `headSyncerStartBlock` too)
     val syncStartBlock = progress.headSyncerStartBlock.get
     val syncEndBlock = Math.min(syncStartBlock + batchSize - 1, nodeSyncingStatus.currentBlock)
-
     val headSyncingRange: EthereumBlock.BlockNumberRange = syncStartBlock to syncEndBlock
-
     val tailSyncStatus: Option[dlt.EthereumBlock.BlockNumberRange] = state.tailSyncStatus
 
-    // We are ready to headsync; but maybe we want to brake, to let the tail syncer to catch up
-    val shouldCatchUpBrake: Boolean = tailSyncStatus match {
-      case None =>
-        // Haven’t received anything from TailSyncer, so don’t brake for it
-        false
-      case Some(tailSyncing) =>
-        // We brake if the end of tail syncing operation is close to begin of head sync
-        tailSyncing.last >= headSyncingRange.head - catchUpBrakeMaxLead
-    }
-
-    if (shouldCatchUpBrake) {
-      logger.info(s"Was going to HeadSync $headSyncingRange; but TailSyncer is close ($tailSyncStatus), so braking")
+    if (headSyncingRange.isEmpty) {
+      logger.debug(s"Nothing to sync: planned range was $headSyncingRange; pausing")
       pauseThenMayCheckReorg()
     } else {
-      logger.debug(s"Ready to HeadSync $headSyncingRange")
+      // We actually have something to sync
 
-      // Do the actual syncing
+      // We are ready to headsync; but maybe we want to brake, to let the tail syncer to catch up
+      val shouldCatchUpBrake: Boolean = tailSyncStatus match {
+        case None =>
+          // Haven’t received anything from TailSyncer, so don’t brake for it
+          false
+        case Some(tailSyncing) =>
+          // We brake if the end of tail syncing operation is close to begin of head sync
+          tailSyncing.last >= headSyncingRange.head - catchUpBrakeMaxLead
+      }
 
-      if (syncBlocks(headSyncingRange)) {
-        // HeadSync completed successfully. Should we pause, or instantly go to the next round?
-        dbStorage.state.setLastHeartbeatAt
-
-        val iterationDuration = Duration(System.nanoTime - iterationStartNanotime, TimeUnit.NANOSECONDS)
-        val durationStr = s"${iterationDuration.toMillis} ms"
-
-        val remainingBlocks = nodeSyncingStatus.currentBlock - headSyncingRange.last
-
-        if (remainingBlocks <= 0) { // should be “==” rather than “<=”, but just to be safe
-          logger.debug(s"HeadSyncing success $headSyncingRange in $durationStr, reached end")
-          pauseThenMayCheckReorg()
-        } else {
-          // We haven’t synced to the end. Let’s calculate how long do we need.
-          assert(remainingBlocks > 0, remainingBlocks)
-          val processedBlocks = headSyncingRange.size
-          val remainingTime = remainingBlocks.doubleValue / processedBlocks * iterationDuration
-          val remainingStr = s"${remainingTime.toMillis} ms/${remainingTime.toMinutes} min/${remainingTime.toHours} h"
-
-          val blocksPerSec = processedBlocks.doubleValue / iterationDuration.toMillis * 1000
-          val blocksPerSecStr = f"$blocksPerSec%.1f"
-
-          logger.debug(s"HeadSyncing success $headSyncingRange in $durationStr, $blocksPerSecStr blocks per s, not reached end; " +
-            s"let's immediately proceed. Completion estimated in $remainingStr")
-          reiterateMayCheckReorg() // go to the next round instantly
-        }
+      if (shouldCatchUpBrake) {
+        logger.info(s"Was going to HeadSync $headSyncingRange; but TailSyncer is close ($tailSyncStatus), so braking")
+        pauseThenMayCheckReorg()
       } else {
-        logger.error(s"HeadSyncing failure for $headSyncingRange")
-        pauseThenReiterateOnError()
+        logger.debug(s"Ready to HeadSync $headSyncingRange")
+
+        // Do the actual syncing
+
+        if (syncBlocks(headSyncingRange)) {
+          // HeadSync completed successfully. Should we pause, or instantly go to the next round?
+          dbStorage.state.setLastHeartbeatAt
+
+          val iterationDuration = Duration(System.nanoTime - iterationStartNanotime, TimeUnit.NANOSECONDS)
+          val durationStr = s"${iterationDuration.toMillis} ms"
+
+          val remainingBlocks = nodeSyncingStatus.currentBlock - headSyncingRange.last
+
+          if (remainingBlocks <= 0) { // should be “==” rather than “<=”, but just to be safe
+            logger.debug(s"HeadSyncing success $headSyncingRange in $durationStr, reached end")
+            pauseThenMayCheckReorg()
+          } else {
+            // We haven’t synced to the end. Let’s calculate how long do we need.
+            assert(remainingBlocks > 0, remainingBlocks)
+            val processedBlocks = headSyncingRange.size
+            val remainingTime = remainingBlocks.doubleValue / processedBlocks * iterationDuration
+            val remainingStr = s"${remainingTime.toMillis} ms/${remainingTime.toMinutes} min/${remainingTime.toHours} h"
+
+            val blocksPerSec = processedBlocks.doubleValue / iterationDuration.toMillis * 1000
+            val blocksPerSecStr = f"$blocksPerSec%.1f"
+
+            logger.debug(s"HeadSyncing success $headSyncingRange in $durationStr, $blocksPerSecStr blocks per s, not reached end; " +
+              s"let's immediately proceed. Completion estimated in $remainingStr")
+            reiterateMayCheckReorg() // go to the next round instantly
+          }
+        } else {
+          logger.error(s"HeadSyncing failure for $headSyncingRange")
+          pauseThenReiterateOnError()
+        }
       }
     }
   }
