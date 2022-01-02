@@ -61,6 +61,7 @@ private class TailSyncer(dbStorage: DBStorageAPI,
 
   override final def iterate(): Behavior[TailSyncerMessage] = {
     logger.debug(s"FSM: iterate - running an iteration with $state")
+
     // Since this moment, we may want to use DB in a single atomic DB transaction;
     // even though this will involve querying the Ethereum node, maybe even multiple times.
     DB localTx { implicit session =>
@@ -97,16 +98,26 @@ private class TailSyncer(dbStorage: DBStorageAPI,
     // 1. Just the next block to read.
     val firstUnreadBlock: Option[Int] = progress.blocks.to.map(_ + 1)
     // 2. We never started some (currency, tracked address) pair?
+    // (there is not even a record in ucg_currency_tracked_address_progress):
     // Use the smallest from_block (from either currency or tracked address).
     val firstNeverCTAStartedBlock: Option[Int] = dbStorage.progress.getFirstBlockResolvingSomeNeverStartedCTAddress
     // 3. We never completed some (currency, tracked address) pair?
+    // (a record in ucg_currency_tracked_address_progress is present but with `synced_to_block_number IS NULL`):
     // Use the least from_block (from either currency or tracked address).
     val firstNeverCTASyncedBlock: Option[Int] = dbStorage.progress.getFirstBlockResolvingSomeNeverSyncedCTAddress
-    // 4. Some of CTA to-blocks is smaller than others?
+    // 4. Some of CTA (currency_tracked_address) to-blocks is smaller than others?
     // Use it.
     val firstMismatchingCTAToBlock: Option[Int] = (progress.perCurrencyTrackedAddresses.minTo, progress.perCurrencyTrackedAddresses.maxTo) match {
       case (Some(minTo), Some(maxTo)) if minTo < maxTo =>
         Some(minTo + 1)
+      case _ =>
+        None
+    }
+    // 5. Some of CTA to-blocks is smaller than globally last synced block, i.e. `max(ucg_block.number)`?
+    // Use it.
+    val firstCTANotSyncedFully: Option[Int] = (progress.perCurrencyTrackedAddresses.maxTo, progress.blocks.to) match {
+      case (Some(maxTo), Some(blocksMaxNumber)) if maxTo < blocksMaxNumber =>
+        Some(maxTo + 1)
       case _ =>
         None
     }
@@ -116,6 +127,7 @@ private class TailSyncer(dbStorage: DBStorageAPI,
       firstNeverCTAStartedBlock,
       firstNeverCTASyncedBlock,
       firstMismatchingCTAToBlock,
+      firstCTANotSyncedFully
     )
 
     logger.debug(s"Progress is $progress: choosing between $blocksToCompare; headsyncer will start from ${progress.headSyncerStartBlock}")

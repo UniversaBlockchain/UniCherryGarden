@@ -85,13 +85,13 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
 
   override final def iterate(): Behavior[HeadSyncerMessage] = {
     logger.debug(s"FSM: iterate - running an iteration with $state")
+
     // Since this moment, we may want to use DB in a single atomic DB transaction;
     // even though this will involve querying the Ethereum node, maybe even multiple times.
-
-    val iterationStartTime = System.nanoTime
-
     DB localTx { implicit session =>
       // For more details on reorg handling phases, read the [[/docs/unicherrypicker-synchronization.md]] document.
+
+      val iterationStartTime = System.nanoTime
 
       // Do the reorg-rewind phase; see if it already finalizes the behavior to return
       val reorgRewindProvidedBehaviorOpt = withValidatedProgressAndSyncingState[Option[Behavior[HeadSyncerMessage]]](
@@ -270,8 +270,6 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
                                     nodeSyncingStatus: EthereumNodeStatus,
                                     iterationStartNanotime: Long
                                   )(implicit session: DBSession): Behavior[HeadSyncerMessage] = {
-    val overallFrom = progress.overall.from.get // `progress.overall.from` safely assumed non-None
-
     logger.debug(s"Now we are ready to do headSync for progress $progress, node $nodeSyncingStatus")
     // headSync is called from within `withValidatedProgressAndSyncingState`, so we can rely upon
     // overall.from being non-empty (and thus `headSyncerStartBlock` too)
