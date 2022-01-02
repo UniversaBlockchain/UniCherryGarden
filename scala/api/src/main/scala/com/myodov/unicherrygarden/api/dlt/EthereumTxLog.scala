@@ -42,14 +42,22 @@ class EthereumTxLog(val logIndex: Int,
     Objects.hash(state: _*)
   }
 
+  /** Whether any of the topics is equal to the `needle` (as in, “needle in haystack”), some data to be searched.
+   *
+   * @param needle some topic data to find.
+   */
+  @inline final def topicsContain(needle: Seq[Byte]): Boolean = {
+    require(needle.size == 32, needle)
+    topics.contains(needle)
+  }
 
   /** Whether any of the topics is equal to the `needle` (as in, “needle in haystack”), some data to be searched.
    *
    * @param needle some topic data to find.
    */
-  def topicsContain(needle: String): Boolean = {
+  @inline final def topicsContain(needle: String): Boolean = {
     require(EthUtils.isValidHexString(needle, 66), needle)
-    topics.contains(needle)
+    topicsContain(hexStringToByteArray(needle).toSeq)
   }
 
   /** Checks if the log is for ERC20 Transfer event; returns the parsed details if yes. */

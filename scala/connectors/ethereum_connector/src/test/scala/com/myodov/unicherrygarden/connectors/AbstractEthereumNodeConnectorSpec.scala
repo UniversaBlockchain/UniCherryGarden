@@ -541,4 +541,24 @@ abstract class AbstractEthereumNodeConnectorSpec extends AnyFlatSpec {
       sharedConnector.readBlockHashes(6329969 to 6329988)
     )
   }
+
+  // Double-check reading some blocks, while filtering ERC20 contents for some addresses
+  "readBlocks(6_335_540 to 6_335_560)" should "work well, even for 6_335_555" in {
+    assertResult(
+      (6_335_554, 0, 6_335_555, 1)
+    )({
+      val blocks = sharedConnector.readBlocks(6_335_540 to 6_335_560,
+        Set("0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24")
+      )
+      val block6_335_554 = blocks.get(14)
+      val block6_335_555 = blocks.get(15)
+
+      (
+        block6_335_554._1.number,
+        block6_335_554._2.size,
+        block6_335_555._1.number,
+        block6_335_555._2.size
+      )
+    })
+  }
 }

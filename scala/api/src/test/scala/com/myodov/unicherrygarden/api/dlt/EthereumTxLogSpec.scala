@@ -155,6 +155,58 @@ class EthereumTxLogSpec extends AnyFlatSpec {
       "Another example of valid ERC20 transfer event"
     )
   }
+  /*
+  it should "support topicsContain() with various arguments" in {
+    assert(
+      EthereumTxLog(
+        0,
+        "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+        List(
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "0x000000000000000000000000d701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+          "0x0000000000000000000000001df163ef8699c9b9c16236e6ff016c7834206304"),
+        "0x00000000000000000000000000000000000000000000054c2c9e1a40db440000"
+      ).topicsContain("0x000000000000000000000000d701edf8f9c5d834bcb9add73ddeff2d6b9c3d24"),
+      "topicsContain(String) should be true"
+    )
+    assert(
+      !EthereumTxLog(
+        0,
+        "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+        List(
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "0x000000000000000000000000d701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+          "0x0000000000000000000000001df163ef8699c9b9c16236e6ff016c7834206304"),
+        "0x00000000000000000000000000000000000000000000054c2c9e1a40db440000"
+      ).topicsContain("0x000000000000000000000000e701edf8f9c5d834bcb9add73ddeff2d6b9c3d24"),
+      "topicsContain(String) should be false"
+    )
+    assert(
+      EthereumTxLog(
+        0,
+        "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+        List(
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "0x0000000000000000000000004b35c092772f6187b1cd2a26c4f537292ce68b2c",
+          "0x000000000000000000000000b5d85cbf7cb3ee0d56b3bb207d5fc4b82f43f511"),
+        "0x000000000000000000000000000000000000000000000000000000001beb297f"
+      ).topicsContain(hexStringToByteArray("0x000000000000000000000000b5d85cbf7cb3ee0d56b3bb207d5fc4b82f43f511").toSeq),
+      "topicsContain(Seq(Byte)) should be true"
+    )
+    assert(
+      !EthereumTxLog(
+        0,
+        "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+        List(
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "0x0000000000000000000000004b35c092772f6187b1cd2a26c4f537292ce68b2c",
+          "0x000000000000000000000000b5d85cbf7cb3ee0d56b3bb207d5fc4b82f43f511"),
+        "0x000000000000000000000000000000000000000000000000000000001beb297f"
+      ).topicsContain(hexStringToByteArray("0x000000000000000000000000d701edf8f9c5d834bcb9add73ddeff2d6b9c3d24").toSeq),
+      "topicsContain(Seq(Byte)) should be false"
+    )
+  }]
+  */
   it should "skip the data if it’s not a ERC20 Transfer event" in {
     assert(
       EthereumTxLog(

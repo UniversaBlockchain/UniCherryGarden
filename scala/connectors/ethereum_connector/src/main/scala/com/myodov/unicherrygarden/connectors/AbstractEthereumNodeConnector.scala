@@ -2,7 +2,7 @@ package com.myodov.unicherrygarden.connectors
 
 import com.myodov.unicherrygarden.Tools.{reduceOptionSeq, seqIsIncrementing}
 import com.myodov.unicherrygarden.api.dlt
-import com.myodov.unicherrygarden.api.dlt.{EthereumBlock, EthereumMinedTransaction}
+import com.myodov.unicherrygarden.api.dlt.{EthereumBlock, EthereumTxLog}
 import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.{SingleBlockData, SyncingStatus}
 import com.myodov.unicherrygarden.connectors.Web3ReadOperations.validateBlockHashes
 import com.myodov.unicherrygarden.ethereum.EthUtils
@@ -165,6 +165,7 @@ private object Web3ReadOperations extends LazyLogging {
     val (block, transactionsUnfiltered) = blockData
     // Convert the addresses (which should be used to filter) to their Uint256 representations
     val addressesOfInterestUint256: Set[String] = addressesOfInterest.map(EthUtils.Uint256Str.fromAddress)
+    import org.web3j.utils.Numeric.hexStringToByteArray
 
     val transactionsFiltered =
       for (tr: dlt.EthereumMinedTransaction <- transactionsUnfiltered
