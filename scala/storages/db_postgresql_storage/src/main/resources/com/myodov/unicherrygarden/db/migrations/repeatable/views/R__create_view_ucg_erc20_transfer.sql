@@ -1,10 +1,18 @@
 CREATE OR REPLACE VIEW ucg_erc20_transfer
-            (tx_log_id, transaction_id, block_number, log_index, "from", "to", contract, value)
+            (tx_log_id,
+             transaction_id, transaction_hash,
+             block_number, block_hash, timestamp,
+             log_index,
+             "from", "to", contract,
+             value)
 AS
     SELECT
         ucg_tx_log.id AS tx_log_id,
         ucg_tx_log.transaction_id,
+        ucg_transaction.txhash AS transaction_hash,
         ucg_tx_log.block_number,
+        ucg_block.hash AS block_hash,
+        ucg_block.timestamp AS timestamp,
         ucg_tx_log.log_index,
         ucg_erc20_transfer_event_get_from(ucg_tx_log.topics) AS "from",
         ucg_erc20_transfer_event_get_to(ucg_tx_log.topics) AS "to",
@@ -13,7 +21,9 @@ AS
     FROM
         ucg_tx_log
         INNER JOIN ucg_transaction
-             ON ucg_tx_log.transaction_id = ucg_transaction.id
+                   ON ucg_tx_log.transaction_id = ucg_transaction.id
+        INNER JOIN ucg_block
+                   ON ucg_transaction.block_number = ucg_block.number
     WHERE
         (ucg_transaction.status IS NULL OR ucg_transaction.status = 1) AND
         ucg_is_erc20_transfer_event(ucg_tx_log.topics) AND
