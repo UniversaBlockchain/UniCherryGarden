@@ -493,8 +493,8 @@ public class CherryGardenerCLI {
                         );
                     }
                     System.err.println("---");
-                    connector.shutdown();
                 }
+                connector.shutdown();
             } catch (CompletionException exc) {
                 System.err.println("ERROR: Could not connect to UniCherryGarden!");
             }
@@ -576,7 +576,6 @@ public class CherryGardenerCLI {
                 } else {
                     System.err.printf("ERROR: Address %s failed to add!\n", address);
                 }
-
                 connector.shutdown();
             } catch (CompletionException exc) {
                 System.err.println("ERROR: Could not connect to UniCherryGarden!");
@@ -641,7 +640,6 @@ public class CherryGardenerCLI {
                             result.syncStatus.latestUniCherryGardenSyncedBlock
                     );
                 }
-
                 connector.shutdown();
             } catch (CompletionException exc) {
                 System.err.println("ERROR: Could not connect to UniCherryGarden!");
@@ -740,7 +738,6 @@ public class CherryGardenerCLI {
                                 result.syncStatus.latestUniCherryGardenSyncedBlock
                         );
                     }
-
                     connector.shutdown();
                 } catch (CompletionException exc) {
                     System.err.println("ERROR: Could not connect to UniCherryGarden!");
