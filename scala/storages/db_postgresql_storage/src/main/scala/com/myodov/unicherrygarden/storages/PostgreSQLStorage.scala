@@ -651,7 +651,9 @@ object PostgreSQLStorage {
                     wipeOnStart: Boolean,
                     migrationPaths: List[String]
                    ): PostgreSQLStorage = {
-    ConnectionPool.singleton(jdbcUrl, dbUser, dbPassword)
+    // Initial size is 3 - 1 for TailSyncer, 1 for HeadSyncer, 1 for CherryGardener.
+    val poolSettings = ConnectionPoolSettings(initialSize = 3, maxSize = 16)
+    ConnectionPool.singleton(jdbcUrl, dbUser, dbPassword, poolSettings)
     new PostgreSQLStorage(jdbcUrl, dbUser, dbPassword, wipeOnStart, migrationPaths)
   }
 }

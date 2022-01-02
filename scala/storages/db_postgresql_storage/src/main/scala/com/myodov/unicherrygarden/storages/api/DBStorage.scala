@@ -200,6 +200,29 @@ object DBStorage {
           logger.info(s"We have some blocks stored ($blocks); syncing from ${maxStoredBlock + 1}")
           Some(maxStoredBlock + 1)
       }
+
+      /** Check if configuration is valid; log errors/warnings in any problematic case. */
+      lazy val isConfigurationValid: Boolean = {
+        lazy val overallFrom = overall.from.get // only if overall.from is not Empty
+
+        if (overall.from.isEmpty) {
+          logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!")
+          false
+          // Since this point we can use overallFrom
+        } else if (currencies.minSyncFrom.exists(_ < overallFrom)) {
+          logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
+            s"is ${currencies.minSyncFrom.get}; " +
+            s"it should not be lower than $overallFrom!")
+          false
+        } else if (trackedAddresses.minFrom < overallFrom) {
+          logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
+            s"is ${trackedAddresses.minFrom}; " +
+            s"it should not be lower than $overallFrom!")
+          false
+        } else {
+          true
+        }
+      }
     }
 
     /** Sync status of `ucg_currency` table.

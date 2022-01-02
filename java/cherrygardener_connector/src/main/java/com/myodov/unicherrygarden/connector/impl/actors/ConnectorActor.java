@@ -38,7 +38,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
     /**
      * Default timeout for all Akka calls.
      */
-    public static final Duration DEFAULT_CALL_TIMEOUT = Duration.ofSeconds(5);
+    public static final Duration DEFAULT_CALL_TIMEOUT = Duration.ofSeconds(15);
 
 
     private final ActorRef<Receptionist.Listing> receptionistSubscribeCherryGardenResponseAdapter;

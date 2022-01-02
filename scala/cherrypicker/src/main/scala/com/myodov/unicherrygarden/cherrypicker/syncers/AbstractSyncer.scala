@@ -101,33 +101,11 @@ abstract private class AbstractSyncer[
       case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncingStatus: EthereumNodeStatus)) =>
         // Both CherryPicker syncing progress and Ethereum node status are at least available;
         // but let’s validate them, and only then launch the code.
-        if (!isConfigurationValid(overallProgress)) {
+        if (!overallProgress.isConfigurationValid) {
           onError()
         } else {
           code(overallProgress, nodeSyncingStatus)
         }
-    }
-  }
-
-  private[this] def isConfigurationValid(progress: Progress.ProgressData): Boolean = {
-    lazy val overallFrom = progress.overall.from.get // only if overall.from is not Empty
-
-    if (progress.overall.from.isEmpty) {
-      logger.warn("CherryPicker is not configured: missing `ucg_state.synced_from_block_number`!")
-      false
-      // Since this point we can use overallFrom
-    } else if (progress.currencies.minSyncFrom.exists(_ < overallFrom)) {
-      logger.error("The minimum `ucg_currency.sync_from_block_number` value " +
-        s"is ${progress.currencies.minSyncFrom.get}; " +
-        s"it should not be lower than $overallFrom!")
-      false
-    } else if (progress.trackedAddresses.minFrom < overallFrom) {
-      logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
-        s"is ${progress.trackedAddresses.minFrom}; " +
-        s"it should not be lower than $overallFrom!")
-      false
-    } else {
-      true
     }
   }
 
