@@ -180,8 +180,8 @@ public class ObserverImpl implements Observer {
             int confirmations,
             @Nullable String sender,
             @Nullable String receiver,
-            @Nullable Integer fromBlock,
-            @Nullable Integer toBlock,
+            @Nullable Integer startBlock,
+            @Nullable Integer endBlock,
             @Nullable Set<String> filterCurrencyKeys
     ) {
         // Validations
@@ -193,11 +193,11 @@ public class ObserverImpl implements Observer {
             throw new RuntimeException("At least sender or receiver must be specified!");
         }
 
-        if (fromBlock != null) requireValidBlockNumber("fromBlock", fromBlock);
-        if (toBlock != null) requireValidBlockNumber("toBlock", toBlock);
-        if (fromBlock != null && toBlock != null && fromBlock > toBlock) {
+        if (startBlock != null) requireValidBlockNumber("startBlock", startBlock);
+        if (endBlock != null) requireValidBlockNumber("endBlock", endBlock);
+        if (startBlock != null && endBlock != null && startBlock > endBlock) {
             throw new RuntimeException(String.format(
-                    "If both are defined, fromBlock (%d) must be <= toBlock (%d)!", fromBlock, toBlock));
+                    "If both are defined, startBlock (%d) must be <= endBlock (%d)!", startBlock, endBlock));
         }
 
         final CompletionStage<GetTransfersCommand.Result> stage =
@@ -207,8 +207,8 @@ public class ObserverImpl implements Observer {
                                 confirmations,
                                 sender,
                                 receiver,
-                                fromBlock,
-                                toBlock,
+                                startBlock,
+                                endBlock,
                                 filterCurrencyKeys),
                         ConnectorActor.DEFAULT_CALL_TIMEOUT,
                         actorSystem.scheduler());

@@ -68,12 +68,12 @@ public class GetTransfersCommand
             int confirmations,
             @Nullable String sender,
             @Nullable String receiver,
-            @Nullable Integer fromBlock,
-            @Nullable Integer toBlock,
+            @Nullable Integer startBlock,
+            @Nullable Integer endBlock,
             @Nullable Set<String> filterCurrencyKeys) {
         return (replyTo) -> new GetTransfersCommand(
                 replyTo,
-                new GetTransfers.GTRequestPayload(confirmations, sender, receiver, fromBlock, toBlock, filterCurrencyKeys));
+                new GetTransfers.GTRequestPayload(confirmations, sender, receiver, startBlock, endBlock, filterCurrencyKeys));
     }
 
     @NonNull

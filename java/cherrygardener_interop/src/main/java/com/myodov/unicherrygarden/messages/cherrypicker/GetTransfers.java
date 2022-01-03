@@ -4,7 +4,6 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.myodov.unicherrygarden.api.types.BlockchainSyncStatus;
 import com.myodov.unicherrygarden.api.types.MinedTransfer;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
@@ -35,10 +34,10 @@ public class GetTransfers {
         public final String receiver;
 
         @Nullable
-        public final Integer fromBlock;
+        public final Integer startBlock;
 
         @Nullable
-        public final Integer toBlock;
+        public final Integer endBlock;
 
         @Nullable
         public final Set<String> filterCurrencyKeys;
@@ -47,30 +46,30 @@ public class GetTransfers {
         public GTRequestPayload(int confirmations,
                                 @Nullable String sender,
                                 @Nullable String receiver,
-                                @Nullable Integer fromBlock,
-                                @Nullable Integer toBlock,
+                                @Nullable Integer startBlock,
+                                @Nullable Integer endBlock,
                                 @Nullable Set<String> filterCurrencyKeys) {
             assert confirmations >= 0 : confirmations;
             assert sender == null || EthUtils.Addresses.isValidLowercasedAddress(sender) : sender;
             assert receiver == null || EthUtils.Addresses.isValidLowercasedAddress(receiver) : receiver;
-            assert fromBlock == null || fromBlock >= 0 : fromBlock;
-            assert toBlock == null || toBlock >= 0 : toBlock;
-            if (fromBlock != null && toBlock != null) {
-                assert fromBlock <= toBlock : String.format("%s/%s", fromBlock, toBlock);
+            assert startBlock == null || startBlock >= 0 : startBlock;
+            assert endBlock == null || endBlock >= 0 : endBlock;
+            if (startBlock != null && endBlock != null) {
+                assert startBlock <= endBlock : String.format("%s/%s", startBlock, endBlock);
             }
 
             this.confirmations = confirmations;
             this.sender = sender;
             this.receiver = receiver;
-            this.fromBlock = fromBlock;
-            this.toBlock = toBlock;
+            this.startBlock = startBlock;
+            this.endBlock = endBlock;
             this.filterCurrencyKeys = filterCurrencyKeys;
         }
 
         @Override
         public String toString() {
             return String.format("GetTransfers.GTRequestPayload(%s, %s, %s, %s, %s, %s)",
-                    confirmations, sender, receiver, fromBlock, toBlock, filterCurrencyKeys);
+                    confirmations, sender, receiver, startBlock, endBlock, filterCurrencyKeys);
         }
     }
 

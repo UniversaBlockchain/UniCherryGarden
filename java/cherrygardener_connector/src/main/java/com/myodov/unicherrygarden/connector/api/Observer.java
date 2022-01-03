@@ -107,7 +107,7 @@ public interface Observer {
                                                                  int confirmations);
 
     /**
-     * Get transfers (optionally filtered by currency, sender, receiver, from-block number, to-block number).
+     * Get transfers (optionally filtered by currency, sender, receiver, start-block number, end-block number).
      *
      * @param confirmations      The number of extra confirmations required, i.e. the offset from the latest data.
      *                           Should be 0 or higher. Normally it is 6–12 confirmations,
@@ -121,11 +121,11 @@ public interface Observer {
      *                           only transfers sent <b>to</b> this Ethereum address should be present;
      *                           must contain a valid lowercased Ethereum address.
      *                           If <code>null</code>, the results are not filtered to have the specific receiver.
-     * @param fromBlock          (optional) the first block number (of Ethereum blockchain) containing
+     * @param startBlock         (optional) the first block number (of Ethereum blockchain) containing
      *                           the transfers to find.
      *                           (Note: the transfers in this block <b>are</b> included).
      *                           If <code>null</code>, the transfers are returned from the earliest available block.
-     * @param toBlock            (optional) the last block number (of Ethereum blockchain) containing
+     * @param endBlock           (optional) the last block number (of Ethereum blockchain) containing
      *                           the transfers to find.
      *                           (Note: the transfers in this block <b>are</b> included).
      *                           If <code>null</code>, the transfers are returned till the latest available block.
@@ -140,7 +140,7 @@ public interface Observer {
     GetTransfers.@NonNull TransfersRequestResult getTransfers(int confirmations,
                                                               @Nullable String sender,
                                                               @Nullable String receiver,
-                                                              @Nullable Integer fromBlock,
-                                                              @Nullable Integer toBlock,
+                                                              @Nullable Integer startBlock,
+                                                              @Nullable Integer endBlock,
                                                               @Nullable Set<String> filterCurrencyKeys);
 }
