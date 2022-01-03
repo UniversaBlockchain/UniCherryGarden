@@ -14,6 +14,7 @@ import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.Resp
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses, GetTransfers}
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging
+import scalikejdbc.DB
 
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
@@ -72,133 +73,30 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
       Behaviors.receiveMessage {
         case message: GetTrackedAddresses.Request => {
           logger.debug(s"Receiving GetTrackedAddresses message: $message")
-          val payload: GetTrackedAddresses.GTARequestPayload = message.payload
-
-          val results: List[Response.TrackedAddressInformation] = dbStorage
-            .trackedAddresses
-            .getTrackedAddresses(
-              payload.includeComment,
-              payload.includeSyncedFrom)
-            .map { item =>
-              new Response.TrackedAddressInformation(
-                item.address,
-                // The subsequent items may be Java-nullable
-                item.comment.orNull,
-                // Converting the Option[Int] to nullable Java Integers needs some cunning
-                item.syncedFrom.map(Integer.valueOf).orNull
-              )
-            }
-
-          val response = new GetTrackedAddresses.Response(
-            results.asJava,
-            payload.includeComment,
-            payload.includeSyncedFrom
-          )
+          val response = handleGetTrackedAddresses(message.payload)
           logger.debug(s"Replying with $response")
           message.replyTo ! response
           Behaviors.same
         }
         case message: AddTrackedAddresses.Request => {
           logger.debug(s"Receiving AddTrackedAddresses message: $message")
-          val payload: AddTrackedAddresses.ATARequestPayload = message.payload
-
-          // Here goes the list of all added addresses
-          // (as Options; with `None` instead of any address that failed to add)
-          val addressesMaybeAdded: List[Option[String]] = (
-            for (addr: AddTrackedAddresses.AddressDataToTrack <- payload.addressesToTrack.asScala.toList)
-              yield {
-                if (dbStorage.trackedAddresses.addTrackedAddress(
-                  addr.address,
-                  Option(addr.comment), // nullable
-                  payload.trackingMode,
-                  // The next line needs cunning processing of java.lang.Integer using .map(_.toInt),
-                  // as otherwise Option(null:Integer): Option[Int]
-                  // will be evaluated as Some(0)
-                  Option(payload.fromBlock).map(_.toInt) // nullable
-                )) {
-                  Some(addr.address)
-                } else {
-                  None
-                }
-              }
-            )
-
-          // Flatten it to just the added elements
-          val addressesActuallyAdded: Set[String] = addressesMaybeAdded.flatten.toSet
-          logger.debug(s"Actually added the following addresses to watch: $addressesActuallyAdded")
-
-          val response = new AddTrackedAddresses.Response(
-            addressesActuallyAdded.asJava
-          )
+          val response = handleAddTrackedAddresses(message.payload)
           logger.debug(s"Replying with $response")
           message.replyTo ! response
           Behaviors.same
         }
         case message: GetBalances.Request => {
           logger.debug(s"Receiving GetBalances message: $message")
-          message.replyTo ! new GetBalances.Response(
-            new GetBalances.BalanceRequestResult(
-              false,
-              0,
-              //                List[CurrencyBalanceFact](
-              //                  new CurrencyBalanceFact(
-              //                    Currency.newEthCurrency(),
-              //                    BigDecimal(123.45).underlying(),
-              //                    BalanceRequestResult.CurrencyBalanceFact.BalanceSyncState.SYNCED_TO_LATEST_UNICHERRYGARDEN_TOKEN_STATE,
-              //                    15
-              //                  )
-              //                ).asJava,
-              List.empty[GetBalances.BalanceRequestResult.CurrencyBalanceFact].asJava,
-              new BlockchainSyncStatus(0, 0, 0))
-          )
+          val response = handleGetBalances(message.payload)
+          logger.debug(s"Replying with $response")
+          message.replyTo ! response
           Behaviors.same
         }
         case message: GetTransfers.Request => {
           logger.debug(s"Receiving GetTransfers message: $message")
-          message.replyTo ! new GetTransfers.Response(
-            new GetTransfers.TransfersRequestResult(
-              true,
-              0,
-              // List(
-              //   new MinedTransfer(
-              //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-              //     "0xedcc6f8f20962e6747369a71a5b89256289da87f",
-              //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-              //     BigDecimal("10045.6909000003").underlying,
-              //     new MinedTx(
-              //       "0x9cb54df2444658891df0c8165fecaecb4a2f1197ebe7b175dda1130b91ea4c9f",
-              //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-              //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-              //       new Block(
-              //         13628884,
-              //         "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
-              //         Instant.ofEpochSecond(1637096843)),
-              //       111
-              //     ),
-              //     144),
-              //   // UTNP out #6
-              //   new MinedTransfer(
-              //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-              //     "0x74644fd700c11dcc262eed1c59715ee874f65251",
-              //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-              //     BigDecimal("30000").underlying,
-              //     new MinedTx(
-              //       "0x3f0c1e4f1e903381c1e8ad2ad909482db20a747e212fbc32a4c626cad6bb14ab",
-              //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-              //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-              //       new Block(
-              //         13631007,
-              //         "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
-              //         Instant.ofEpochSecond(1637125704)),
-              //       133
-              //     ),
-              //     173)
-              // ).asJava,
-              List.empty[MinedTransfer].asJava,
-              new BlockchainSyncStatus(0, 0, 0),
-              Collections.emptyMap()
-            )
-          )
+          val response = handleGetTransfers(message.payload)
+          logger.debug(s"Replying with $response")
+          message.replyTo ! response
           Behaviors.same
         }
         case unknownMessage => {
@@ -208,6 +106,131 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
       }
     }
   }
+
+  private[this] def handleGetTrackedAddresses(payload: GetTrackedAddresses.GTARequestPayload): GetTrackedAddresses.Response =
+  // Construct all the response in a single atomic readonly DB transaction
+    DB readOnly { implicit session =>
+      val results: List[Response.TrackedAddressInformation] = dbStorage
+        .trackedAddresses
+        .getTrackedAddresses(
+          payload.includeComment,
+          payload.includeSyncedFrom)
+        .map { item =>
+          new Response.TrackedAddressInformation(
+            item.address,
+            // The subsequent items may be Java-nullable
+            item.comment.orNull,
+            // Converting the Option[Int] to nullable Java Integers needs some cunning
+            item.syncedFrom.map(Integer.valueOf).orNull
+          )
+        }
+
+      new GetTrackedAddresses.Response(
+        results.asJava,
+        payload.includeComment,
+        payload.includeSyncedFrom
+      )
+    }
+
+  private[this] def handleAddTrackedAddresses(payload: AddTrackedAddresses.ATARequestPayload): AddTrackedAddresses.Response =
+  // Construct all the response DB in a single atomic read-write DB transaction.
+    DB localTx { implicit session =>
+      // Here goes the list of all added addresses
+      // (as Options; with `None` instead of any address that failed to add)
+      val addressesMaybeAdded: List[Option[String]] = (
+        for (addr: AddTrackedAddresses.AddressDataToTrack <- payload.addressesToTrack.asScala.toList)
+          yield {
+            if (dbStorage.trackedAddresses.addTrackedAddress(
+              addr.address,
+              Option(addr.comment), // nullable
+              payload.trackingMode,
+              // The next line needs cunning processing of java.lang.Integer using .map(_.toInt),
+              // as otherwise Option(null:Integer): Option[Int]
+              // will be evaluated as Some(0)
+              Option(payload.fromBlock).map(_.toInt) // nullable
+            )) {
+              Some(addr.address)
+            } else {
+              None
+            }
+          }
+        )
+
+      // Flatten it to just the added elements
+      val addressesActuallyAdded: Set[String] = addressesMaybeAdded.flatten.toSet
+      logger.debug(s"Actually added the following addresses to watch: $addressesActuallyAdded")
+
+      new AddTrackedAddresses.Response(addressesActuallyAdded.asJava)
+    }
+
+  private[this] def handleGetBalances(payload: GetBalances.GBRequestPayload): GetBalances.Response =
+  // Construct all the response DB in a single atomic readonly DB transaction.
+    DB readOnly { implicit session =>
+      new GetBalances.Response(
+        new GetBalances.BalanceRequestResult(
+          false,
+          0,
+          //                List[CurrencyBalanceFact](
+          //                  new CurrencyBalanceFact(
+          //                    Currency.newEthCurrency(),
+          //                    BigDecimal(123.45).underlying(),
+          //                    BalanceRequestResult.CurrencyBalanceFact.BalanceSyncState.SYNCED_TO_LATEST_UNICHERRYGARDEN_TOKEN_STATE,
+          //                    15
+          //                  )
+          //                ).asJava,
+          List.empty[GetBalances.BalanceRequestResult.CurrencyBalanceFact].asJava,
+          new BlockchainSyncStatus(0, 0, 0))
+      )
+    }
+
+  private[this] def handleGetTransfers(payload: GetTransfers.GTRequestPayload): GetTransfers.Response =
+  // Construct all the response in a single atomic readonly DB transaction
+    DB readOnly { implicit session =>
+      new GetTransfers.Response(
+        new GetTransfers.TransfersRequestResult(
+          true,
+          0,
+          // List(
+          //   new MinedTransfer(
+          //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+          //     "0xedcc6f8f20962e6747369a71a5b89256289da87f",
+          //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+          //     BigDecimal("10045.6909000003").underlying,
+          //     new MinedTx(
+          //       "0x9cb54df2444658891df0c8165fecaecb4a2f1197ebe7b175dda1130b91ea4c9f",
+          //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+          //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+          //       new Block(
+          //         13628884,
+          //         "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
+          //         Instant.ofEpochSecond(1637096843)),
+          //       111
+          //     ),
+          //     144),
+          //   // UTNP out #6
+          //   new MinedTransfer(
+          //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+          //     "0x74644fd700c11dcc262eed1c59715ee874f65251",
+          //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+          //     BigDecimal("30000").underlying,
+          //     new MinedTx(
+          //       "0x3f0c1e4f1e903381c1e8ad2ad909482db20a747e212fbc32a4c626cad6bb14ab",
+          //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+          //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+          //       new Block(
+          //         13631007,
+          //         "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
+          //         Instant.ofEpochSecond(1637125704)),
+          //       133
+          //     ),
+          //     173)
+          // ).asJava,
+          List.empty[MinedTransfer].asJava,
+          new BlockchainSyncStatus(0, 0, 0),
+          Collections.emptyMap()
+        )
+      )
+    }
 }
 
 
