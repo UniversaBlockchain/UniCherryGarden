@@ -137,9 +137,9 @@ private class TailSyncer(dbStorage: DBStorageAPI,
 
     (syncStartBlock, syncEndBlock) match {
       case (start, endSmallerThanStart) if endSmallerThanStart < start =>
-        logger.error(s"When choosing between blocks $blocksToCompare to tailsync, found $syncStartBlock/$syncEndBlock: " +
-          "end block is earlier than start!")
-        pauseThenReiterateOnError()
+        logger.debug(s"When choosing between blocks $blocksToCompare to tailsync, found $syncStartBlock/$syncEndBlock: " +
+          "end block is earlier than start! We've reached the end")
+        pauseThenReiterate()
       case (startReachedHeadSync, end) if progress.headSyncerStartBlock == Some(startReachedHeadSync) =>
         // We actually reached HeadSync position
         logger.debug(s"When choosing between blocks $blocksToCompare to tailsync, found $syncStartBlock/$syncEndBlock: " +
