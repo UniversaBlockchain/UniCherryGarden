@@ -9,6 +9,9 @@ COMMENT ON COLUMN ucg_transaction.status IS
     'Transaction status code; EIP 658, available in transactions only since Byzantium fork, since block 4,370,000. '
         '(1 for success, 0 for failure). NULL in transactions before Byzantium.';
 
+COMMENT ON COLUMN ucg_transaction.ucg_comment IS
+    'Comment on the transaction, manually entered by UniCherryGarden admins.';
+
 COMMENT ON COLUMN ucg_transaction.gas IS
     'Gas; from eth.getTransaction(). '
         'See transaction 0xeba1b33ad894aff5d6322f07b4b56d841f996bb2dc8d696eec3cdc552e4635a2 for minimal set of data.';
