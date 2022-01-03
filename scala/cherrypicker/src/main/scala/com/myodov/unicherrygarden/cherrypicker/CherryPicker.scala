@@ -1,5 +1,7 @@
 package com.myodov.unicherrygarden
 
+import java.util.Collections
+
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
@@ -193,7 +195,8 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
               //     173)
               // ).asJava,
               List.empty[MinedTransfer].asJava,
-              new BlockchainSyncStatus(0, 0, 0)
+              new BlockchainSyncStatus(0, 0, 0),
+              Collections.emptyMap()
             )
           )
           Behaviors.same

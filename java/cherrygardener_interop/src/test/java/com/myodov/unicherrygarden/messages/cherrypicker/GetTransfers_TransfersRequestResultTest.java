@@ -213,7 +213,8 @@ public class GetTransfers_TransfersRequestResultTest {
             new BlockchainSyncStatus(
                     15631007,
                     14631007,
-                    13631007)
+                    13631007),
+            Collections.emptyMap()
     );
     static final List<MinedTransfer> SAMPLE1_UNSORTED_TRANSFERS = new ArrayList<MinedTransfer>() {{
         // UTNP out #3 (same addr, transfer 2 of 3)

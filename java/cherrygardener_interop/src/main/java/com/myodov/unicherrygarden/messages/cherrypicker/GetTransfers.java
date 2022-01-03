@@ -14,6 +14,7 @@ import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -98,7 +99,7 @@ public class GetTransfers {
         public final boolean overallSuccess;
 
         /**
-         * The number of the block for which the results have been provided.
+         * The number of the final block for which the results have been provided.
          */
         public final int resultAtBlock;
 
@@ -117,6 +118,12 @@ public class GetTransfers {
         // A (unmodifiable, for safety) map of transfers, indexed by `to`, then `from` addresses.
         final Map<String, Map<String, List<MinedTransfer>>> transfersIndexedByToThenFrom;
 
+        /**
+         * The balances of addresses mentioned in the query.
+         * The balances are calculated at the moment of {@link #resultAtBlock} block.
+         */
+        public final Map<String, BigDecimal> balances;
+
 
         /**
          * Constructor.
@@ -125,15 +132,18 @@ public class GetTransfers {
         public TransfersRequestResult(boolean overallSuccess,
                                       int resultAtBlock,
                                       @NonNull List<MinedTransfer> transfers,
-                                      @NonNull BlockchainSyncStatus syncStatus) {
+                                      @NonNull BlockchainSyncStatus syncStatus,
+                                      @NonNull Map<String, BigDecimal> balances) {
             assert transfers != null;
             assert syncStatus != null;
+            assert balances != null;
 
             this.overallSuccess = overallSuccess;
             this.resultAtBlock = resultAtBlock;
             this.transfers = Collections.unmodifiableList(transfers);
 
             this.syncStatus = syncStatus;
+            this.balances = Collections.unmodifiableMap(balances);
 
             // Generate map `byFromThenTo`
             {
@@ -181,7 +191,8 @@ public class GetTransfers {
                     false,
                     0,
                     Collections.emptyList(),
-                    new BlockchainSyncStatus(0, 0, 0));
+                    new BlockchainSyncStatus(0, 0, 0),
+                    Collections.emptyMap());
         }
 
         /**
