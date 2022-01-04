@@ -37,6 +37,10 @@ public class GetTransfers_TransfersRequestResultTest {
     // 2.1. Including three transfers of UTNP tokens to the same address.
     // 3. Transfer-in of ETH (several).
     static final GetTransfers.TransfersRequestResult SAMPLE1 = new GetTransfers.TransfersRequestResult(
+            new SystemSyncStatus(
+                    new SystemSyncStatus.Blockchain(15631007, 14631007),
+                    new SystemSyncStatus.CherryPicker(13631007)
+            ),
             new ArrayList<MinedTransfer>() {{
                 // UTNP in #1
                 add(new MinedTransfer(
@@ -209,10 +213,6 @@ public class GetTransfers_TransfersRequestResultTest {
                         ),
                         173));
             }},
-            new SystemSyncStatus(
-                    new SystemSyncStatus.Blockchain(15631007, 14631007),
-                    new SystemSyncStatus.CherryPicker(13631007)
-            ),
             Collections.emptyMap()
     );
     static final List<MinedTransfer> SAMPLE1_UNSORTED_TRANSFERS = new ArrayList<MinedTransfer>() {{

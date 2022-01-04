@@ -4,8 +4,8 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
 import com.myodov.unicherrygarden.api.types.MinedTransfer;
+import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
 import com.myodov.unicherrygarden.messages.CherryPickerResponseWithResult;
@@ -86,14 +86,14 @@ public class GetTransfers {
 
 
     public static class TransfersRequestResult {
-        @NonNull
-        public final List<MinedTransfer> transfers;
-
         /**
          * The total status of blockchain synchronization.
          */
         @NonNull
         public final SystemSyncStatus syncStatus;
+
+        @NonNull
+        public final List<MinedTransfer> transfers;
 
         // A (unmodifiable, for safety) map of transfers, indexed by `from`, then `to` addresses.
         final Map<String, Map<String, List<MinedTransfer>>> transfersIndexedByFromThenTo;
@@ -111,16 +111,15 @@ public class GetTransfers {
          * Constructor.
          */
         @JsonCreator
-        public TransfersRequestResult(@NonNull List<MinedTransfer> transfers,
-                                      @NonNull SystemSyncStatus syncStatus,
+        public TransfersRequestResult(@NonNull SystemSyncStatus syncStatus,
+                                      @NonNull List<MinedTransfer> transfers,
                                       @NonNull Map<String, BigDecimal> balances) {
-            assert transfers != null;
             assert syncStatus != null;
+            assert transfers != null;
             assert balances != null;
 
-            this.transfers = Collections.unmodifiableList(transfers);
-
             this.syncStatus = syncStatus;
+            this.transfers = Collections.unmodifiableList(transfers);
             this.balances = Collections.unmodifiableMap(balances);
 
             // Generate map `byFromThenTo`

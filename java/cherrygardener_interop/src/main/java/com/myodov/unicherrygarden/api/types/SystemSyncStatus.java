@@ -14,38 +14,43 @@ public class SystemSyncStatus {
      */
     public static class Blockchain {
         /**
+         * The number of the latest block the Ethereum node is synced to.
+         * Analog of calling <code>eth.syncing.currentBlock</code>.
+         * <p>
+         * Normally <code>{@link #currentBlock} <= {@link #highestBlock}</code>.
+         * <p>
+         * In ideal sync state, <code>{@link #currentBlock} = {@link #highestBlock}</code>;
+         * but if it momentarily lags 1 or 2 blocks behind {@link #highestBlock}, it is also okay.
+         */
+        public final int currentBlock;
+
+        /**
          * The number of the latest block known to the Ethereum node (but probably not yet synced).
          * <p>
          * Analog of calling <code>eth.syncing.highestBlock</code>.
          */
-        public final int latestKnownBlock;
+        public final int highestBlock;
 
-        /**
-         * The number of the latest block the Ethereum node is synced to.
-         * Analog of calling <code>eth.syncing.currentBlock</code>.
-         * <p>
-         * Normally <code>{@link #latestSyncedBlock} <= {@link #latestKnownBlock}</code>.
-         * <p>
-         * In ideal sync state, <code>{@link #latestSyncedBlock} = {@link #latestKnownBlock}</code>;
-         * but if it momentarily lags 1 or 2 blocks behind {@link #latestKnownBlock}, it is also okay.
-         */
-        public final int latestSyncedBlock;
+        @JsonCreator
+        public Blockchain(int currentBlock,
+                          int highestBlock) {
+            assert currentBlock >= 0 : currentBlock;
+            assert highestBlock >= 0 : highestBlock;
 
-        public Blockchain(int latestKnownBlock,
-                          int latestSyncedBlock) {
-            assert latestKnownBlock >= 0 : latestKnownBlock;
-            assert latestSyncedBlock >= 0 : latestSyncedBlock;
-
-            this.latestKnownBlock = latestKnownBlock;
-            this.latestSyncedBlock = latestSyncedBlock;
+            this.currentBlock = currentBlock;
+            this.highestBlock = highestBlock;
         }
 
+        public static Blockchain create(int currentBlock,
+                                        int highestBlock) {
+            return new Blockchain(currentBlock, highestBlock);
+        }
 
         @Override
         public String toString() {
             return String.format("%s(%s, %s)",
                     getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
-                    latestKnownBlock, latestSyncedBlock);
+                    highestBlock, currentBlock);
         }
     }
 
@@ -62,10 +67,15 @@ public class SystemSyncStatus {
          */
         public final int latestSyncedBlock;
 
+        @JsonCreator
         public CherryPicker(int latestSyncedBlock) {
             assert latestSyncedBlock >= 0 : latestSyncedBlock;
 
             this.latestSyncedBlock = latestSyncedBlock;
+        }
+
+        public static CherryPicker create(int latestSyncedBlock) {
+            return new CherryPicker(latestSyncedBlock);
         }
 
         @Override

@@ -168,34 +168,32 @@ public class GetBalances {
             }
         }
 
-        @NonNull
-        public final List<CurrencyBalanceFact> balances;
-
         /**
          * The total status of blockchain synchronization.
          */
         @NonNull
         public final SystemSyncStatus syncStatus;
 
+        @NonNull
+        public final List<CurrencyBalanceFact> balances;
 
         /**
          * Constructor.
          */
         @JsonCreator
-        public BalanceRequestResult(@NonNull List<CurrencyBalanceFact> balances,
-                                    @NonNull SystemSyncStatus syncStatus) {
-            assert balances != null;
+        public BalanceRequestResult(@NonNull SystemSyncStatus syncStatus,
+                                    @NonNull List<CurrencyBalanceFact> balances) {
             assert syncStatus != null;
+            assert balances != null;
 
-            this.balances = Collections.unmodifiableList(balances);
             this.syncStatus = syncStatus;
+            this.balances = Collections.unmodifiableList(balances);
         }
 
         @Override
         public String toString() {
-            return String.format("BalanceRequestResult.BalanceRequestResult(success=%s, balances=%s, %s)",
-                    balances,
-                    syncStatus);
+            return String.format("BalanceRequestResult.BalanceRequestResult(%s, %s)",
+                    syncStatus, balances);
         }
     }
 

@@ -5,7 +5,8 @@ import java.util.concurrent.TimeUnit
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.api.dlt.EthereumBlock
-import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{EthereumNodeStatus, IterateTailSyncer, TailSyncerMessage, TailSyncing}
+import com.myodov.unicherrygarden.api.types.SystemSyncStatus
+import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{IterateTailSyncer, TailSyncerMessage, TailSyncing}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
@@ -46,9 +47,9 @@ private class TailSyncer(dbStorage: DBStorageAPI,
         case IterateTailSyncer() =>
           logger.debug(s"Iteration in TailSyncer $state")
           iterate()
-        case message@EthereumNodeStatus(current, highest) =>
+        case message@EthereumNodeStatus(status) =>
           logger.debug(s"TailSyncer received Ethereum node syncing status: $message")
-          state.ethereumNodeStatus = Some(message)
+          state.ethereumNodeStatus = Some(status)
           Behaviors.same
       }
     }
@@ -89,7 +90,7 @@ private class TailSyncer(dbStorage: DBStorageAPI,
    */
   private[this] final def tailSync(
                                     progress: Progress.ProgressData,
-                                    nodeSyncingStatus: EthereumNodeStatus,
+                                    nodeSyncingStatus: SystemSyncStatus.Blockchain,
                                     iterationStartNanotime: Long
                                   )(implicit session: DBSession): Behavior[TailSyncerMessage] = {
     val overallFrom = progress.overall.from.get // `progress.overall.from` safely assumed non-None
@@ -182,7 +183,7 @@ private class TailSyncer(dbStorage: DBStorageAPI,
 /** TailSyncer companion object. */
 object TailSyncer {
 
-  protected final case class State(@volatile override var ethereumNodeStatus: Option[EthereumNodeStatus] = None)
+  protected final case class State(@volatile override var ethereumNodeStatus: Option[SystemSyncStatus.Blockchain] = None)
     extends AbstractSyncer.SyncerState
 
   /** Main constructor.

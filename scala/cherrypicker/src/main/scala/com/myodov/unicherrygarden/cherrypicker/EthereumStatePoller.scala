@@ -3,6 +3,7 @@ package com.myodov.unicherrygarden.cherrypicker
 import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.CherryPicker
+import com.myodov.unicherrygarden.api.types.SystemSyncStatus
 import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.typesafe.scalalogging.LazyLogging
@@ -36,8 +37,10 @@ private class EthereumStatePoller(ethereumConnector: AbstractEthereumNodeConnect
           logger.debug("Polling Ethereum node for syncing status...")
           // If polling successful (and only then), resend the syncing status to listeners
           ethereumConnector.ethSyncingBlockNumber.map { syncingStatus =>
+            val msg = EthereumNodeStatus(SystemSyncStatus.Blockchain.create(
+              syncingStatus.currentBlock, syncingStatus.highestBlock))
             for (listener <- listeners) {
-              listener ! EthereumNodeStatus(syncingStatus.currentBlock, syncingStatus.highestBlock)
+              listener ! msg
             }
           }
           Behaviors.same

@@ -7,6 +7,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.api.types.{MinedTransfer, SystemSyncStatus}
 import com.myodov.unicherrygarden.cherrypicker.EthereumStatePoller
+import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.EthereumNodeStatus
 import com.myodov.unicherrygarden.cherrypicker.syncers.{HeadSyncer, SyncerMessages, TailSyncer}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
@@ -32,6 +33,7 @@ import scala.util.control.NonFatal
  */
 private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
                            protected[this] val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
+                           protected[this] val state: CherryPicker.State = CherryPicker.State(),
                            maxReorg: Int,
                            headSyncerBatchSize: Int,
                            tailSyncerBatchSize: Int,
@@ -60,7 +62,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
         TailSyncer(dbStorage, ethereumConnector, maxReorg)(tailSyncerBatchSize, headSyncer),
         "TailSyncer")
       val ethereumStatePoller = context.spawn(
-        EthereumStatePoller(ethereumConnector, Seq(headSyncer, tailSyncer)),
+        EthereumStatePoller(ethereumConnector, Seq(headSyncer, tailSyncer, context.self)),
         "EthereumStatePoller")
       logger.debug("CherryPicker: launched sub-syncers!")
 
@@ -73,6 +75,10 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
       ).foreach(context.system.receptionist ! Receptionist.Register(_, context.self))
 
       Behaviors.receiveMessage {
+        case message@EthereumNodeStatus(status) =>
+          logger.debug(s"CherryPicker received Ethereum node syncing status: $message")
+          state.ethereumNodeStatus = Some(status)
+          Behaviors.same
         case message: GetTrackedAddresses.Request => {
           logger.debug(s"Receiving GetTrackedAddresses message: $message")
 
@@ -204,6 +210,8 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
   private[this] def handleGetBalances(payload: GetBalances.GBRequestPayload): GetBalances.Response =
   // Construct all the response DB in a single atomic readonly DB transaction.
     DB readOnly { implicit session =>
+      val ethereumNodeStatus = state.ethereumNodeStatus // read and remember for the whole operation
+
       new GetBalances.Response(
         new GetBalances.BalanceRequestResult(
           //                List[CurrencyBalanceFact](
@@ -214,11 +222,11 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
           //                    15
           //                  )
           //                ).asJava,
-          List.empty[GetBalances.BalanceRequestResult.CurrencyBalanceFact].asJava,
           new SystemSyncStatus(
-            new SystemSyncStatus.Blockchain(0, 0),
+            ethereumNodeStatus.orNull,
             new SystemSyncStatus.CherryPicker(0)
-          )
+          ),
+          List.empty[GetBalances.BalanceRequestResult.CurrencyBalanceFact].asJava
         )
       )
     }
@@ -226,6 +234,8 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
   private[this] def handleGetTransfers(payload: GetTransfers.GTRequestPayload): GetTransfers.Response =
   // Construct all the response in a single atomic readonly DB transaction
     DB readOnly { implicit session =>
+      val ethereumNodeStatus = state.ethereumNodeStatus // read and remember for the whole operation
+
       new GetTransfers.Response(
         new GetTransfers.TransfersRequestResult(
           // List(
@@ -263,11 +273,11 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
           //     ),
           //     173)
           // ).asJava,
-          List.empty[MinedTransfer].asJava,
           new SystemSyncStatus(
-            new SystemSyncStatus.Blockchain(0, 0),
+            ethereumNodeStatus.orNull,
             new SystemSyncStatus.CherryPicker(0)
           ),
+          List.empty[MinedTransfer].asJava,
           Collections.emptyMap()
         )
       )
@@ -283,6 +293,9 @@ object CherryPicker extends LazyLogging {
 
   val BLOCK_ITERATION_PERIOD = 10 seconds // Each block is generated about once per 13 seconds, let’s be safe
 
+  protected final case class State(@volatile var ethereumNodeStatus: Option[SystemSyncStatus.Blockchain] = None)
+
+
   /** Main constructor. */
   @inline def apply(dbStorage: DBStorageAPI,
                     ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
@@ -293,6 +306,7 @@ object CherryPicker extends LazyLogging {
     new CherryPicker(
       dbStorage,
       ethereumConnector,
+      state = CherryPicker.State(),
       maxReorg,
       headSyncerBatchSize,
       tailSyncerBatchSize,

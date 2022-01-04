@@ -7,7 +7,8 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.dlt.EthereumBlock
-import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{EthereumNodeStatus, HeadSyncerMessage, IterateHeadSyncer}
+import com.myodov.unicherrygarden.api.types.SystemSyncStatus
+import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{HeadSyncerMessage, IterateHeadSyncer}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
 import com.myodov.unicherrygarden.storages.api.{DBStorage, DBStorageAPI}
@@ -46,9 +47,9 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
         case IterateHeadSyncer() =>
           logger.debug(s"Iteration in HeadSyncer $state")
           iterate()
-        case message@EthereumNodeStatus(current, highest) =>
+        case message@EthereumNodeStatus(status) =>
           logger.debug(s"HeadSyncer received Ethereum node syncing status: $message")
-          state.ethereumNodeStatus = Some(message)
+          state.ethereumNodeStatus = Some(status)
           Behaviors.same
         case TailSyncing(optRange) =>
           logger.debug(s"TailSyncer notified us it is going to sync $optRange")
@@ -172,7 +173,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
   /** Check if we even need to check the blockchain for reorganization. */
   private[this] final def reorgCheckCheck(
                                            dbProgressData: DBStorage.Progress.ProgressData,
-                                           nodeSyncingStatus: EthereumNodeStatus
+                                           nodeSyncingStatus: SystemSyncStatus.Blockchain
                                          )(implicit session: DBSession): Boolean = {
     // Atomically get the value and unset it
     if (state.nextIterationMustCheckReorg.getAndSet(false)) {
@@ -267,7 +268,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
    */
   private[this] final def headSync(
                                     progress: Progress.ProgressData,
-                                    nodeSyncingStatus: EthereumNodeStatus,
+                                    nodeSyncingStatus: SystemSyncStatus.Blockchain,
                                     iterationStartNanotime: Long
                                   )(implicit session: DBSession): Behavior[HeadSyncerMessage] = {
     logger.debug(s"Now we are ready to do headSync for progress $progress, node $nodeSyncingStatus")
@@ -339,7 +340,8 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
 
 /** HeadSyncer companion object. */
 object HeadSyncer {
-  protected final case class State(@volatile override var ethereumNodeStatus: Option[EthereumNodeStatus] = None,
+
+  protected final case class State(@volatile override var ethereumNodeStatus: Option[SystemSyncStatus.Blockchain] = None,
                                    nextIterationMustCheckReorg: AtomicBoolean = new AtomicBoolean(true),
                                    @volatile var tailSyncStatus: Option[dlt.EthereumBlock.BlockNumberRange] = None)
     extends AbstractSyncer.SyncerState
