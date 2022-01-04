@@ -137,10 +137,11 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
             synchronized (this) {
                 // Copying the ones to callback
                 if (!waitForBootCallers.isEmpty()) {
-                    waitForBootCallersToCallback = Collections.unmodifiableList(new ArrayList(waitForBootCallers)); // TODO since Java 11: List.copyOf(waitForBootCallers)
+                    final List<ActorRef<WaitForBootCommand.BootCompleted>> copy = new ArrayList<>(waitForBootCallers);
+                    waitForBootCallersToCallback = Collections.unmodifiableList(copy); // TODO since Java 11: List.copyOf(waitForBootCallers)
                     waitForBootCallers.clear();
                 } else {
-                    waitForBootCallersToCallback = new ArrayList(); // TODO since Java 9: List.of()
+                    waitForBootCallersToCallback = new ArrayList<>(); // TODO since Java 9: List.of()
                 }
             }
 

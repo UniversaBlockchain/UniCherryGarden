@@ -59,7 +59,7 @@ inThisBuild(List(
   organization := "com.myodov.unicherrygarden",
   version := projectVersion,
   scalaVersion := "2.13.0",
-  javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-parameters"),
+  javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-parameters", "-Xlint:unchecked"),
   organizationName := "UniCherryGarden",
   organizationHomepage := Some(url("https://github.com/UniversaBlockchain/UniCherryGarden")),
   homepage := Some(url("https://github.com/UniversaBlockchain/UniCherryGarden")),
