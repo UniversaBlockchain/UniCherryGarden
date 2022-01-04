@@ -1,7 +1,7 @@
 package com.myodov.unicherrygarden.messages.cherrypicker;
 
-import com.myodov.unicherrygarden.api.types.BlockchainSyncStatus;
 import com.myodov.unicherrygarden.api.types.MinedTransfer;
+import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Block;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.api.types.dlt.MinedTx;
@@ -14,7 +14,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 public class GetTransfers_TransfersRequestResultTest {
     static final Currency CUR_ETH = Currency.newEthCurrency();
@@ -208,10 +209,10 @@ public class GetTransfers_TransfersRequestResultTest {
                         ),
                         173));
             }},
-            new BlockchainSyncStatus(
-                    15631007,
-                    14631007,
-                    13631007),
+            new SystemSyncStatus(
+                    new SystemSyncStatus.Blockchain(15631007, 14631007),
+                    new SystemSyncStatus.CherryPicker(13631007)
+            ),
             Collections.emptyMap()
     );
     static final List<MinedTransfer> SAMPLE1_UNSORTED_TRANSFERS = new ArrayList<MinedTransfer>() {{

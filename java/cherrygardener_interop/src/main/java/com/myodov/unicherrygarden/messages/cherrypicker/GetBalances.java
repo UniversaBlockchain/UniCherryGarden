@@ -3,7 +3,7 @@ package com.myodov.unicherrygarden.messages.cherrypicker;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.myodov.unicherrygarden.api.types.BlockchainSyncStatus;
+import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
 import com.myodov.unicherrygarden.messages.CherryPickerResponseWithResult;
@@ -175,7 +175,7 @@ public class GetBalances {
          * The total status of blockchain synchronization.
          */
         @NonNull
-        public final BlockchainSyncStatus syncStatus;
+        public final SystemSyncStatus syncStatus;
 
 
         /**
@@ -183,7 +183,7 @@ public class GetBalances {
          */
         @JsonCreator
         public BalanceRequestResult(@NonNull List<CurrencyBalanceFact> balances,
-                                    @NonNull BlockchainSyncStatus syncStatus) {
+                                    @NonNull SystemSyncStatus syncStatus) {
             assert balances != null;
             assert syncStatus != null;
 

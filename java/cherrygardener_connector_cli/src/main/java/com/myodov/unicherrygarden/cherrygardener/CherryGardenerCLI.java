@@ -1,5 +1,6 @@
 package com.myodov.unicherrygarden.cherrygardener;
 
+import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
 import com.myodov.unicherrygarden.api.types.Transfer;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
@@ -631,15 +632,7 @@ public class CherryGardenerCLI {
                                 balanceFact.syncState
                         );
                     }
-                    System.err.printf("" +
-                                    "Overall status:\n" +
-                                    "  block %10s: latest known,\n" +
-                                    "  block %10s: latest synced by node,\n" +
-                                    "  block %10s: latest processed by UniCherryGarden.\n",
-                            result.syncStatus.latestBlockchainKnownBlock,
-                            result.syncStatus.latestBlockchainSyncedBlock,
-                            result.syncStatus.latestUniCherryGardenSyncedBlock
-                    );
+                    printOverallStatus(result.syncStatus);
                 }
                 connector.shutdown();
             } catch (CompletionException exc) {
@@ -730,15 +723,7 @@ public class CherryGardenerCLI {
                                     transfer.to
                             );
                         }
-                        System.err.printf("" +
-                                        "Overall status:\n" +
-                                        "  block %10s: latest known,\n" +
-                                        "  block %10s: latest synced by node,\n" +
-                                        "  block %10s: latest processed by UniCherryGarden.\n",
-                                result.syncStatus.latestBlockchainKnownBlock,
-                                result.syncStatus.latestBlockchainSyncedBlock,
-                                result.syncStatus.latestUniCherryGardenSyncedBlock
-                        );
+                        printOverallStatus(result.syncStatus);
                     }
                     connector.shutdown();
                 } catch (CompletionException exc) {
@@ -764,6 +749,21 @@ public class CherryGardenerCLI {
                 propsCLI.getProperty("version"), propsCLI.getProperty("build_timestamp"),
                 propsConnector.getProperty("version"), propsConnector.getProperty("build_timestamp")
         );
+    }
+
+    private static final void printOverallStatus(@NonNull SystemSyncStatus syncStatus) {
+        System.err.printf("" +
+                        "Overall status:\n" +
+                        "  Blockchain:\n" +
+                        "    block %10s: latest known,\n" +
+                        "    block %10s: latest synced by node,\n" +
+                        "  UniCherryPicker:\n" +
+                        "    block %10s: latest processed.\n",
+                syncStatus.blockchain.latestKnownBlock,
+                syncStatus.blockchain.latestSyncedBlock,
+                syncStatus.cherryPicker.latestSyncedBlock
+        );
+
     }
 
     private static final void printHelp() {

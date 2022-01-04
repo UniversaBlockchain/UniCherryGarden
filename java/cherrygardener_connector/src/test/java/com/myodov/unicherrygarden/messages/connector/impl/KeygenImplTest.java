@@ -4,7 +4,6 @@ import com.myodov.unicherrygarden.api.types.PrivateKey;
 import com.myodov.unicherrygarden.connector.api.Keygen;
 import com.myodov.unicherrygarden.connector.impl.KeygenImpl;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
-import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

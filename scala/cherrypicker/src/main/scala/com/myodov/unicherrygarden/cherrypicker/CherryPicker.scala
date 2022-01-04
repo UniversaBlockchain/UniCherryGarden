@@ -5,7 +5,7 @@ import java.util.Collections
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.myodov.unicherrygarden.api.types.{BlockchainSyncStatus, MinedTransfer}
+import com.myodov.unicherrygarden.api.types.{MinedTransfer, SystemSyncStatus}
 import com.myodov.unicherrygarden.cherrypicker.EthereumStatePoller
 import com.myodov.unicherrygarden.cherrypicker.syncers.{HeadSyncer, SyncerMessages, TailSyncer}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
@@ -215,7 +215,11 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
           //                  )
           //                ).asJava,
           List.empty[GetBalances.BalanceRequestResult.CurrencyBalanceFact].asJava,
-          new BlockchainSyncStatus(0, 0, 0))
+          new SystemSyncStatus(
+            new SystemSyncStatus.Blockchain(0, 0),
+            new SystemSyncStatus.CherryPicker(0)
+          )
+        )
       )
     }
 
@@ -260,7 +264,10 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
           //     173)
           // ).asJava,
           List.empty[MinedTransfer].asJava,
-          new BlockchainSyncStatus(0, 0, 0),
+          new SystemSyncStatus(
+            new SystemSyncStatus.Blockchain(0, 0),
+            new SystemSyncStatus.CherryPicker(0)
+          ),
           Collections.emptyMap()
         )
       )

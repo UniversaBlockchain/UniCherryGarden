@@ -4,7 +4,7 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.myodov.unicherrygarden.api.types.BlockchainSyncStatus;
+import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
 import com.myodov.unicherrygarden.api.types.MinedTransfer;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
@@ -93,7 +93,7 @@ public class GetTransfers {
          * The total status of blockchain synchronization.
          */
         @NonNull
-        public final BlockchainSyncStatus syncStatus;
+        public final SystemSyncStatus syncStatus;
 
         // A (unmodifiable, for safety) map of transfers, indexed by `from`, then `to` addresses.
         final Map<String, Map<String, List<MinedTransfer>>> transfersIndexedByFromThenTo;
@@ -112,7 +112,7 @@ public class GetTransfers {
          */
         @JsonCreator
         public TransfersRequestResult(@NonNull List<MinedTransfer> transfers,
-                                      @NonNull BlockchainSyncStatus syncStatus,
+                                      @NonNull SystemSyncStatus syncStatus,
                                       @NonNull Map<String, BigDecimal> balances) {
             assert transfers != null;
             assert syncStatus != null;

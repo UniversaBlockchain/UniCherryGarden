@@ -22,8 +22,8 @@ public class CherryPickerResponseWithResult<Res> implements CherryPickerResponse
 
     @Override
     public String toString() {
-        final Class thisCl = this.getClass();
-        final Class parentCl = thisCl.getEnclosingClass();
-        return String.format("%s.%s(%s)", parentCl.getSimpleName(), thisCl.getSimpleName(), result);
+        return String.format("%s.%s(%s)",
+                getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
+                result);
     }
 }
