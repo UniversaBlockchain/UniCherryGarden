@@ -224,7 +224,6 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
     DB readOnly { implicit session =>
       new GetTransfers.Response(
         new GetTransfers.TransfersRequestResult(
-          0,
           // List(
           //   new MinedTransfer(
           //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",

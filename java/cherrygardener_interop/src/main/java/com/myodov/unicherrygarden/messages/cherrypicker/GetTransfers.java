@@ -86,11 +86,6 @@ public class GetTransfers {
 
 
     public static class TransfersRequestResult {
-        /**
-         * The number of the final block for which the results have been provided.
-         */
-        public final int resultAtBlock;
-
         @NonNull
         public final List<MinedTransfer> transfers;
 
@@ -117,16 +112,14 @@ public class GetTransfers {
          * Constructor.
          */
         @JsonCreator
-        public TransfersRequestResult(int resultAtBlock,
-                                      @NonNull List<MinedTransfer> transfers,
+        public TransfersRequestResult(@NonNull List<MinedTransfer> transfers,
                                       @NonNull BlockchainSyncStatus syncStatus,
                                       @NonNull Map<String, BigDecimal> balances) {
             assert transfers != null;
             assert syncStatus != null;
             assert balances != null;
 
-            this.resultAtBlock = resultAtBlock;
-            this.transfers = Collections.unmodifiableList(transfers);
+                this.transfers = Collections.unmodifiableList(transfers);
 
             this.syncStatus = syncStatus;
             this.balances = Collections.unmodifiableMap(balances);

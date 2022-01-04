@@ -720,8 +720,7 @@ public class CherryGardenerCLI {
                     } else {
                         final GetTransfers.TransfersRequestResult result = resultOpt.get();
 
-                        System.err.printf("Received the transfers %s - at block %s:\n",
-                                transfersDescription, result.resultAtBlock);
+                        System.err.printf("Received the transfers %s:\n", transfersDescription);
 
                         for (final Transfer transfer : result.transfers) {
                             System.err.printf("  * %s of %s from %s to %s\n",
