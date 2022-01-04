@@ -5,6 +5,7 @@ import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
+import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
 import com.myodov.unicherrygarden.messages.CherryPickerResponseWithResult;
 import com.myodov.unicherrygarden.messages.RequestPayload;
@@ -26,25 +27,32 @@ public class GetBalances {
 
     public static final class GBRequestPayload
             implements RequestPayload {
-        @Nullable
-        public final Set<String> filterCurrencyKeys;
-
         @NonNull
         public final int confirmations;
 
+        @NonNull
+        public final String address;
+
+        @Nullable
+        public final Set<String> filterCurrencyKeys;
+
+
         @JsonCreator
         public GBRequestPayload(int confirmations,
+                                @NonNull String address,
                                 @Nullable Set<String> filterCurrencyKeys) {
             assert confirmations >= 0 : confirmations;
+            assert address != null && EthUtils.Addresses.isValidLowercasedAddress(address) : address;
 
-            this.filterCurrencyKeys = filterCurrencyKeys;
             this.confirmations = confirmations;
+            this.address = address;
+            this.filterCurrencyKeys = filterCurrencyKeys;
         }
 
         @Override
         public String toString() {
-            return String.format("GetBalances.GBRequestPayload(%s, %s)",
-                    filterCurrencyKeys, confirmations);
+            return String.format("GetBalances.GBRequestPayload(%s, %s, %s)",
+                    confirmations, address, filterCurrencyKeys);
         }
     }
 
@@ -64,60 +72,6 @@ public class GetBalances {
 
         public static class CurrencyBalanceFact {
             /**
-             * The state how well is balance (of some currency for some address) synced; i.e. how actual is the data.
-             * The sync states are ordered; each next state is definitely better (more actual) than previous one.
-             */
-            public enum BalanceSyncState {
-                /**
-                 * The balance state is not fully synced to any known point and cannot be fully trusted.
-                 */
-                NON_SYNCED,
-                /**
-                 * The balance of this token at this address is synced at least to the latest state
-                 * of UniCherryGarden sync for this token in general.
-                 * <p>
-                 * The sync state of this particular token may still lag behind the overall UniCherryGarden sync state.
-                 */
-                SYNCED_TO_LATEST_UNICHERRYGARDEN_TOKEN_STATE,
-                /**
-                 * The balance of this token at this address is synced at least to the latest state
-                 * of UniCherryGarden global.
-                 * Implies {@link #SYNCED_TO_LATEST_UNICHERRYGARDEN_TOKEN_STATE}.
-                 * <p>
-                 * This means that the address is synced to the latest overall UniCherryGarden sync state;
-                 * but overall UniCherryGarden sync state may still lag behind the latest block available
-                 * to the Ethereum node.
-                 * <p>
-                 * The global UniCherryGarden sync state can momentarily lag behind the latest node blocks,
-                 * that is okay.
-                 */
-                SYNCED_TO_LATEST_UNICHERRYGARDEN_GLOBAL_STATE,
-                /**
-                 * The balance of this token at this address is synced at least to the latest block
-                 * available to the Ethereum node.
-                 * Implies {@link #SYNCED_TO_LATEST_UNICHERRYGARDEN_GLOBAL_STATE}.
-                 * <p>
-                 * This means that the address is synced to the latest blockchain data stored on the node;
-                 * but it is possible the Ethereum node itself is still not fully synced to the latest block
-                 * known to it. Though if the “latest synced block” lags behind the “latest known block”,
-                 * like, a block or two, that is okay.
-                 */
-                SYNCED_TO_LATEST_BLOCKCHAIN_SYNC_STATE,
-                /**
-                 * The balance of this token at this address is synced to the latest block known to the Ethereum node.
-                 * Implies {@link #SYNCED_TO_LATEST_BLOCKCHAIN_SYNC_STATE}.
-                 * <p>
-                 * This is the most ideal condition, when synced to everything; but momentary, it may be off.
-                 * <p>
-                 * This state means that the address is synced to the latest blockchain data stored on the node;
-                 * but it is possible the Ethereum node itself is still not fully synced to the latest block
-                 * known to it. Though if the “latest synced block” lags behind the “latest known block”,
-                 * like, a block or two, that is okay.
-                 */
-                SYNCED_TO_LATEST_BLOCKCHAIN_KNOWN_STATE;
-            }
-
-            /**
              * The currency for which the balance is retrieved.
              */
             @NonNull
@@ -132,39 +86,30 @@ public class GetBalances {
             public final BigDecimal amount;
 
             /**
-             * “How up-to-date” the balance information is.
-             */
-            public final BalanceSyncState syncState;
-
-            /**
-             * The information is up-to-date to this block number.
+             * The information is actual to this block number.
              * <p>
              * If present, always 0 or higher.
              */
-            @Nullable
-            public final Integer syncedToBlock;
+            public final int blockNumber;
 
 
             @JsonCreator
             public CurrencyBalanceFact(@NonNull Currency currency,
                                        @NonNull BigDecimal amount,
-                                       @NonNull BalanceSyncState syncState,
-                                       @Nullable Integer syncedToBlock) {
+                                       int blockNumber) {
                 assert currency != null;
                 assert amount.compareTo(BigDecimal.ZERO) >= 0 : amount; // amount >= 0
-                assert syncState != null;
-                assert syncedToBlock == null || syncedToBlock.intValue() >= 0 : syncedToBlock;
+                assert blockNumber >= 0 : blockNumber;
 
                 this.currency = currency;
                 this.amount = amount;
-                this.syncState = syncState;
-                this.syncedToBlock = syncedToBlock;
+                this.blockNumber = blockNumber;
             }
 
             @Override
             public String toString() {
-                return String.format("BalanceRequestResult.CurrencyBalanceFact(%s: amount=%s: %s, synced to %s)",
-                        currency, amount, syncState, syncedToBlock);
+                return String.format("BalanceRequestResult.CurrencyBalanceFact(%s: amount=%s at block %s)",
+                        currency, amount, blockNumber);
             }
         }
 

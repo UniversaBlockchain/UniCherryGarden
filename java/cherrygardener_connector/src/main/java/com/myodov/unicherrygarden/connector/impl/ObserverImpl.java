@@ -164,9 +164,10 @@ public class ObserverImpl implements Observer {
 
     @Override
     public GetBalances.@Nullable BalanceRequestResult getAddressBalances(
+            int confirmations,
             @NonNull String address,
-            @Nullable Set<String> filterCurrencyKeys,
-            int confirmations) {
+            @Nullable Set<String> filterCurrencyKeys) {
+        assert confirmations >= 0 : confirmations;
         assert address != null : address;
         requireValidEthereumAddress("address", address);
         requireValidBlockNumber("confirmations", confirmations);
@@ -176,6 +177,7 @@ public class ObserverImpl implements Observer {
                         actorSystem,
                         GetBalancesCommand.createReplier(
                                 confirmations,
+                                address,
                                 filterCurrencyKeys),
                         ConnectorActor.DEFAULT_CALL_TIMEOUT,
                         actorSystem.scheduler());

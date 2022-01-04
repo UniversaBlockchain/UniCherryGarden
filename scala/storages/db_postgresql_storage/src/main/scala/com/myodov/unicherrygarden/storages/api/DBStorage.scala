@@ -4,11 +4,12 @@ import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
+import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult.CurrencyBalanceFact
 import com.myodov.unicherrygarden.storages.api.DBStorage.Currencies.DBCurrency
 import com.myodov.unicherrygarden.storages.api.DBStorage.Progress.ProgressData
 import com.myodov.unicherrygarden.storages.api.DBStorage.TrackedAddresses.TrackedAddress
 import com.typesafe.scalalogging.LazyLogging
-import scalikejdbc.{AutoSession, DBSession, ReadOnlyAutoSession}
+import scalikejdbc.{AutoSession, DBSession, ReadOnlyAutoSession, WrappedResultSet}
 
 import scala.collection.immutable.SortedMap
 
@@ -34,6 +35,9 @@ trait DBStorageAPI {
 
   /** Access `ucg_tx_log` table. */
   val txLogs: DBStorageAPI.TxLogs
+
+  /** Access balances overall information. */
+  val balances: DBStorageAPI.Balances
 }
 
 object DBStorageAPI {
@@ -154,6 +158,14 @@ object DBStorageAPI {
                  )(implicit
                    session: DBSession = AutoSession
                  ): Unit
+  }
+
+  trait Balances {
+    def getBalances(
+                     maxBlock: Int,
+                     address: String,
+                     currencyKeys: Option[Set[String]]
+                   )(implicit session: DBSession = ReadOnlyAutoSession): List[CurrencyBalanceFact]
   }
 
 }
@@ -293,7 +305,7 @@ object DBStorage {
     }
 
 
-    /** Single instance of currency/token/asset. */
+    /** Single instance of currency/token/asset, with all the data stored. */
     sealed case class DBCurrency(currencyType: CurrencyTypes.DBCurrencyType,
                                  dAppAddress: Option[String],
                                  name: Option[String],
@@ -305,7 +317,7 @@ object DBStorage {
       require((currencyType == CurrencyTypes.Eth) == dAppAddress.isEmpty, (currencyType, dAppAddress))
       require(dAppAddress.isEmpty || EthUtils.Addresses.isValidLowercasedAddress(dAppAddress.get), dAppAddress)
 
-      def asAsset: dlt.Asset = {
+      lazy val asAsset: dlt.Asset = {
         currencyType match {
           case CurrencyTypes.Eth => dlt.Ether
           case CurrencyTypes.Erc20 => dlt.ERC20Token(dAppAddress.get)
@@ -314,6 +326,29 @@ object DBStorage {
           }
         }
       }
+
+      lazy val asCurrency: Currency = new Currency(
+        DBStorage.Currencies.CurrencyTypes.toInteropType(currencyType),
+        dAppAddress.orNull,
+        name.orNull,
+        symbol.orNull,
+        ucgComment.orNull,
+        verified,
+        decimals.map(Integer.valueOf).orNull
+      )
+    }
+
+    object DBCurrency {
+      def fromUcgCurrency(rs: WrappedResultSet, prefix: String = ""): DBCurrency =
+        DBCurrency(
+          CurrencyTypes.fromString(rs.string(s"${prefix}type")),
+          rs.stringOpt(s"${prefix}dapp_address"),
+          rs.stringOpt(s"${prefix}name"),
+          rs.stringOpt(s"${prefix}symbol"),
+          rs.stringOpt(s"${prefix}ucg_comment"),
+          rs.boolean(s"${prefix}verified"),
+          rs.intOpt(s"${prefix}decimals")
+        )
     }
 
   }

@@ -103,9 +103,9 @@ public interface Observer {
      * or <code>null</code> if the request failed.
      */
     GetBalances.@Nullable BalanceRequestResult getAddressBalances(
+            int confirmations,
             @NonNull String address,
-            @Nullable Set<String> filterCurrencyKeys,
-            int confirmations);
+            @Nullable Set<String> filterCurrencyKeys);
 
     /**
      * Get transfers (optionally filtered by currency, sender, receiver, start-block number, end-block number).

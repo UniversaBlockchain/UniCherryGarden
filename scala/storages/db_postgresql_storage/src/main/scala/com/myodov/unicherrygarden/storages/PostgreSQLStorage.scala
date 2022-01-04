@@ -6,6 +6,8 @@ import com.myodov.unicherrygarden.Tools.seqIsIncrementing
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
+import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult.CurrencyBalanceFact
+import com.myodov.unicherrygarden.storages.api.DBStorage.Currencies.DBCurrency
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging
 import org.flywaydb.core.Flyway
@@ -353,15 +355,7 @@ class PostgreSQLStorage(jdbcUrl: String,
       SELECT *
       FROM ucg_currency
       WHERE verified IN ($verifiedValues);
-      """.map(rs => DBCurrency(
-        CurrencyTypes.fromString(rs.string("type")),
-        rs.stringOpt("dapp_address"),
-        rs.stringOpt("name"),
-        rs.stringOpt("symbol"),
-        rs.stringOpt("ucg_comment"),
-        rs.boolean("verified"),
-        rs.intOpt("decimals")
-      )).list.apply
+      """.map(DBCurrency.fromUcgCurrency(_)).list.apply
     }
   }
 
@@ -638,6 +632,23 @@ class PostgreSQLStorage(jdbcUrl: String,
       """
         .batch(batchParams: _*)
         .apply()(session, implicitly[Factory[Int, Seq[Int]]])
+    }
+  }
+
+  object balances extends DBStorageAPI.Balances {
+    override def getBalances(
+                              maxBlock: Int,
+                              address: String,
+                              currencyKeys: Option[Set[String]]
+                            )(implicit session: DBSession = ReadOnlyAutoSession): List[CurrencyBalanceFact] = {
+      sql"""
+      SELECT *
+      FROM ucg_currency;
+      """.map(rs => new CurrencyBalanceFact(
+        DBCurrency.fromUcgCurrency(rs).asCurrency,
+        BigDecimal(123).underlying,
+        17
+      )).list.apply
     }
   }
 

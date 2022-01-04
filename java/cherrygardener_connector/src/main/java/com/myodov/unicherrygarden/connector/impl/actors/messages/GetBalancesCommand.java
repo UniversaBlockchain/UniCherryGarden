@@ -6,6 +6,7 @@ import akka.actor.typed.receptionist.ServiceKey;
 import akka.japi.function.Function;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommandImpl;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
+import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -66,10 +67,12 @@ public class GetBalancesCommand
      */
     public static Function<ActorRef<Result>, ConnectorActorMessage> createReplier(
             int confirmations,
+            @NonNull String address,
             @Nullable Set<String> filterCurrencyKeys) {
+        assert address != null && EthUtils.Addresses.isValidLowercasedAddress(address) : address;
         return (replyTo) -> new GetBalancesCommand(
                 replyTo,
-                new GetBalances.GBRequestPayload(confirmations, filterCurrencyKeys));
+                new GetBalances.GBRequestPayload(confirmations, address, filterCurrencyKeys));
     }
 
     @NonNull

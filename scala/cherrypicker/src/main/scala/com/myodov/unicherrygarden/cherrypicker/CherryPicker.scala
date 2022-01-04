@@ -161,7 +161,8 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
             item.address,
             // The subsequent items may be Java-nullable
             item.comment.orNull,
-            // Converting the Option[Int] to nullable Java Integers needs some cunning
+            // Converting the Option[Int] to nullable Java Integers needs some cunning processing,
+            // to avoid Null getting converted to 0
             item.syncedFrom.map(Integer.valueOf).orNull
           )
         }
@@ -211,23 +212,31 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
   private[this] def handleGetBalances(payload: GetBalances.GBRequestPayload): GetBalances.Response =
   // Construct all the response DB in a single atomic readonly DB transaction.
     DB readOnly { implicit session =>
-      // Read and remember the sync progress for the whole operation
-      val ethereumNodeStatusOpt: Option[SystemSyncStatus.Blockchain] = state.ethereumNodeStatus
-      val progressOpt: Option[Progress.ProgressData] = dbStorage.progress.getProgress
-
       new GetBalances.Response(
-        new GetBalances.BalanceRequestResult(
-          //                List[CurrencyBalanceFact](
-          //                  new CurrencyBalanceFact(
-          //                    Currency.newEthCurrency(),
-          //                    BigDecimal(123.45).underlying(),
-          //                    BalanceRequestResult.CurrencyBalanceFact.BalanceSyncState.SYNCED_TO_LATEST_UNICHERRYGARDEN_TOKEN_STATE,
-          //                    15
-          //                  )
-          //                ).asJava,
-          buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
-          List.empty[GetBalances.BalanceRequestResult.CurrencyBalanceFact].asJava
-        )
+        // Read and remember the sync progress for the whole operation
+        (state.ethereumNodeStatus, dbStorage.progress.getProgress) match {
+          case (None, _) | (_, None) =>
+            logger.warn(s"Received getBalances request while not ready; respond with error")
+            null
+          case (Some(ethereumNodeStatus), Some(progress)) if progress.blocks.to.isEmpty =>
+            logger.warn(s"Received getBalances request but blocks are not ready; respond with error too")
+            null
+          case (ethereumNodeStatusOpt@Some(ethereumNodeStatus), progressOpt@Some(progress)) =>
+            val blocksTo = progress.blocks.to.get // non-empty, due to previous `case` check
+            val maxBlock = blocksTo - payload.confirmations
+            logger.debug(s"Get balances for $payload at $maxBlock")
+
+            val results = dbStorage.balances.getBalances(
+              maxBlock,
+              payload.address,
+              Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
+            )
+            logger.error(s"Results are: $results")
+            new GetBalances.BalanceRequestResult(
+              buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
+              results.asJava
+            )
+        }
       )
     }
 

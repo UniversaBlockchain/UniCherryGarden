@@ -613,23 +613,22 @@ public class CherryGardenerCLI {
                         confirmations);
                 final Optional<GetBalances.BalanceRequestResult> resultOpt = Optional.ofNullable(
                         connector.getObserver().getAddressBalances(
+                                0, // on top of connector-level confirmations number
                                 address,
-                                null,
-                                0 // on top of connector-level confirmations number
+                                null
                         ));
                 if (!resultOpt.isPresent()) {
                     System.err.printf("ERROR: Could not get the balances for %s!\n", address);
                 } else {
                     final GetBalances.BalanceRequestResult result = resultOpt.get();
-                    System.err.printf("Received the balances for %s (with %s confirmation(s)):\n",
-                            address, confirmations);
+                    System.err.printf("Received the balances for %s (with %s confirmation(s)), %s records:\n",
+                            address, confirmations, result.balances.size());
 
                     for (final GetBalances.BalanceRequestResult.CurrencyBalanceFact balanceFact : result.balances) {
-                        System.err.printf("  %s: %s (synced to %s, %s)\n",
+                        System.err.printf("  %s: %s (at block %s)\n",
                                 balanceFact.currency,
                                 balanceFact.amount,
-                                balanceFact.syncedToBlock,
-                                balanceFact.syncState
+                                balanceFact.blockNumber
                         );
                     }
                     printOverallStatus(result.syncStatus);

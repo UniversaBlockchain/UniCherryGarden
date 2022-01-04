@@ -20,17 +20,7 @@ class CherryGardener(private val dbStorage: DBStorageAPI,
 
   /** Reply to [[GetCurrencies]] request. */
   def getCurrencies(getVerified: Boolean, getUnverified: Boolean): GetCurrencies.Response = {
-    val result: List[Currency] = dbStorage.currencies.getCurrencies(getVerified, getUnverified).map(
-      c => new Currency(
-        DBStorage.Currencies.CurrencyTypes.toInteropType(c.currencyType),
-        c.dAppAddress.orNull,
-        c.name.orNull,
-        c.symbol.orNull,
-        c.ucgComment.orNull,
-        c.verified,
-        c.decimals.map(Integer.valueOf).orNull
-      )
-    )
+    val result: List[Currency] = dbStorage.currencies.getCurrencies(getVerified, getUnverified).map(_.asCurrency)
     new GetCurrencies.Response(result.asJava)
   }
 }
