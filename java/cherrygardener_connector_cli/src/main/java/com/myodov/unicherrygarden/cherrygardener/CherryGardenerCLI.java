@@ -758,10 +758,14 @@ public class CherryGardenerCLI {
                         "    block %10s: latest known,\n" +
                         "    block %10s: latest synced by node,\n" +
                         "  UniCherryPicker:\n" +
-                        "    block %10s: latest processed.\n",
+                        "    block %10s: latest known,\n" +
+                        "    block %10s: latest partially synced,\n" +
+                        "    block %10s: latest fully synced.\n",
                 syncStatus.blockchain.highestBlock,
                 syncStatus.blockchain.currentBlock,
-                syncStatus.cherryPicker.latestSyncedBlock
+                syncStatus.cherryPicker.latestKnownBlock,
+                syncStatus.cherryPicker.latestPartiallySyncedBlock,
+                syncStatus.cherryPicker.latestFullySyncedBlock
         );
 
     }

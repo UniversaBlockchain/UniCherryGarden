@@ -14,6 +14,7 @@ import com.myodov.unicherrygarden.messages.CherryPickerRequest
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.AddTrackedAddressesRequestResult
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.TrackedAddressesRequestResult
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses, GetTransfers}
+import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging
 import scalikejdbc.DB
@@ -210,7 +211,9 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
   private[this] def handleGetBalances(payload: GetBalances.GBRequestPayload): GetBalances.Response =
   // Construct all the response DB in a single atomic readonly DB transaction.
     DB readOnly { implicit session =>
-      val ethereumNodeStatus = state.ethereumNodeStatus // read and remember for the whole operation
+      // Read and remember the sync progress for the whole operation
+      val ethereumNodeStatusOpt: Option[SystemSyncStatus.Blockchain] = state.ethereumNodeStatus
+      val progressOpt: Option[Progress.ProgressData] = dbStorage.progress.getProgress
 
       new GetBalances.Response(
         new GetBalances.BalanceRequestResult(
@@ -222,10 +225,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
           //                    15
           //                  )
           //                ).asJava,
-          new SystemSyncStatus(
-            ethereumNodeStatus.orNull,
-            new SystemSyncStatus.CherryPicker(0)
-          ),
+          buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
           List.empty[GetBalances.BalanceRequestResult.CurrencyBalanceFact].asJava
         )
       )
@@ -234,7 +234,9 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
   private[this] def handleGetTransfers(payload: GetTransfers.GTRequestPayload): GetTransfers.Response =
   // Construct all the response in a single atomic readonly DB transaction
     DB readOnly { implicit session =>
-      val ethereumNodeStatus = state.ethereumNodeStatus // read and remember for the whole operation
+      // Read and remember the sync progress for the whole operation
+      val ethereumNodeStatusOpt = state.ethereumNodeStatus
+      val progressOpt = dbStorage.progress.getProgress
 
       new GetTransfers.Response(
         new GetTransfers.TransfersRequestResult(
@@ -273,10 +275,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
           //     ),
           //     173)
           // ).asJava,
-          new SystemSyncStatus(
-            ethereumNodeStatus.orNull,
-            new SystemSyncStatus.CherryPicker(0)
-          ),
+          buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
           List.empty[MinedTransfer].asJava,
           Collections.emptyMap()
         )
@@ -312,4 +311,18 @@ object CherryPicker extends LazyLogging {
       tailSyncerBatchSize,
       catchUpBrakeMaxLeadSetting
     ).launch()
+
+  private[CherryPicker] def buildSystemSyncStatus(ethereumNodeStatusOpt: Option[SystemSyncStatus.Blockchain],
+                                                  progressOpt: Option[Progress.ProgressData]): SystemSyncStatus =
+    new SystemSyncStatus(
+      ethereumNodeStatusOpt.orNull,
+      progressOpt
+        .flatMap(pr => (pr.blocks.to, pr.perCurrencyTrackedAddresses.maxTo, pr.perCurrencyTrackedAddresses.minTo) match {
+          case (Some(blocksTo), Some(partiallySynced), Some(fullySynced)) =>
+            Some(SystemSyncStatus.CherryPicker.create(blocksTo, partiallySynced, fullySynced))
+          case other =>
+            None
+        })
+        .orNull
+    )
 }

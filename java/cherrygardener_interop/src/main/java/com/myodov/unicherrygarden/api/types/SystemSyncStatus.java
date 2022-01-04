@@ -60,29 +60,59 @@ public class SystemSyncStatus {
      */
     public static class CherryPicker {
         /**
-         * The number of the latest block the UniCherryGarden considers itself globally synced to.
+         * The number of the latest block known to UniCherryPicker (for which it has the overall block data).
          * <p>
          * Even on ideal state, can momentarily lag some blocks behind the blocks
          * from {@link SystemSyncStatus.Blockchain}.
          */
-        public final int latestSyncedBlock;
+        public final int latestKnownBlock;
+
+        /**
+         * The number of the block for which UniCherryPicker has at least some partial transactional data.
+         * <p>
+         * Even on ideal state, can momentarily lag some blocks behind the blocks
+         * from {@link SystemSyncStatus.Blockchain}.
+         * May be lower than {@link #latestKnownBlock}.
+         */
+        public final int latestPartiallySyncedBlock;
+
+        /**
+         * The number of the block for which UniCherryPicker has complete transactional data.
+         * <p>
+         * Even on ideal state, can momentarily lag some blocks behind the blocks
+         * from {@link SystemSyncStatus.Blockchain}.
+         * May be lower than {@link #latestPartiallySyncedBlock}.
+         */
+        public final int latestFullySyncedBlock;
 
         @JsonCreator
-        public CherryPicker(int latestSyncedBlock) {
-            assert latestSyncedBlock >= 0 : latestSyncedBlock;
+        public CherryPicker(int latestKnownBlock,
+                            int latestPartiallySyncedBlock,
+                            int latestFullySyncedBlock) {
+            assert latestKnownBlock >= 0 : latestKnownBlock;
+            assert latestPartiallySyncedBlock >= 0 : latestPartiallySyncedBlock;
+            assert latestFullySyncedBlock >= latestFullySyncedBlock : latestFullySyncedBlock;
+            assert latestKnownBlock >= latestPartiallySyncedBlock :
+                    String.format("%s/%s", latestKnownBlock, latestPartiallySyncedBlock);
+            assert latestPartiallySyncedBlock >= latestFullySyncedBlock :
+                    String.format("%s/%s", latestPartiallySyncedBlock, latestFullySyncedBlock);
 
-            this.latestSyncedBlock = latestSyncedBlock;
+            this.latestKnownBlock = latestKnownBlock;
+            this.latestPartiallySyncedBlock = latestPartiallySyncedBlock;
+            this.latestFullySyncedBlock = latestFullySyncedBlock;
         }
 
-        public static CherryPicker create(int latestSyncedBlock) {
-            return new CherryPicker(latestSyncedBlock);
+        public static CherryPicker create(int latestSyncedBlock,
+                                          int latestPartiallySyncedBlock,
+                                          int latestFullySyncedBlock) {
+            return new CherryPicker(latestSyncedBlock, latestPartiallySyncedBlock, latestFullySyncedBlock);
         }
 
         @Override
         public String toString() {
-            return String.format("%s(%s)",
+            return String.format("%s(%s, %s, %s)",
                     getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
-                    latestSyncedBlock);
+                    latestKnownBlock, latestPartiallySyncedBlock, latestFullySyncedBlock);
         }
     }
 
