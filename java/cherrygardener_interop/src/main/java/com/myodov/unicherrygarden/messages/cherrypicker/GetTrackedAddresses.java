@@ -46,12 +46,9 @@ public class GetTrackedAddresses {
         }
     }
 
+    public static class TrackedAddressesRequestResult {
 
-    public static final class Response
-            implements CherryPickerResponse {
-
-        public static final class TrackedAddressInformation
-                implements Serializable {
+        public static final class TrackedAddressInformation {
             @NonNull
             public final String address;
 
@@ -81,6 +78,7 @@ public class GetTrackedAddresses {
             }
         }
 
+
         /**
          * Results: the information about each tracked address.
          */
@@ -98,10 +96,13 @@ public class GetTrackedAddresses {
          */
         public final boolean includeSyncedFrom;
 
+        /**
+         * Constructor.
+         */
         @JsonCreator
-        public Response(@NonNull List<TrackedAddressInformation> addresses,
-                        boolean includeComment,
-                        boolean includeSyncedFrom) {
+        public TrackedAddressesRequestResult(@NonNull List<TrackedAddressInformation> addresses,
+                                             boolean includeComment,
+                                             boolean includeSyncedFrom) {
             assert addresses != null;
             this.addresses = addresses;
             this.includeComment = includeComment;
@@ -110,8 +111,24 @@ public class GetTrackedAddresses {
 
         @Override
         public String toString() {
-            return String.format("GetTrackedAddresses.Response(%s, incComm=%s, incSyncFrom=%s)",
+            return String.format("GetTrackedAddresses.TrackedAddressesRequestResult(%s, incComm=%s, incSyncFrom=%s)",
                     addresses, includeComment, includeSyncedFrom);
+        }
+    }
+
+
+    public static final class Response implements CherryPickerResponse {
+        @Nullable
+        public final TrackedAddressesRequestResult result;
+
+        @JsonCreator
+        public Response(@Nullable TrackedAddressesRequestResult result) {
+            this.result = result;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("GetTrackedAddresses.Response(%s)", result);
         }
     }
 }

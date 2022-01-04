@@ -118,8 +118,7 @@ public class AddTrackedAddresses {
         }
     }
 
-
-    public static final class Response implements CherryPickerResponse {
+    public static class AddTrackedAddressesRequestResult {
         /**
          * The Ethereum addresses (lowercased) that were successfully added to tracking.
          * Stored as {@link Set} so they are definitely unique/non-repeating.
@@ -128,16 +127,27 @@ public class AddTrackedAddresses {
         public final Set<String> addresses;
 
         @JsonCreator
-        public Response(@NonNull Set<String> addresses) {
+        public AddTrackedAddressesRequestResult(@NonNull Set<String> addresses) {
             assert addresses != null;
             assert addresses.stream().allMatch(addr -> (addr != null) && EthUtils.Addresses.isValidLowercasedAddress(addr))
                     : addresses;
             this.addresses = Collections.unmodifiableSet(addresses);
         }
+    }
+
+
+    public static final class Response implements CherryPickerResponse {
+        @Nullable
+        public final AddTrackedAddressesRequestResult result;
+
+        @JsonCreator
+        public Response(@Nullable AddTrackedAddressesRequestResult result) {
+            this.result = result;
+        }
 
         @Override
         public String toString() {
-            return String.format("AddTrackedAddresses.Response(%s)", addresses);
+            return String.format("AddTrackedAddresses.Response(%s)", result);
         }
     }
 }

@@ -36,7 +36,6 @@ public class GetTransfers_TransfersRequestResultTest {
     // 2.1. Including three transfers of UTNP tokens to the same address.
     // 3. Transfer-in of ETH (several).
     static final GetTransfers.TransfersRequestResult SAMPLE1 = new GetTransfers.TransfersRequestResult(
-            true,
             13631007,
             new ArrayList<MinedTransfer>() {{
                 // UTNP in #1
@@ -399,11 +398,6 @@ public class GetTransfers_TransfersRequestResultTest {
 
     @Test
     public void testBasicMethods() {
-        assertTrue(
-                "Just a basic overall-success check",
-                SAMPLE1.overallSuccess
-        );
-
         assertEquals(
                 "Distinct transfer senders",
                 new HashSet<String>() {{

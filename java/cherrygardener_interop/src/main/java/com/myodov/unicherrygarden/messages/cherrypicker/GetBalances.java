@@ -168,27 +168,12 @@ public class GetBalances {
             }
         }
 
-        /**
-         * Whether or not the balances (stored in {@link #balances}) have been retrieved,
-         * at least partially, at least non-fully-synced. “Overall success” of getting balances.
-         * <p>
-         * If {@link #overallSuccess} is <code>false</code>, we should assume the result retrieval
-         * failed completely, and {@link #balances} will likely have no records at all.
-         * But if it’s <code>true</code>, we still should doublecheck every {@link CurrencyBalanceFact}
-         * if it’s up-to-date (as we need).
-         * <p>
-         * There also may be some partial-fails (like, only the balance for some specific token failed);
-         * in this case, the result will have {@link BalanceRequestResult::BalanceSyncState#NON_SYNCED} state.
-         */
-        public final boolean overallSuccess;
-
-        /** The number of the block for which the results have been provided. */
-        public final int resultAtBlock;
-
         @NonNull
         public final List<CurrencyBalanceFact> balances;
 
-        /** The total status of blockchain synchronization. */
+        /**
+         * The total status of blockchain synchronization.
+         */
         @NonNull
         public final BlockchainSyncStatus syncStatus;
 
@@ -197,50 +182,30 @@ public class GetBalances {
          * Constructor.
          */
         @JsonCreator
-        public BalanceRequestResult(boolean overallSuccess,
-                                    int resultAtBlock,
-                                    @NonNull List<CurrencyBalanceFact> balances,
+        public BalanceRequestResult(@NonNull List<CurrencyBalanceFact> balances,
                                     @NonNull BlockchainSyncStatus syncStatus) {
             assert balances != null;
             assert syncStatus != null;
 
-            this.overallSuccess = overallSuccess;
-            this.resultAtBlock = resultAtBlock;
-
             this.balances = Collections.unmodifiableList(balances);
-
             this.syncStatus = syncStatus;
-        }
-
-        /**
-         * Auxilary constructor: create an “Unsuccessful” result of getting balances.
-         */
-        public static final BalanceRequestResult unsuccessful() {
-            return new BalanceRequestResult(
-                    false,
-                    0,
-                    Collections.emptyList(),
-                    new BlockchainSyncStatus(0, 0, 0));
         }
 
         @Override
         public String toString() {
-            return String.format("BalanceRequestResult.BalanceRequestResult(success=%s, atBlock=%s, balances=%s, %s)",
-                    overallSuccess,
-                    resultAtBlock,
+            return String.format("BalanceRequestResult.BalanceRequestResult(success=%s, balances=%s, %s)",
                     balances,
                     syncStatus);
         }
     }
 
 
-    public static final class Response
-            implements CherryPickerResponse {
-        @NonNull
+    public static final class Response implements CherryPickerResponse {
+        @Nullable
         public final BalanceRequestResult result;
 
         @JsonCreator
-        public Response(@NonNull BalanceRequestResult result) {
+        public Response(@Nullable BalanceRequestResult result) {
             this.result = result;
         }
 

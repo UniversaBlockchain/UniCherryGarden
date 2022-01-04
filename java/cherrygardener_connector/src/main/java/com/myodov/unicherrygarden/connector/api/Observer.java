@@ -99,12 +99,13 @@ public interface Observer {
      *                           Should be 0 or higher. Normally it is 6–12 confirmations,
      *                           20 confirmations on large crypto exchanges.
      *                           Each confirmation roughly takes 15 seconds, i.e. 4 confirmations per minute.
-     * @return The structure containing the data about the balances.
-     * Check the {@link GetBalances.BalanceRequestResult#overallSuccess} to be sure the data inside is legit.
+     * @return The structure containing the data about the balances;
+     * or <code>null</code> if the request failed.
      */
-    GetBalances.@NonNull BalanceRequestResult getAddressBalances(@NonNull String address,
-                                                                 @Nullable Set<String> filterCurrencyKeys,
-                                                                 int confirmations);
+    GetBalances.@Nullable BalanceRequestResult getAddressBalances(
+            @NonNull String address,
+            @Nullable Set<String> filterCurrencyKeys,
+            int confirmations);
 
     /**
      * Get transfers (optionally filtered by currency, sender, receiver, start-block number, end-block number).
@@ -132,15 +133,14 @@ public interface Observer {
      * @param filterCurrencyKeys (optional) the set of the currency keys, for which to get the balances.
      *                           If <code>null</code>, gets the balances for all the supported currencies.
      *                           (Note if the set is empty, it will return the empty balances).
-     * @return The structure containing the data about the balances.
-     * Check the {@link GetTransfers.TransfersRequestResult#overallSuccess} to be sure the data inside is legit.
-     * @apiNote the transfers involving the unverified currencies are not returned: for the unverified tokens we may not
-     * be fully sure about their “decimals” value.
+     * @return The structure containing the data about the balances;
+     * or <code>null</code> if the request failed.
      */
-    GetTransfers.@NonNull TransfersRequestResult getTransfers(int confirmations,
-                                                              @Nullable String sender,
-                                                              @Nullable String receiver,
-                                                              @Nullable Integer startBlock,
-                                                              @Nullable Integer endBlock,
-                                                              @Nullable Set<String> filterCurrencyKeys);
+    GetTransfers.@Nullable TransfersRequestResult getTransfers(
+            int confirmations,
+            @Nullable String sender,
+            @Nullable String receiver,
+            @Nullable Integer startBlock,
+            @Nullable Integer endBlock,
+            @Nullable Set<String> filterCurrencyKeys);
 }

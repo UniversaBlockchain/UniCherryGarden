@@ -87,18 +87,6 @@ public class GetTransfers {
 
     public static class TransfersRequestResult {
         /**
-         * Whether or not the transfers (stored in {@link #transfers}) have been retrieved,
-         * at least partially, at least non-fully-synced. “Overall success” of getting the list of transfers.
-         * <p>
-         * If {@link #overallSuccess} is <code>false</code>, we should assume the result retrieval
-         * failed completely, and {@link #transfers} will likely have no records at all.
-         * <p>
-         * There also may be some partial-fails (like, only the transfers for some specific token failed);
-         * in this case, the result will have {@link TransfersRequestResult::TransfersSyncState#NON_SYNCED} state.
-         */
-        public final boolean overallSuccess;
-
-        /**
          * The number of the final block for which the results have been provided.
          */
         public final int resultAtBlock;
@@ -129,8 +117,7 @@ public class GetTransfers {
          * Constructor.
          */
         @JsonCreator
-        public TransfersRequestResult(boolean overallSuccess,
-                                      int resultAtBlock,
+        public TransfersRequestResult(int resultAtBlock,
                                       @NonNull List<MinedTransfer> transfers,
                                       @NonNull BlockchainSyncStatus syncStatus,
                                       @NonNull Map<String, BigDecimal> balances) {
@@ -138,7 +125,6 @@ public class GetTransfers {
             assert syncStatus != null;
             assert balances != null;
 
-            this.overallSuccess = overallSuccess;
             this.resultAtBlock = resultAtBlock;
             this.transfers = Collections.unmodifiableList(transfers);
 
@@ -181,18 +167,6 @@ public class GetTransfers {
 
                 transfersIndexedByToThenFrom = freezeBiIndex(outerMapByTo);
             }
-        }
-
-        /**
-         * Auxilary constructor: create an “Unsuccessful” result of getting transfers.
-         */
-        public static final GetTransfers.TransfersRequestResult unsuccessful() {
-            return new GetTransfers.TransfersRequestResult(
-                    false,
-                    0,
-                    Collections.emptyList(),
-                    new BlockchainSyncStatus(0, 0, 0),
-                    Collections.emptyMap());
         }
 
         /**
@@ -340,13 +314,12 @@ public class GetTransfers {
     }
 
 
-    public static final class Response
-            implements CherryPickerResponse {
-        @NonNull
+    public static final class Response implements CherryPickerResponse {
+        @Nullable
         public final TransfersRequestResult result;
 
         @JsonCreator
-        public Response(@NonNull TransfersRequestResult result) {
+        public Response(@Nullable TransfersRequestResult result) {
             this.result = result;
         }
 

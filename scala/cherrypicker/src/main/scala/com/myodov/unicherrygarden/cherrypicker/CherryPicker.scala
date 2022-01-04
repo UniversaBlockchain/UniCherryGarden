@@ -10,7 +10,8 @@ import com.myodov.unicherrygarden.cherrypicker.EthereumStatePoller
 import com.myodov.unicherrygarden.cherrypicker.syncers.{HeadSyncer, SyncerMessages, TailSyncer}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
-import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.Response
+import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.AddTrackedAddressesRequestResult
+import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.TrackedAddressesRequestResult
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses, GetTransfers}
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging
@@ -19,6 +20,7 @@ import scalikejdbc.DB
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
+import scala.util.control.NonFatal
 
 /** The main actor “cherry-picking” the data from the Ethereum blockchain into the DB.
  *
@@ -73,28 +75,60 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
       Behaviors.receiveMessage {
         case message: GetTrackedAddresses.Request => {
           logger.debug(s"Receiving GetTrackedAddresses message: $message")
-          val response = handleGetTrackedAddresses(message.payload)
+
+          val response = try {
+            handleGetTrackedAddresses(message.payload)
+          } catch {
+            case NonFatal(e) =>
+              logger.error(s"Unexpected error in handleGetTrackedAddresses(${message.payload})", e)
+              new GetTrackedAddresses.Response(null)
+          }
+
           logger.debug(s"Replying with $response")
           message.replyTo ! response
           Behaviors.same
         }
         case message: AddTrackedAddresses.Request => {
           logger.debug(s"Receiving AddTrackedAddresses message: $message")
-          val response = handleAddTrackedAddresses(message.payload)
+
+          val response = try {
+            handleAddTrackedAddresses(message.payload)
+          } catch {
+            case NonFatal(e) =>
+              logger.error(s"Unexpected error in handleAddTrackedAddresses(${message.payload})", e)
+              new AddTrackedAddresses.Response(null)
+          }
+
           logger.debug(s"Replying with $response")
           message.replyTo ! response
           Behaviors.same
         }
         case message: GetBalances.Request => {
           logger.debug(s"Receiving GetBalances message: $message")
-          val response = handleGetBalances(message.payload)
+
+          val response = try {
+            handleGetBalances(message.payload)
+          } catch {
+            case NonFatal(e) =>
+              logger.error(s"Unexpected error in handleGetBalances(${message.payload})", e)
+              new GetBalances.Response(null)
+          }
+
           logger.debug(s"Replying with $response")
           message.replyTo ! response
           Behaviors.same
         }
         case message: GetTransfers.Request => {
           logger.debug(s"Receiving GetTransfers message: $message")
-          val response = handleGetTransfers(message.payload)
+
+          val response = try {
+            handleGetTransfers(message.payload)
+          } catch {
+            case NonFatal(e) =>
+              logger.error(s"Unexpected error in handleGetTransfers(${message.payload})", e)
+              new GetTransfers.Response(null)
+          }
+
           logger.debug(s"Replying with $response")
           message.replyTo ! response
           Behaviors.same
@@ -110,13 +144,13 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
   private[this] def handleGetTrackedAddresses(payload: GetTrackedAddresses.GTARequestPayload): GetTrackedAddresses.Response =
   // Construct all the response in a single atomic readonly DB transaction
     DB readOnly { implicit session =>
-      val results: List[Response.TrackedAddressInformation] = dbStorage
+      val results: List[TrackedAddressesRequestResult.TrackedAddressInformation] = dbStorage
         .trackedAddresses
         .getTrackedAddresses(
           payload.includeComment,
           payload.includeSyncedFrom)
         .map { item =>
-          new Response.TrackedAddressInformation(
+          new TrackedAddressesRequestResult.TrackedAddressInformation(
             item.address,
             // The subsequent items may be Java-nullable
             item.comment.orNull,
@@ -126,9 +160,11 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
         }
 
       new GetTrackedAddresses.Response(
-        results.asJava,
-        payload.includeComment,
-        payload.includeSyncedFrom
+        new GetTrackedAddresses.TrackedAddressesRequestResult(
+          results.asJava,
+          payload.includeComment,
+          payload.includeSyncedFrom
+        )
       )
     }
 
@@ -160,7 +196,9 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
       val addressesActuallyAdded: Set[String] = addressesMaybeAdded.flatten.toSet
       logger.debug(s"Actually added the following addresses to watch: $addressesActuallyAdded")
 
-      new AddTrackedAddresses.Response(addressesActuallyAdded.asJava)
+      new AddTrackedAddresses.Response(
+        new AddTrackedAddressesRequestResult(addressesActuallyAdded.asJava)
+      )
     }
 
   private[this] def handleGetBalances(payload: GetBalances.GBRequestPayload): GetBalances.Response =
@@ -168,8 +206,6 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
     DB readOnly { implicit session =>
       new GetBalances.Response(
         new GetBalances.BalanceRequestResult(
-          false,
-          0,
           //                List[CurrencyBalanceFact](
           //                  new CurrencyBalanceFact(
           //                    Currency.newEthCurrency(),
@@ -188,7 +224,6 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
     DB readOnly { implicit session =>
       new GetTransfers.Response(
         new GetTransfers.TransfersRequestResult(
-          true,
           0,
           // List(
           //   new MinedTransfer(

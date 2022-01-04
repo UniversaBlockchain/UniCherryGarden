@@ -97,16 +97,23 @@ public class ObserverImpl implements Observer {
 
         try {
             final AddTrackedAddresses.Response response = stage.toCompletableFuture().join().response;
-            // We've requested just a single address. Therefore, the result `response.addresses`
-            // should be a set containing just it.
-            if (response.addresses.size() == 1 &&
-                    response.addresses.iterator().next().equals(address)) {
-                return true;
-            } else {
-                logger.error("Received the weird response (not a single item {} but {}), " +
-                                "treating as failure.",
-                        address, response.addresses);
+            final AddTrackedAddresses.@Nullable AddTrackedAddressesRequestResult responseResult = response.result;
+
+            if (responseResult == null) {
+                logger.error("No response received for startTrackingAddress(%s); failure", address);
                 return false;
+            } else {
+                // We've requested just a single address. Therefore, the result `response.addresses`
+                // should be a set containing just it.
+                if (responseResult.addresses.size() == 1 &&
+                        responseResult.addresses.iterator().next().equals(address)) {
+                    return true;
+                } else {
+                    logger.error("Received the weird response (not a single item {} but {}), " +
+                                    "treating as failure.",
+                            address, responseResult.addresses);
+                    return false;
+                }
             }
         } catch (CancellationException | CompletionException exc) {
             logger.error("Could not complete AddTrackedAddressesCommand command", exc);
@@ -129,19 +136,26 @@ public class ObserverImpl implements Observer {
 
         try {
             final GetTrackedAddresses.Response response = stage.toCompletableFuture().join().response;
-            // We didn’t request the comments/syncedFrom/syncedTo,
-            // so they should not be present in the response.
-            assert response.includeComment == false : response;
-            assert response.includeSyncedFrom == false : response;
-            return response.addresses.stream().map(trAddInf -> {
+            final GetTrackedAddresses.@Nullable TrackedAddressesRequestResult responseResult = response.result;
+
+            if (responseResult == null) {
+                logger.error("No response received for getTrackedAddresses(); failure");
+                return null;
+            } else {
                 // We didn’t request the comments/syncedFrom/syncedTo,
-                // so they REALLY should not be present in the response.
-                assert trAddInf.comment == null : trAddInf;
-                assert trAddInf.syncedFrom == null : trAddInf;
-                // But the address should be, and should be non-empty. And valid Ethereum address!
-                assert (trAddInf.address != null) && EthUtils.Addresses.isValidLowercasedAddress(trAddInf.address) : trAddInf;
-                return trAddInf.address;
-            }).collect(Collectors.toList());
+                // so they should not be present in the response.
+                assert responseResult.includeComment == false : responseResult;
+                assert responseResult.includeSyncedFrom == false : responseResult;
+                return responseResult.addresses.stream().map(trAddInf -> {
+                    // We didn’t request the comments/syncedFrom/syncedTo,
+                    // so they REALLY should not be present in the response.
+                    assert trAddInf.comment == null : trAddInf;
+                    assert trAddInf.syncedFrom == null : trAddInf;
+                    // But the address should be, and should be non-empty. And valid Ethereum address!
+                    assert (trAddInf.address != null) && EthUtils.Addresses.isValidLowercasedAddress(trAddInf.address) : trAddInf;
+                    return trAddInf.address;
+                }).collect(Collectors.toList());
+            }
         } catch (CancellationException | CompletionException exc) {
             logger.error("Could not complete GetTrackedAddressesCommand command", exc);
             return null;
@@ -149,7 +163,7 @@ public class ObserverImpl implements Observer {
     }
 
     @Override
-    public GetBalances.@NonNull BalanceRequestResult getAddressBalances(
+    public GetBalances.@Nullable BalanceRequestResult getAddressBalances(
             @NonNull String address,
             @Nullable Set<String> filterCurrencyKeys,
             int confirmations) {
@@ -171,12 +185,12 @@ public class ObserverImpl implements Observer {
             return response.result;
         } catch (CancellationException | CompletionException exc) {
             logger.error("Could not complete GetBalances command", exc);
-            return GetBalances.BalanceRequestResult.unsuccessful();
+            return null;
         }
     }
 
     @Override
-    public GetTransfers.@NonNull TransfersRequestResult getTransfers(
+    public GetTransfers.@Nullable TransfersRequestResult getTransfers(
             int confirmations,
             @Nullable String sender,
             @Nullable String receiver,
@@ -218,7 +232,7 @@ public class ObserverImpl implements Observer {
             return response.result;
         } catch (CancellationException | CompletionException exc) {
             logger.error("Could not complete GetTransfers command", exc);
-            return GetTransfers.TransfersRequestResult.unsuccessful();
+            return null;
         }
     }
 }

@@ -610,14 +610,16 @@ public class CherryGardenerCLI {
                         connectionSettings.connectUrls,
                         connectionSettings.listenPort,
                         confirmations);
-                final GetBalances.@NonNull BalanceRequestResult result = connector.getObserver().getAddressBalances(
-                        address,
-                        null,
-                        0 // on top of connector-level confirmations number
-                );
-                if (!result.overallSuccess) {
+                final Optional<GetBalances.BalanceRequestResult> resultOpt = Optional.ofNullable(
+                        connector.getObserver().getAddressBalances(
+                                address,
+                                null,
+                                0 // on top of connector-level confirmations number
+                        ));
+                if (!resultOpt.isPresent()) {
                     System.err.printf("ERROR: Could not get the balances for %s!\n", address);
                 } else {
+                    final GetBalances.BalanceRequestResult result = resultOpt.get();
                     System.err.printf("Received the balances for %s (with %s confirmation(s)):\n",
                             address, confirmations);
 
@@ -630,11 +632,10 @@ public class CherryGardenerCLI {
                         );
                     }
                     System.err.printf("" +
-                                    "Overall status: %s\n" +
+                                    "Overall status:\n" +
                                     "  block %10s: latest known,\n" +
                                     "  block %10s: latest synced by node,\n" +
                                     "  block %10s: latest processed by UniCherryGarden.\n",
-                            result.overallSuccess,
                             result.syncStatus.latestBlockchainKnownBlock,
                             result.syncStatus.latestBlockchainSyncedBlock,
                             result.syncStatus.latestUniCherryGardenSyncedBlock
@@ -705,17 +706,20 @@ public class CherryGardenerCLI {
                             connectionSettings.connectUrls,
                             connectionSettings.listenPort,
                             confirmations);
-                    final GetTransfers.@NonNull TransfersRequestResult result = connector.getObserver().getTransfers(
+//                    final GetTransfers.@NonNull TransfersRequestResult result =
+                    final Optional<GetTransfers.TransfersRequestResult> resultOpt = Optional.ofNullable(connector.getObserver().getTransfers(
                             0, // on top of connector-level confirmations number
                             senderOpt.orElse(null),
                             receiverOpt.orElse(null),
                             fromBlockOpt.orElse(null),
                             toBlockOpt.orElse(null),
                             null
-                    );
-                    if (!result.overallSuccess) {
+                    ));
+                    if (!resultOpt.isPresent()) {
                         System.err.printf("ERROR: Could not get the transfers %s!\n", transfersDescription);
                     } else {
+                        final GetTransfers.TransfersRequestResult result = resultOpt.get();
+
                         System.err.printf("Received the transfers %s - at block %s:\n",
                                 transfersDescription, result.resultAtBlock);
 
@@ -728,11 +732,10 @@ public class CherryGardenerCLI {
                             );
                         }
                         System.err.printf("" +
-                                        "Overall status: %s\n" +
+                                        "Overall status:\n" +
                                         "  block %10s: latest known,\n" +
                                         "  block %10s: latest synced by node,\n" +
                                         "  block %10s: latest processed by UniCherryGarden.\n",
-                                result.overallSuccess,
                                 result.syncStatus.latestBlockchainKnownBlock,
                                 result.syncStatus.latestBlockchainSyncedBlock,
                                 result.syncStatus.latestUniCherryGardenSyncedBlock
