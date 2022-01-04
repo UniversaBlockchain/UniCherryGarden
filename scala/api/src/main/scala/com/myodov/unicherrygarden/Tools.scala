@@ -1,9 +1,9 @@
 package com.myodov.unicherrygarden
 
 import scala.Ordering.Implicits._
+import scala.language.implicitConversions
 import scala.math.Numeric
 import scala.math.Numeric.Implicits._
-
 
 /** Custom [[Iterable]] implementation with special methods. */
 class EnhancedIterable[T](i: Iterable[T]) {
