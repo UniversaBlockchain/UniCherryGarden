@@ -8,7 +8,7 @@ import com.myodov.unicherrygarden.api.types.BlockchainSyncStatus;
 import com.myodov.unicherrygarden.api.types.MinedTransfer;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
-import com.myodov.unicherrygarden.messages.CherryPickerResponse;
+import com.myodov.unicherrygarden.messages.CherryPickerResponseWithResult;
 import com.myodov.unicherrygarden.messages.RequestPayload;
 import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -103,7 +103,6 @@ public class GetTransfers {
 
         /**
          * The balances of addresses mentioned in the query.
-         * The balances are calculated at the moment of {@link #resultAtBlock} block.
          */
         public final Map<String, BigDecimal> balances;
 
@@ -119,7 +118,7 @@ public class GetTransfers {
             assert syncStatus != null;
             assert balances != null;
 
-                this.transfers = Collections.unmodifiableList(transfers);
+            this.transfers = Collections.unmodifiableList(transfers);
 
             this.syncStatus = syncStatus;
             this.balances = Collections.unmodifiableMap(balances);
@@ -307,18 +306,10 @@ public class GetTransfers {
     }
 
 
-    public static final class Response implements CherryPickerResponse {
-        @Nullable
-        public final TransfersRequestResult result;
-
+    public static final class Response extends CherryPickerResponseWithResult<TransfersRequestResult> {
         @JsonCreator
         public Response(@Nullable TransfersRequestResult result) {
-            this.result = result;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("GetTransfers.Response(%s)", result);
+            super(result);
         }
     }
 }

@@ -5,7 +5,7 @@ import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
-import com.myodov.unicherrygarden.messages.CherryPickerResponse;
+import com.myodov.unicherrygarden.messages.CherryPickerResponseWithResult;
 import com.myodov.unicherrygarden.messages.RequestPayload;
 import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -136,18 +136,10 @@ public class AddTrackedAddresses {
     }
 
 
-    public static final class Response implements CherryPickerResponse {
-        @Nullable
-        public final AddTrackedAddressesRequestResult result;
-
+    public static final class Response extends CherryPickerResponseWithResult<AddTrackedAddressesRequestResult> {
         @JsonCreator
         public Response(@Nullable AddTrackedAddressesRequestResult result) {
-            this.result = result;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("AddTrackedAddresses.Response(%s)", result);
+            super(result);
         }
     }
 }

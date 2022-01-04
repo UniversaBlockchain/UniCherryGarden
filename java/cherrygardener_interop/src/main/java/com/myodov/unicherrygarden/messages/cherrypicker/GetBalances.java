@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.myodov.unicherrygarden.api.types.BlockchainSyncStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
-import com.myodov.unicherrygarden.messages.CherryPickerResponse;
+import com.myodov.unicherrygarden.messages.CherryPickerResponseWithResult;
 import com.myodov.unicherrygarden.messages.RequestPayload;
 import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -200,18 +200,10 @@ public class GetBalances {
     }
 
 
-    public static final class Response implements CherryPickerResponse {
-        @Nullable
-        public final BalanceRequestResult result;
-
+    public static final class Response extends CherryPickerResponseWithResult<BalanceRequestResult> {
         @JsonCreator
         public Response(@Nullable BalanceRequestResult result) {
-            this.result = result;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("GetBalances.Response(%s)", result);
+            super(result);
         }
     }
 }
