@@ -25,6 +25,7 @@ AS
                     ELSE 0
                 END
             ) AS balance_change,
+        erc20.currency_id,
         erc20.currency_type,
         erc20.currency_name,
         erc20.currency_symbol

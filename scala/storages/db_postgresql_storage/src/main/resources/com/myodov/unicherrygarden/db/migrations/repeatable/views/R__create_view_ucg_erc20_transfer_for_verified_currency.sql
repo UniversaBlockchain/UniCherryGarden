@@ -5,7 +5,7 @@ CREATE OR REPLACE VIEW ucg_erc20_transfer_for_verified_currency
              log_index,
              "from", "to", contract,
              value, value_human,
-             currency_type, currency_name, currency_symbol)
+             currency_id, currency_type, currency_name, currency_symbol)
 AS
     SELECT
         ucg_erc20_transfer.tx_log_id,
@@ -20,6 +20,7 @@ AS
         ucg_erc20_transfer.contract,
         ucg_erc20_transfer.value,
         (ucg_erc20_transfer.value / power(10::numeric, ucg_currency.decimals::numeric)) AS value_human,
+        ucg_currency.id AS currency_id,
         ucg_currency.type AS currency_type,
         ucg_currency.name AS currency_name,
         ucg_currency.symbol AS currency_symbol

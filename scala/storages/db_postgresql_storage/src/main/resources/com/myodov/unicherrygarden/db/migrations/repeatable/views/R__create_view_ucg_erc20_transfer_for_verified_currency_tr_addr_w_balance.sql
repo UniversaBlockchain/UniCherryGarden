@@ -18,6 +18,7 @@ AS
         (SUM(balance_change)
          OVER (PARTITION BY address, contract
              ORDER BY block_number, log_index)) AS balance,
+        erc20.currency_id,
         erc20.currency_type,
         erc20.currency_name,
         erc20.currency_symbol

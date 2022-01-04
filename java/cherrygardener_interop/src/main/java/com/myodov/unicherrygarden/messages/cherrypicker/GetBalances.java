@@ -98,7 +98,6 @@ public class GetBalances {
                                        @NonNull BigDecimal amount,
                                        int blockNumber) {
                 assert currency != null;
-                assert amount.compareTo(BigDecimal.ZERO) >= 0 : amount; // amount >= 0
                 assert blockNumber >= 0 : blockNumber;
 
                 this.currency = currency;

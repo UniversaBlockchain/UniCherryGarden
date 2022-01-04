@@ -231,7 +231,6 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
               payload.address,
               Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
             )
-            logger.error(s"Results are: $results")
             new GetBalances.BalanceRequestResult(
               buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
               results.asJava
