@@ -13,15 +13,21 @@ Most CherryGarden components are written on Scala (and use Akka module/actor man
 
 * **CherryGardener Connector** – is a Java-based API to connect to CherryGardener and execute any required operations from Java/Scala/Kotlin code.
 
-
 ## Usage
 
 The native Java API, in the form of `ClientConnectorImpl`, is available in the `cherrygardener_connector` package.
 
+## Requirements
+
+The source code base is written in Java 8 language and Scala 2.13 as the minimum language levels.
+
+PostgreSQL 10.x or newer is used to store the data, as the minimum PostgreSQL syntax/API level.
+
+Geth 1.10.15 or newer should be used to access the Ethereum blockchain (earlier versions may have known bugs preventing their effective usage, e.g. in GraphQL interfaces).
+
 ### Setting CherryGardener Connector as a dependency
 
 The packages are being built and published to Sonatype Central repository, so most of the times you can use in the Java build tool of your choice very easily. For example, if the currently published version is **0.8.5**, you can use this package in the following way:
-
 
 #### Maven
 
@@ -132,7 +138,6 @@ void shutdown();
 
 If you want more specific code examples of using the Connector, you may find the source code of `cherrygardener_connector_cli` amusing and useful: […/CherryGardenerCLI.java](/java/cherrygardener_connector_cli/src/main/java/com/myodov/unicherrygarden/cherrygardener/CherryGardenerCLI.java).
 
-
 Below is the overview of all sub-APIs available from the connector:
 
 #### AddressOwnershipConfirmator sub-API
@@ -175,9 +180,9 @@ The result is in `launcher/target/universal/`
 
 Uses Akka library for modularity/components and establishing cluster of services.
 
-PostgreSQL database is used to store and efficiently index the collected blockchain data and the internal state. Minimum required version is PostgreSQL 10.x.
+PostgreSQL database is used to store and efficiently index the collected blockchain data and the internal state.
 
-The code is written in Java 8 language and Scala 2.13.
+The code is written in Java and Scala languages. See the versions in “Requirements” section.
 
 * The Java artifacts are built without using the Scala versioning in their titles, and in JDK8 compatible mode.
 * The Scala artifacts are built with the Scala version in their title (cross-building).
