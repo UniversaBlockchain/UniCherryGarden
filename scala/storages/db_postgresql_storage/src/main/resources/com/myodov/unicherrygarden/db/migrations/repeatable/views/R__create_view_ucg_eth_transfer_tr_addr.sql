@@ -16,6 +16,10 @@ AS
         tx.value_human,
         tx.fees_total,
         tx.fees_total_human,
+        tx.currency_id,
+        tx.currency_type,
+        tx.currency_name,
+        tx.currency_symbol,
         (
                 CASE ucg_tracked_address.address = tx.to
                     WHEN TRUE THEN tx.value_human

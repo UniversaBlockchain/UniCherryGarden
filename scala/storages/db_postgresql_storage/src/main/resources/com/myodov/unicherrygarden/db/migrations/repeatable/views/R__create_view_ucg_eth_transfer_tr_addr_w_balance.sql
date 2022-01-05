@@ -16,6 +16,10 @@ AS
         tx.value_human,
         tx.fees_total,
         tx.fees_total_human,
+        tx.currency_id,
+        tx.currency_type,
+        tx.currency_name,
+        tx.currency_symbol,
         tx.balance_change,
         (SUM(balance_change)
          OVER (PARTITION BY address

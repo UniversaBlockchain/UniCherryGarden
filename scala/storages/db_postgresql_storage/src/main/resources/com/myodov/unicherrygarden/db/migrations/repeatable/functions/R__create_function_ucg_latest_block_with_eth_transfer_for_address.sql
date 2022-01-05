@@ -15,7 +15,6 @@ FROM
     CROSS JOIN ucg_latest_block_with_eth_transfer_to_address(_address, _max_block) AS _to
 $$;
 
-
 COMMENT ON FUNCTION ucg_latest_block_with_eth_transfer_for_address(
     _address CHAR(42), _max_block INTEGER) IS
     '(Table-returning inlineable) function to find the maximum block containing the valid ETH transfer '

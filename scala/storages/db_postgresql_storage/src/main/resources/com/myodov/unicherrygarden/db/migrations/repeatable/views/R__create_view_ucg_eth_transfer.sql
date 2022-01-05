@@ -14,10 +14,16 @@ AS
         tx.value,
         (value / power(10::numeric, 18::numeric)) AS value_human,
         (tx.gas_used * tx.effective_gas_price) AS fees_total,
-        (tx.gas_used * tx.effective_gas_price / power(10::numeric, 18::numeric)) AS fees_total_human
+        (tx.gas_used * tx.effective_gas_price / power(10::numeric, 18::numeric)) AS fees_total_human,
+        currency.id AS currency_id,
+        currency.type AS currency_type,
+        currency.name AS currency_name,
+        currency.symbol AS currency_symbol
     FROM
-        ucg_transaction AS tx
+        ucg_currency AS currency
+        CROSS JOIN ucg_transaction AS tx
     WHERE
+        (currency.type = 'ETH') AND
         ((tx.status IS NULL) OR (tx.status = 1));
 
 COMMENT ON VIEW ucg_eth_transfer IS
@@ -40,7 +46,7 @@ COMMENT ON COLUMN ucg_eth_transfer.to IS
     'The address of the receiver of the transaction.';
 COMMENT ON COLUMN ucg_eth_transfer.transaction_status IS
     'Transaction status code; EIP 658, available in transactions only since Byzantium fork, since block 4,370,000. '
-    '(1 for success, 0 for failure). NULL in transactions before Byzantium.';
+        '(1 for success, 0 for failure). NULL in transactions before Byzantium.';
 COMMENT ON COLUMN ucg_eth_transfer.transaction_ucg_comment IS
     '`ucg_comment` field of the transaction: comment on the transaction, manually entered by UniCherryGarden admins.';
 COMMENT ON COLUMN ucg_eth_transfer.value IS

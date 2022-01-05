@@ -26,7 +26,6 @@ SELECT *
 FROM data_to_insert;
 $$;
 
-
 CREATE OR REPLACE FUNCTION ucg_insert_missing_currency_tracked_address_progress_trigger_st()
     RETURNS TRIGGER
     LANGUAGE plpgsql
