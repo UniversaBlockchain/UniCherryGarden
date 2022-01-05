@@ -7,8 +7,8 @@ AS
         tx.txhash,
         tx.block_number,
         tx.transaction_index,
-        tx.from_hash,
-        tx.to_hash,
+        tx.from,
+        tx.to,
         tx.transaction_status,
         tx.is_status_ok,
         tx.transaction_ucg_comment,
@@ -17,12 +17,12 @@ AS
         tx.fees_total,
         tx.fees_total_human,
         (
-                CASE ucg_tracked_address.address = tx.to_hash
+                CASE ucg_tracked_address.address = tx.to
                     WHEN TRUE THEN tx.value_human
                     ELSE 0
                 END
                 -
-                CASE ucg_tracked_address.address = tx.from_hash
+                CASE ucg_tracked_address.address = tx.from
                     WHEN TRUE THEN tx.value_human + tx.fees_total_human
                     ELSE 0
                 END
@@ -30,8 +30,8 @@ AS
     FROM
         ucg_tracked_address
         INNER JOIN ucg_eth_transfer AS tx
-                   ON ucg_tracked_address.address = tx.from_hash OR
-                      ucg_tracked_address.address = tx.to_hash;
+                   ON ucg_tracked_address.address = tx.from OR
+                      ucg_tracked_address.address = tx.to;
 
 COMMENT ON VIEW ucg_eth_transfer_tr_addr IS
     'Ethereum transfer event for some transaction. '
@@ -49,9 +49,9 @@ COMMENT ON COLUMN ucg_eth_transfer_tr_addr.block_number IS
     'In what transaction the block has been mined; from eth.getTransaction().';
 COMMENT ON COLUMN ucg_eth_transfer_tr_addr.transaction_index IS
     'The index of the transaction inside the block.';
-COMMENT ON COLUMN ucg_eth_transfer_tr_addr.from_hash IS
+COMMENT ON COLUMN ucg_eth_transfer_tr_addr.from IS
     'The address of the sender of the transaction.';
-COMMENT ON COLUMN ucg_eth_transfer_tr_addr.to_hash IS
+COMMENT ON COLUMN ucg_eth_transfer_tr_addr.to IS
     'The address of the receiver of the transaction.';
 COMMENT ON COLUMN ucg_eth_transfer_tr_addr.transaction_status IS
     'Transaction status code; EIP 658, available in transactions only since Byzantium fork, since block 4,370,000. '

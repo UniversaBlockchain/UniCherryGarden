@@ -7,8 +7,8 @@ AS
         tx.txhash,
         tx.block_number,
         tx.transaction_index,
-        tx.from_hash,
-        tx.to_hash,
+        tx.from,
+        tx.to,
         tx.transaction_status,
         tx.is_status_ok,
         tx.transaction_ucg_comment,
@@ -39,9 +39,9 @@ COMMENT ON COLUMN ucg_eth_transfer_tr_addr_w_balance.block_number IS
     'In what transaction the block has been mined; from eth.getTransaction().';
 COMMENT ON COLUMN ucg_eth_transfer_tr_addr_w_balance.transaction_index IS
     'The index of the transaction inside the block.';
-COMMENT ON COLUMN ucg_eth_transfer_tr_addr_w_balance.from_hash IS
+COMMENT ON COLUMN ucg_eth_transfer_tr_addr_w_balance.from IS
     'The address of the sender of the transaction.';
-COMMENT ON COLUMN ucg_eth_transfer_tr_addr_w_balance.to_hash IS
+COMMENT ON COLUMN ucg_eth_transfer_tr_addr_w_balance.to IS
     'The address of the receiver of the transaction.';
 COMMENT ON COLUMN ucg_eth_transfer_tr_addr_w_balance.transaction_status IS
     'Transaction status code; EIP 658, available in transactions only since Byzantium fork, since block 4,370,000. '

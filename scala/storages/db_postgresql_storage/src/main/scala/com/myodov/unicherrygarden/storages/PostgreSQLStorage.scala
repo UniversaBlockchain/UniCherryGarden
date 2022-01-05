@@ -559,7 +559,7 @@ class PostgreSQLStorage(jdbcUrl: String,
       sql"""
       INSERT INTO ucg_transaction(
         block_number,
-        txhash, from_hash, to_hash,
+        txhash, "from", "to",
         status, is_status_ok, ucg_comment, gas_price,
         gas_used, nonce, transaction_index, gas,
         value, effective_gas_price, cumulative_gas_used
@@ -573,8 +573,8 @@ class PostgreSQLStorage(jdbcUrl: String,
       )
       ON CONFLICT (txhash) DO UPDATE SET
         block_number = EXCLUDED.block_number,
-        from_hash = EXCLUDED.from_hash,
-        to_hash = EXCLUDED.to_hash,
+        "from" = EXCLUDED."from",
+        "to" = EXCLUDED."to",
         status = EXCLUDED.status,
         is_status_ok = EXCLUDED.is_status_ok,
         ucg_comment = EXCLUDED.ucg_comment,
