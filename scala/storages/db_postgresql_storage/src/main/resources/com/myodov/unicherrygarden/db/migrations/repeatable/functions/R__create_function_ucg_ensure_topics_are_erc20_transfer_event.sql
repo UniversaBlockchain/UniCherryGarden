@@ -1,7 +1,7 @@
 CREATE OR REPLACE FUNCTION ucg_ensure_topics_are_erc20_transfer_event(_topics BYTEA[])
     RETURNS BYTEA[]
     LANGUAGE PLPGSQL
-    IMMUTABLE STRICT
+    IMMUTABLE
 AS
 $$
 BEGIN

@@ -1,7 +1,7 @@
 CREATE OR REPLACE FUNCTION ucg_erc20_transfer_event_get_to(_topics BYTEA[])
     RETURNS CHAR(42)
     LANGUAGE SQL
-    IMMUTABLE STRICT
+    IMMUTABLE
 AS
 $$
 SELECT ucg_uint256_to_address_string((ucg_ensure_topics_are_erc20_transfer_event(_topics))[3])

@@ -1,7 +1,7 @@
 CREATE OR REPLACE FUNCTION ucg_are_all_topics_valid(_topics BYTEA[])
     RETURNS BOOLEAN
     LANGUAGE SQL
-    IMMUTABLE STRICT
+    IMMUTABLE
 AS
 $$
 SELECT
