@@ -5,6 +5,11 @@ COMMENT ON COLUMN ucg_transaction.block_number IS
     'In what transaction the block has been mined; '
         'from eth.getTransaction(), though will be non-null only if the transaction is mined already.';
 
+COMMENT ON COLUMN ucg_transaction.from IS
+    'The address of the sender of the transaction.';
+COMMENT ON COLUMN ucg_transaction.to IS
+    'The address of the receiver of the transaction.';
+
 COMMENT ON COLUMN ucg_transaction.status IS
     'Transaction status code; EIP 658, available in transactions only since Byzantium fork, since block 4,370,000. '
         '(1 for success, 0 for failure). NULL in transactions before Byzantium.';

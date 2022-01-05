@@ -175,7 +175,7 @@ The result is in `launcher/target/universal/`
 
 Uses Akka library for modularity/components and establishing cluster of services.
 
-PostgreSQL database is used to store and efficiently index the collected blockchain data and the internal state.
+PostgreSQL database is used to store and efficiently index the collected blockchain data and the internal state. Minimum required version is PostgreSQL 10.x.
 
 The code is written in Java 8 language and Scala 2.13.
 

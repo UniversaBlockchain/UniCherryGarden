@@ -83,7 +83,7 @@ inThisBuild(List(
     // display deprecations, warnings and feature warnings on compilations
     "-unchecked", "-deprecation", "-feature",
     // enable some optimizations
-    "-opt:l:inline"),
+    "-opt:l:method,inline"),
 ))
 
 usePgpKeyHex("BE53ACD082329B6231C5D4F41B6C3A2684CA4538")
