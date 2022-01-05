@@ -81,63 +81,47 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
           state.ethereumNodeStatus = Some(status)
           Behaviors.same
         case message: GetTrackedAddresses.Request => {
-          logger.debug(s"Receiving GetTrackedAddresses message: $message")
-
-          val response = try {
-            handleGetTrackedAddresses(message.payload)
-          } catch {
-            case NonFatal(e) =>
-              logger.error(s"Unexpected error in handleGetTrackedAddresses(${message.payload})", e)
-              new GetTrackedAddresses.Response(null)
-          }
-
-          logger.debug(s"Replying with $response")
-          message.replyTo ! response
+          val msgName = "GetTrackedAddresses"
+          context.spawn(
+            requestHandlerActor[GetTrackedAddresses.Response](
+              msgName,
+              message.replyTo,
+              GetTrackedAddresses.Response.failed) { () => handleGetTrackedAddresses(message.payload) },
+            msgName
+          )
           Behaviors.same
         }
         case message: AddTrackedAddresses.Request => {
-          logger.debug(s"Receiving AddTrackedAddresses message: $message")
-
-          val response = try {
-            handleAddTrackedAddresses(message.payload)
-          } catch {
-            case NonFatal(e) =>
-              logger.error(s"Unexpected error in handleAddTrackedAddresses(${message.payload})", e)
-              new AddTrackedAddresses.Response(null)
-          }
-
-          logger.debug(s"Replying with $response")
-          message.replyTo ! response
+          val msgName = "AddTrackedAddresses"
+          context.spawn(
+            requestHandlerActor[AddTrackedAddresses.Response](
+              msgName,
+              message.replyTo,
+              AddTrackedAddresses.Response.failed) { () => handleAddTrackedAddresses(message.payload) },
+            msgName
+          )
           Behaviors.same
         }
         case message: GetBalances.Request => {
-          logger.debug(s"Receiving GetBalances message: $message")
-
-          val response = try {
-            handleGetBalances(message.payload)
-          } catch {
-            case NonFatal(e) =>
-              logger.error(s"Unexpected error in handleGetBalances(${message.payload})", e)
-              new GetBalances.Response(null)
-          }
-
-          logger.debug(s"Replying with $response")
-          message.replyTo ! response
+          val msgName = "GetBalances"
+          context.spawn(
+            requestHandlerActor[GetBalances.Response](
+              msgName,
+              message.replyTo,
+              GetBalances.Response.failed) { () => handleGetBalances(message.payload) },
+            msgName
+          )
           Behaviors.same
         }
         case message: GetTransfers.Request => {
-          logger.debug(s"Receiving GetTransfers message: $message")
-
-          val response = try {
-            handleGetTransfers(message.payload)
-          } catch {
-            case NonFatal(e) =>
-              logger.error(s"Unexpected error in handleGetTransfers(${message.payload})", e)
-              new GetTransfers.Response(null)
-          }
-
-          logger.debug(s"Replying with $response")
-          message.replyTo ! response
+          val msgName = "GetTransfers"
+          context.spawn(
+            requestHandlerActor[GetTransfers.Response](
+              msgName,
+              message.replyTo,
+              GetTransfers.Response.failed) { () => handleGetTransfers(message.payload) },
+            msgName
+          )
           Behaviors.same
         }
         case unknownMessage => {
@@ -304,12 +288,12 @@ object CherryPicker extends LazyLogging {
 
 
   /** Main constructor. */
-  @inline def apply(dbStorage: DBStorageAPI,
-                    ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
-                    maxReorg: Int,
-                    headSyncerBatchSize: Int,
-                    tailSyncerBatchSize: Int,
-                    catchUpBrakeMaxLeadSetting: Int): Behavior[CherryPickerRequest] =
+  @inline final def apply(dbStorage: DBStorageAPI,
+                          ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
+                          maxReorg: Int,
+                          headSyncerBatchSize: Int,
+                          tailSyncerBatchSize: Int,
+                          catchUpBrakeMaxLeadSetting: Int): Behavior[CherryPickerRequest] =
     new CherryPicker(
       dbStorage,
       ethereumConnector,
@@ -320,8 +304,9 @@ object CherryPicker extends LazyLogging {
       catchUpBrakeMaxLeadSetting
     ).launch()
 
-  private[CherryPicker] def buildSystemSyncStatus(ethereumNodeStatusOpt: Option[SystemSyncStatus.Blockchain],
-                                                  progressOpt: Option[Progress.ProgressData]): SystemSyncStatus =
+  @inline
+  private[CherryPicker] final def buildSystemSyncStatus(ethereumNodeStatusOpt: Option[SystemSyncStatus.Blockchain],
+                                                        progressOpt: Option[Progress.ProgressData]): SystemSyncStatus =
     new SystemSyncStatus(
       ethereumNodeStatusOpt.orNull,
       progressOpt
@@ -333,4 +318,24 @@ object CherryPicker extends LazyLogging {
         })
         .orNull
     )
+
+  @inline
+  private[CherryPicker] final def requestHandlerActor[RESP](messageName: String,
+                                                            replyTo: ActorRef[RESP],
+                                                            onError: () => RESP)
+                                                           (handler: () => RESP): Behavior[Any] = Behaviors.setup { context =>
+    logger.debug(s"Handling $messageName message in child actor")
+
+    val response: RESP = try {
+      handler()
+    } catch {
+      case NonFatal(e) =>
+        logger.error(s"Unexpected error in handling $messageName", e)
+        onError()
+    }
+
+    logger.debug(s"Replying to $messageName with $response")
+    replyTo ! response
+    Behaviors.stopped
+  }
 }

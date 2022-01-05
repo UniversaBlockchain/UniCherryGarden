@@ -147,5 +147,10 @@ public class GetBalances {
         public Response(@Nullable BalanceRequestResult result) {
             super(result);
         }
+
+        @NonNull
+        public static Response failed() {
+            return new Response(null);
+        }
     }
 }

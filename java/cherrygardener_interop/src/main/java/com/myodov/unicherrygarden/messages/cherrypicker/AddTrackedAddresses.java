@@ -141,5 +141,10 @@ public class AddTrackedAddresses {
         public Response(@Nullable AddTrackedAddressesRequestResult result) {
             super(result);
         }
+
+        @NonNull
+        public static Response failed() {
+            return new Response(null);
+        }
     }
 }

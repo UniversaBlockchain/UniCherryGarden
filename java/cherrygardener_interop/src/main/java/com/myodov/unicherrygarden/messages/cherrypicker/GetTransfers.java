@@ -310,5 +310,10 @@ public class GetTransfers {
         public Response(@Nullable TransfersRequestResult result) {
             super(result);
         }
+
+        @NonNull
+        public static Response failed() {
+            return new Response(null);
+        }
     }
 }

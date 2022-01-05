@@ -45,7 +45,7 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
 
   /** Perform a GraphQL query with all the necessary error handling.
    *
-   * `QV` - either `(Option[SyncState.SyncStateView], Option[BlockMinimalView])` or List[BlockBasicView]`,
+   * `QV` - either `(Option[SyncState.SyncStateView], Option[BlockMinimalView])` or `List[BlockBasicView]`,
    * or something similar.
    */
   private[this] def queryGraphQL[QV](query: SelectionBuilder[RootQuery, QV],

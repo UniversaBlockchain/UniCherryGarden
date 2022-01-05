@@ -125,5 +125,10 @@ public class GetTrackedAddresses {
         public Response(@Nullable TrackedAddressesRequestResult result) {
             super(result);
         }
+
+        @NonNull
+        public static Response failed() {
+            return new Response(null);
+        }
     }
 }
