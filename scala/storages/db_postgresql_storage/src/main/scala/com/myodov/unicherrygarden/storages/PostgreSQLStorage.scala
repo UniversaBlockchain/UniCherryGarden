@@ -650,93 +650,72 @@ class PostgreSQLStorage(jdbcUrl: String,
                   ${currencyKeys.isDefined} AS has_filter_currency_keys,
                   ARRAY [(${currencyKeys.map(_.toSeq).orNull})] AS filter_currency_keys
           ),
-          latest_eth_transfer_key AS (
+          latest_eth_transfers_ambig AS (
               SELECT
-                  eth_transfer.address,
-                  MAX(eth_transfer.block_number) AS block_number
+                  eth_transfer.*,
+                  (last_value(transaction_index)
+                   OVER (PARTITION BY currency_id
+                       ORDER BY block_number, transaction_index
+                       ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) AS max_transaction_index_in_block
               FROM
                   vars,
-                  ucg_eth_transfer_tr_addr_w_balance AS eth_transfer
-              WHERE
-                  eth_transfer.address = vars.address AND
-                  eth_transfer.block_number <= vars.max_block
-              GROUP BY (eth_transfer.address)
+                  ucg_get_currencies_for_keys_filter(has_filter_currency_keys, filter_currency_keys) AS currencies
+                  INNER JOIN ucg_eth_transfer_tr_addr_w_balance AS eth_transfer
+                             USING (currency_id)
+                  INNER JOIN ucg_latest_block_with_eth_transfer_for_address(
+                          currencies.currency_id, vars.address, vars.max_block) USING(block_number)
           ),
           latest_eth_transfer AS (
               SELECT *
-              FROM
-                  ucg_eth_transfer_tr_addr_w_balance AS eth_transfer
-                  INNER JOIN latest_eth_transfer_key
-                             USING (address, block_number)
+              FROM latest_eth_transfers_ambig
+              WHERE transaction_index = max_transaction_index_in_block
           ),
-          latest_erc20_transfer_keys AS (
+          latest_erc20_transfers_ambig AS (
               SELECT
-                  erc20_transfer.address,
-                  erc20_transfer.currency_id,
-                  MAX(erc20_transfer.block_number) AS block_number
+                  erc20_transfer.*,
+                  (last_value(log_index)
+                   OVER (PARTITION BY currency_id
+                       ORDER BY block_number, log_index
+                       ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) AS max_log_index_in_block
               FROM
                   vars,
-                  ucg_erc20_transfer_for_verified_currency_tr_addr_w_balance AS erc20_transfer
-              WHERE
-                  erc20_transfer.currency_type = 'ERC20' AND
-                  erc20_transfer.address = vars.address AND
-                  erc20_transfer.block_number <= vars.max_block
-              GROUP BY (erc20_transfer.address, erc20_transfer.currency_id)
+                  ucg_get_currencies_for_keys_filter(has_filter_currency_keys, filter_currency_keys) AS currencies
+                  INNER JOIN ucg_erc20_transfer_for_verified_currency_tr_addr_w_balance AS erc20_transfer
+                             USING (currency_id)
+                  INNER JOIN ucg_latest_block_with_verified_erc20_transfer_for_address(
+                          currencies.currency_id, vars.address, vars.max_block) USING (block_number)
           ),
           latest_erc20_transfers AS (
-              SELECT
-                  erc20_transfer.*
-              FROM
-                  ucg_erc20_transfer_for_verified_currency_tr_addr_w_balance AS erc20_transfer
-                  INNER JOIN latest_erc20_transfer_keys
-                             USING (address, currency_id, block_number)
+              SELECT *
+              FROM latest_erc20_transfers_ambig
+              WHERE log_index = max_log_index_in_block
           ),
           latest_transfers AS (
               SELECT
-                  ucg_currency.id AS currency_id,
-                  ucg_currency.type AS currency_type,
-                  ucg_currency.name AS currency_name,
-                  ucg_currency.symbol AS currency_symbol,
-                  NULL AS currency_dapp_address,
-                  '' AS currency_key,
-                  latest_eth_transfer.block_number,
-                  latest_eth_transfer.balance
-              FROM
-                  latest_eth_transfer
-                  CROSS JOIN ucg_currency
-              WHERE ucg_currency.type = 'ETH'
+                  currency_id,
+                  block_number,
+                  balance
+              FROM latest_eth_transfer
               UNION
               SELECT
                   currency_id,
-                  currency_type,
-                  currency_name,
-                  currency_symbol,
-                  contract AS currency_dapp_address,
-                  contract AS currency_key,
                   block_number,
                   balance
               FROM latest_erc20_transfers
           )
       SELECT
           latest_transfers.*,
-          currency.ucg_comment AS currency_ucg_comment,
-          currency.verified AS currency_verified,
-          currency.decimals AS currency_decimals
+          ucg_currency.type AS currency_type,
+          ucg_currency.name AS currency_name,
+          ucg_currency.symbol AS currency_symbol,
+          ucg_currency.dapp_address AS currency_dapp_address,
+          ucg_currency.ucg_comment AS currency_ucg_comment,
+          ucg_currency.verified AS currency_verified,
+          ucg_currency.decimals AS currency_decimals
       FROM
-          vars,
           latest_transfers
-          INNER JOIN ucg_currency AS currency
-              ON currency.id = latest_transfers.currency_id
-      WHERE
-          CASE has_filter_currency_keys
-              WHEN TRUE
-                  THEN currency_key
-                  IN (
-                           SELECT *
-                           FROM unnest(filter_currency_keys)
-                       )
-              ELSE TRUE
-          END;
+          INNER JOIN ucg_currency
+                     ON ucg_currency.id = latest_transfers.currency_id;
           """.map(rs => new CurrencyBalanceFact(
         DBCurrency.fromUcgCurrency(rs, "currency_").asCurrency,
         rs.bigDecimal("balance"),
