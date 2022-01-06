@@ -22,5 +22,5 @@ $$;
 COMMENT ON FUNCTION ucg_latest_block_with_verified_erc20_transfer_from_address(
     _currency_id INTEGER, _address CHAR(42), _max_block INTEGER) IS
     '(Table-returning inlineable) function to find the maximum block containing the valid ERC20 transfer '
-        'from the requested address (for verified ERC20 token only). '
+        'from the requested address (for verified ERC20 tokens only). '
         'Note: the block may contain multiple matching transactions!';
