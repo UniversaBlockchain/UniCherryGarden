@@ -337,26 +337,29 @@ class PostgreSQLStorage(jdbcUrl: String,
 
     import com.myodov.unicherrygarden.storages.api.DBStorage.Currencies._
 
-    override def getCurrencies(
-                                getVerified: Boolean,
-                                getUnverified: Boolean
-                              )
-                              (
-                                implicit session: DBSession = ReadOnlyAutoSession
-                              ): List[DBCurrency] = {
-      // What values are allowed for `verified` field in a query we’ll run?
-      val verifiedValues = (
-        (if (getVerified) Seq(true) else Seq())
-          ++
-          (if (getUnverified) Seq(false) else Seq())
-        )
-
-      sql"""
-      SELECT *
-      FROM ucg_currency
-      WHERE verified IN ($verifiedValues);
-      """.map(DBCurrency.fromUcgCurrency(_)).list.apply
-    }
+    override final def getCurrencies(
+                                      getVerified: Boolean,
+                                      getUnverified: Boolean
+                                    )
+                                    (
+                                      implicit session: DBSession = ReadOnlyAutoSession
+                                    ): List[DBCurrency] =
+      if (getVerified || getUnverified) {
+        // What values are allowed for `verified` field in a query we’ll run?
+        val verifiedValues = (
+          (if (getVerified) Seq(true) else Seq())
+            ++
+            (if (getUnverified) Seq(false) else Seq())
+          )
+        sql"""
+        SELECT *
+        FROM ucg_currency
+        WHERE verified IN ($verifiedValues);
+        """.map(DBCurrency.fromUcgCurrency(_)).list.apply
+      } else {
+        // Haven't asked for any currencies; so the result is definitely empty
+        List.empty
+      }
   }
 
   object trackedAddresses extends DBStorageAPI.TrackedAddresses {
