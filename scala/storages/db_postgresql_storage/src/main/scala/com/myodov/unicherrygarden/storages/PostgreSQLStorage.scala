@@ -4,6 +4,7 @@ import java.sql.SQLException
 
 import com.myodov.unicherrygarden.Tools.seqIsIncrementing
 import com.myodov.unicherrygarden.api.dlt
+import com.myodov.unicherrygarden.api.types.MinedTransfer
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult.CurrencyBalanceFact
@@ -56,7 +57,7 @@ class PostgreSQLStorage(jdbcUrl: String,
 
     import com.myodov.unicherrygarden.storages.api.DBStorage.Progress._
 
-    override def getProgress(implicit session: DBSession = ReadOnlyAutoSession): Option[ProgressData] = {
+    override final def getProgress(implicit session: DBSession = ReadOnlyAutoSession): Option[ProgressData] = {
       sql"""
       SELECT * FROM ucg_progress;
       """.map(rs => {
@@ -88,7 +89,7 @@ class PostgreSQLStorage(jdbcUrl: String,
         .apply
     }
 
-    override def getFirstBlockResolvingSomeNeverStartedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
+    override final def getFirstBlockResolvingSomeNeverStartedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
       sql"""
       SELECT
           LEAST(currency.sync_from_block_number, address.synced_from_block_number)
@@ -110,7 +111,7 @@ class PostgreSQLStorage(jdbcUrl: String,
         .flatten // Option[Option[Int]] to Option[Int]
     }
 
-    override def getFirstBlockResolvingSomeNeverSyncedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
+    override final def getFirstBlockResolvingSomeNeverSyncedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
       sql"""
       SELECT
           LEAST(currency.sync_from_block_number, address.synced_from_block_number)
@@ -140,13 +141,13 @@ class PostgreSQLStorage(jdbcUrl: String,
       """.execute.apply
     }
 
-    override def setLastHeartbeatAt(implicit session: DBSession = AutoSession) = {
+    override final def setLastHeartbeatAt(implicit session: DBSession = AutoSession) = {
       sql"""
       UPDATE ucg_state SET last_heartbeat_at=now()
       """.execute.apply
     }
 
-    override def setSyncState(state: String)(implicit session: DBSession = AutoSession) = {
+    override final def setSyncState(state: String)(implicit session: DBSession = AutoSession) = {
       logger.debug(s"Setting sync state: “${state}”")
       sql"""
       UPDATE ucg_state
@@ -191,10 +192,10 @@ class PostgreSQLStorage(jdbcUrl: String,
      *                          because what if the tracked addresses have changed already since
      *                          the reading/parsing time?
      */
-    override def advanceProgress(
-                                  syncedBlockNumber: Long,
-                                  trackedAddresses: Set[String]
-                                )(implicit session: DBSession) = {
+    override final def advanceProgress(
+                                        syncedBlockNumber: Long,
+                                        trackedAddresses: Set[String]
+                                      )(implicit session: DBSession) = {
       assert(
         trackedAddresses.forall(EthUtils.Addresses.isValidLowercasedAddress),
         trackedAddresses)
@@ -366,12 +367,12 @@ class PostgreSQLStorage(jdbcUrl: String,
 
     import com.myodov.unicherrygarden.storages.api.DBStorage.TrackedAddresses._
 
-    override def getTrackedAddresses(
-                                      includeComment: Boolean,
-                                      includeSyncedFrom: Boolean
-                                    )(implicit
-                                      session: DBSession = ReadOnlyAutoSession
-                                    ): List[TrackedAddress] = {
+    override final def getTrackedAddresses(
+                                            includeComment: Boolean,
+                                            includeSyncedFrom: Boolean
+                                          )(implicit
+                                            session: DBSession = ReadOnlyAutoSession
+                                          ): List[TrackedAddress] = {
       sql"""
       SELECT
        address,
@@ -385,20 +386,20 @@ class PostgreSQLStorage(jdbcUrl: String,
       )).list.apply
     }
 
-    override def getJustAddresses(implicit session: DBSession = ReadOnlyAutoSession): Set[String] = {
+    override final def getJustAddresses(implicit session: DBSession = ReadOnlyAutoSession): Set[String] = {
       sql"""
       SELECT address FROM ucg_tracked_address;
       """.map(_.string("address")).list.apply.toSet
     }
 
-    override def addTrackedAddress(
-                                    address: String,
-                                    comment: Option[String],
-                                    mode: StartTrackingAddressMode,
-                                    fromBlock: Option[Int]
-                                  )(implicit
-                                    session: DBSession = AutoSession
-                                  ): Boolean = {
+    override final def addTrackedAddress(
+                                          address: String,
+                                          comment: Option[String],
+                                          mode: StartTrackingAddressMode,
+                                          fromBlock: Option[Int]
+                                        )(implicit
+                                          session: DBSession = AutoSession
+                                        ): Boolean = {
       logger.debug(s"Tracking address $address: $comment, $mode, $fromBlock")
       require(EthUtils.Addresses.isValidLowercasedAddress(address), address)
       require((mode == StartTrackingAddressMode.FROM_BLOCK) == fromBlock.nonEmpty, (mode, fromBlock))
@@ -435,19 +436,19 @@ class PostgreSQLStorage(jdbcUrl: String,
 
   object blocks extends DBStorageAPI.Blocks {
 
-    override def addBlock(block: dlt.EthereumBlock
-                         )(implicit
-                           session: DBSession = AutoSession
-                         ) = {
+    override final def addBlock(block: dlt.EthereumBlock
+                               )(implicit
+                                 session: DBSession = AutoSession
+                               ) = {
       sql"""
       INSERT INTO ucg_block(number, hash, parent_hash, timestamp)
       VALUES (${block.number}, ${block.hash}, ${block.parentHash}, ${block.timestamp})
       """.execute.apply
     }
 
-    override def getBlockByNumber(
-                                   blockNumber: Int
-                                 )(implicit session: DBSession = ReadOnlyAutoSession): Option[dlt.EthereumBlock] = {
+    override final def getBlockByNumber(
+                                         blockNumber: Int
+                                       )(implicit session: DBSession = ReadOnlyAutoSession): Option[dlt.EthereumBlock] = {
       sql"""
       SELECT *
       FROM ucg_block
@@ -464,9 +465,9 @@ class PostgreSQLStorage(jdbcUrl: String,
         .apply
     }
 
-    override def getLatestHashes(
-                                  howMany: Int
-                                )(implicit session: DBSession = ReadOnlyAutoSession): SortedMap[Int, String] = {
+    override final def getLatestHashes(
+                                        howMany: Int
+                                      )(implicit session: DBSession = ReadOnlyAutoSession): SortedMap[Int, String] = {
       assert(howMany >= 1, howMany)
       val result =
         sql"""
@@ -504,9 +505,9 @@ class PostgreSQLStorage(jdbcUrl: String,
       result
     }
 
-    override def rewind(
-                         startBlockNumber: Int
-                       )(implicit session: DBSession = AutoSession): Boolean = {
+    override final def rewind(
+                               startBlockNumber: Int
+                             )(implicit session: DBSession = AutoSession): Boolean = {
       try {
         logger.debug(s"Performing rewind of blocks since $startBlockNumber")
 
@@ -549,14 +550,14 @@ class PostgreSQLStorage(jdbcUrl: String,
 
   object transactions extends DBStorageAPI.Transactions {
 
-    override def addTransaction(
-                                 tx: dlt.EthereumMinedTransaction,
-                                 // The transaction already has the block number, but, passing the block hash,
-                                 // we ensure that the block hasn’t been reorganized
-                                 blockHash: String,
-                               )(implicit
-                                 session: DBSession = AutoSession
-                               ): Unit = {
+    override final def addTransaction(
+                                       tx: dlt.EthereumMinedTransaction,
+                                       // The transaction already has the block number, but, passing the block hash,
+                                       // we ensure that the block hasn’t been reorganized
+                                       blockHash: String,
+                                     )(implicit
+                                       session: DBSession = AutoSession
+                                     ): Unit = {
       require(EthUtils.Hashes.isValidBlockHash(blockHash), blockHash)
 
       sql"""
@@ -595,13 +596,13 @@ class PostgreSQLStorage(jdbcUrl: String,
 
   object txLogs extends DBStorageAPI.TxLogs {
 
-    override def addTxLogs(
-                            blockNumber: Int,
-                            transactionHash: String,
-                            txLogs: Seq[dlt.EthereumTxLog]
-                          )(implicit
-                            session: DBSession = AutoSession
-                          ): Unit = {
+    override final def addTxLogs(
+                                  blockNumber: Int,
+                                  transactionHash: String,
+                                  txLogs: Seq[dlt.EthereumTxLog]
+                                )(implicit
+                                  session: DBSession = AutoSession
+                                ): Unit = {
       val batchParams: Seq[Seq[Any]] = txLogs.map(t => Seq(
         transactionHash,
         blockNumber,
@@ -639,55 +640,63 @@ class PostgreSQLStorage(jdbcUrl: String,
   }
 
   object balances extends DBStorageAPI.Balances {
-    override def getBalances(
-                              maxBlock: Int,
-                              address: String,
-                              currencyKeys: Option[Set[String]]
-                            )(implicit session: DBSession = ReadOnlyAutoSession): List[CurrencyBalanceFact] =
+    override final def getBalances(
+                                    address: String,
+                                    maxBlock: Int,
+                                    currencyKeys: Option[Set[String]]
+                                  )(implicit session: DBSession = ReadOnlyAutoSession): List[CurrencyBalanceFact] =
       sql"""
       WITH
           vars AS (
               SELECT
-                  $maxBlock AS max_block,
+                  $maxBlock AS end_block,
                   $address AS address,
                   ${currencyKeys.isDefined} AS has_filter_currency_keys,
                   ARRAY [(${currencyKeys.map(_.toSeq).orNull})] AS filter_currency_keys
           ),
+          -- ETH transfers for the requested address,
+          -- from the block calculated using `ucg_latest_block_with_eth_transfer_for_address`.
+          -- All ETH transfers from this block are retrieved.
           latest_eth_transfers_ambig AS (
               SELECT
                   eth_transfer.*,
                   (last_value(transaction_index)
-                   OVER (PARTITION BY currency_id
+                   OVER (PARTITION BY address, currency_id
                        ORDER BY block_number, transaction_index
                        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) AS max_transaction_index_in_block
               FROM
-                  vars,
-                  ucg_get_currencies_for_keys_filter(has_filter_currency_keys, filter_currency_keys) AS currencies
+                  vars
+                  CROSS JOIN ucg_get_currencies_for_keys_filter(has_filter_currency_keys, filter_currency_keys) AS currencies
                   INNER JOIN ucg_eth_transfer_tr_addr_w_balance AS eth_transfer
-                             USING (currency_id)
+                             USING (currency_id, address)
                   INNER JOIN ucg_latest_block_with_eth_transfer_for_address(
-                          currencies.currency_id, vars.address, vars.max_block) USING(block_number)
+                          currencies.currency_id, vars.address, vars.end_block) USING(block_number)
           ),
+          -- Only the latest ETH transfer in the block.
           latest_eth_transfer AS (
               SELECT *
               FROM latest_eth_transfers_ambig
               WHERE transaction_index = max_transaction_index_in_block
           ),
+          -- ERC20 transfers for the requested address and all the requested currencies,
+          -- from the block calculated using `ucg_latest_block_with_verified_erc20_transfer_for_address`.
+          -- All ERC20 transfers (for these currencies) from this block are retrieved (even multiple ones).
           latest_erc20_transfers_ambig AS (
               SELECT
                   erc20_transfer.*,
                   (last_value(log_index)
-                   OVER (PARTITION BY currency_id
+                   OVER (PARTITION BY address, currency_id
                        ORDER BY block_number, log_index
                        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) AS max_log_index_in_block
               FROM
-                  vars,
-                  ucg_get_currencies_for_keys_filter(has_filter_currency_keys, filter_currency_keys) AS currencies
+                  vars
+                  CROSS JOIN ucg_get_currencies_for_keys_filter(has_filter_currency_keys, filter_currency_keys) AS currencies
                   INNER JOIN ucg_erc20_transfer_for_verified_currency_tr_addr_w_balance AS erc20_transfer
-                             USING (currency_id)
+                             USING (currency_id, address)
                   INNER JOIN ucg_latest_block_with_verified_erc20_transfer_for_address(
-                          currencies.currency_id, vars.address, vars.max_block) USING (block_number)
+                          currencies.currency_id, vars.address, vars.end_block) USING (block_number)
           ),
+          -- Only the latest ERC20 transfers in the block.
           latest_erc20_transfers AS (
               SELECT *
               FROM latest_erc20_transfers_ambig
@@ -726,16 +735,27 @@ class PostgreSQLStorage(jdbcUrl: String,
       )).list.apply
   }
 
+  object transfers extends DBStorageAPI.Transfers {
+    override final def getTransfers(
+                                     sender: Option[String],
+                                     receiver: Option[String],
+                                     optStartBlock: Option[Int],
+                                     endBlock: Int,
+                                     currencyKeys: Option[Set[String]]
+                                   )(implicit session: DBSession = ReadOnlyAutoSession): (List[MinedTransfer], Map[String, BigDecimal]) = {
+      null
+    }
+  }
+
 }
 
 object PostgreSQLStorage {
-
-  @inline def apply(jdbcUrl: String,
-                    dbUser: String,
-                    dbPassword: String,
-                    wipeOnStart: Boolean,
-                    migrationPaths: List[String]
-                   ): PostgreSQLStorage = {
+  @inline final def apply(jdbcUrl: String,
+                          dbUser: String,
+                          dbPassword: String,
+                          wipeOnStart: Boolean,
+                          migrationPaths: List[String]
+                         ): PostgreSQLStorage = {
     // Initial size is 3 - 1 for TailSyncer, 1 for HeadSyncer, 1 for CherryGardener.
     val poolSettings = ConnectionPoolSettings(initialSize = 3, maxSize = 16)
     ConnectionPool.singleton(jdbcUrl, dbUser, dbPassword, poolSettings)

@@ -1,6 +1,7 @@
 package com.myodov.unicherrygarden.storages.api
 
 import com.myodov.unicherrygarden.api.dlt
+import com.myodov.unicherrygarden.api.types.MinedTransfer
 import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
@@ -36,8 +37,11 @@ trait DBStorageAPI {
   /** Access `ucg_tx_log` table. */
   val txLogs: DBStorageAPI.TxLogs
 
-  /** Access balances overall information. */
+  /** Access overall information about balances. */
   val balances: DBStorageAPI.Balances
+
+  /** Access overall information about transfers. */
+  val transfers: DBStorageAPI.Transfers
 }
 
 object DBStorageAPI {
@@ -161,11 +165,27 @@ object DBStorageAPI {
   }
 
   trait Balances {
+    /** Get information about ETH/ERC20 balances at some address `address` and no newer than at some block `maxBlock`,
+     * optionally filtered by currency keys `currencyKeys`.
+     */
     def getBalances(
-                     maxBlock: Int,
                      address: String,
+                     maxBlock: Int,
                      currencyKeys: Option[Set[String]]
                    )(implicit session: DBSession = ReadOnlyAutoSession): List[CurrencyBalanceFact]
+  }
+
+  trait Transfers {
+    /** Get information about ETH/ERC20 balances at some address `address` and no newer than at some block `maxBlock`,
+     * optionally filtered by currency keys `currencyKeys`.
+     */
+    def getTransfers(
+                      sender: Option[String],
+                      receiver: Option[String],
+                      optStartBlock: Option[Int],
+                      endBlock: Int,
+                      currencyKeys: Option[Set[String]]
+                    )(implicit session: DBSession = ReadOnlyAutoSession): (List[MinedTransfer], Map[String, BigDecimal])
   }
 
 }

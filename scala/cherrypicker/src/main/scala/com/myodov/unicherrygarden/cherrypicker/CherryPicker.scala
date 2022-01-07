@@ -1,11 +1,9 @@
 package com.myodov.unicherrygarden
 
-import java.util.Collections
-
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.myodov.unicherrygarden.api.types.{MinedTransfer, SystemSyncStatus}
+import com.myodov.unicherrygarden.api.types.SystemSyncStatus
 import com.myodov.unicherrygarden.cherrypicker.EthereumStatePoller
 import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.EthereumNodeStatus
 import com.myodov.unicherrygarden.cherrypicker.syncers.{HeadSyncer, SyncerMessages, TailSyncer}
@@ -75,6 +73,8 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
         GetTransfers.SERVICE_KEY
       ).foreach(context.system.receptionist ! Receptionist.Register(_, context.self))
 
+      // On an `EthereumNodeStatus`, we just write its data into the state;
+      // On any incoming Request, we spawn a new child actor which will handle it (for better concurrency).
       Behaviors.receiveMessage {
         case message@EthereumNodeStatus(status) =>
           logger.debug(s"CherryPicker received Ethereum node syncing status: $message")
@@ -200,19 +200,20 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
         // Read and remember the sync progress for the whole operation
         (state.ethereumNodeStatus, dbStorage.progress.getProgress) match {
           case (None, _) | (_, None) =>
-            logger.warn(s"Received getBalances request while not ready; respond with error")
+            logger.warn(s"Received GetBalances request while not ready; respond with error")
             null
           case (Some(ethereumNodeStatus), Some(progress)) if progress.blocks.to.isEmpty =>
-            logger.warn(s"Received getBalances request but blocks are not ready; respond with error too")
+            logger.warn(s"Received GetBalances request but blocks are not ready; respond with error")
             null
           case (ethereumNodeStatusOpt@Some(ethereumNodeStatus), progressOpt@Some(progress)) =>
+            // Real use-case handling
             val blocksTo = progress.blocks.to.get // non-empty, due to previous `case` check
             val maxBlock = blocksTo - payload.confirmations
             logger.debug(s"Get balances for $payload at $maxBlock")
 
             val results = dbStorage.balances.getBalances(
-              maxBlock,
               payload.address,
+              maxBlock,
               Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
             )
             new GetBalances.BalanceRequestResult(
@@ -226,52 +227,90 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
   private[this] def handleGetTransfers(payload: GetTransfers.GTRequestPayload): GetTransfers.Response =
   // Construct all the response in a single atomic readonly DB transaction
     DB readOnly { implicit session =>
-      // Read and remember the sync progress for the whole operation
-      val ethereumNodeStatusOpt = state.ethereumNodeStatus
-      val progressOpt = dbStorage.progress.getProgress
-
       new GetTransfers.Response(
-        new GetTransfers.TransfersRequestResult(
-          // List(
-          //   new MinedTransfer(
-          //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-          //     "0xedcc6f8f20962e6747369a71a5b89256289da87f",
-          //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-          //     BigDecimal("10045.6909000003").underlying,
-          //     new MinedTx(
-          //       "0x9cb54df2444658891df0c8165fecaecb4a2f1197ebe7b175dda1130b91ea4c9f",
-          //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-          //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-          //       new Block(
-          //         13628884,
-          //         "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
-          //         Instant.ofEpochSecond(1637096843)),
-          //       111
-          //     ),
-          //     144),
-          //   // UTNP out #6
-          //   new MinedTransfer(
-          //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-          //     "0x74644fd700c11dcc262eed1c59715ee874f65251",
-          //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-          //     BigDecimal("30000").underlying,
-          //     new MinedTx(
-          //       "0x3f0c1e4f1e903381c1e8ad2ad909482db20a747e212fbc32a4c626cad6bb14ab",
-          //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-          //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-          //       new Block(
-          //         13631007,
-          //         "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
-          //         Instant.ofEpochSecond(1637125704)),
-          //       133
-          //     ),
-          //     173)
-          // ).asJava,
-          buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
-          List.empty[MinedTransfer].asJava,
-          Collections.emptyMap()
-        )
+        // Read and remember the sync progress for the whole operation
+        (state.ethereumNodeStatus, dbStorage.progress.getProgress) match {
+          case (None, _) | (_, None) =>
+            logger.warn(s"Received GetTransfers request while not ready; respond with error")
+            null
+          case (Some(ethereumNodeStatus), Some(progress)) if progress.blocks.to.isEmpty =>
+            logger.warn(s"Received GetTransfers request but blocks are not ready; respond with error")
+            null
+          case (ethereumNodeStatusOpt@Some(ethereumNodeStatus), progressOpt@Some(progress)) =>
+            // Real use-case handling
+            val blocksTo = progress.blocks.to.get // non-empty, due to previous `case` check
+            val maxBlock = blocksTo - payload.confirmations
+
+            val optEndBlock = Option(payload.endBlock).map(_.toInt) // of nullable; safe conversion to Option[Int]
+
+            val endBlock = optEndBlock match {
+              case None => maxBlock
+              case Some(endBlockCandidate) =>
+                Math.min(endBlockCandidate, maxBlock)
+            }
+
+            logger.debug(s"Get transfers for $payload at $maxBlock ($endBlock)")
+
+            val (transfers, balances) = dbStorage.transfers.getTransfers(
+              Option(payload.sender), // of nullable
+              Option(payload.receiver), // of nullable
+              Option(payload.startBlock).map(_.toInt), // of nullable; safe conversion to Option[Int]
+              endBlock,
+              Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
+            )
+
+            new GetTransfers.TransfersRequestResult(
+              buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
+              transfers.asJava,
+              balances.map {case (key, value) => key -> value.bigDecimal}.asJava
+            )
+
+        }
       )
+
+
+      //      new GetTransfers.Response(
+      //        new GetTransfers.TransfersRequestResult(
+      //          // List(
+      //          //   new MinedTransfer(
+      //          //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+      //          //     "0xedcc6f8f20962e6747369a71a5b89256289da87f",
+      //          //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+      //          //     BigDecimal("10045.6909000003").underlying,
+      //          //     new MinedTx(
+      //          //       "0x9cb54df2444658891df0c8165fecaecb4a2f1197ebe7b175dda1130b91ea4c9f",
+      //          //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+      //          //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+      //          //       new Block(
+      //          //         13628884,
+      //          //         "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
+      //          //         Instant.ofEpochSecond(1637096843)),
+      //          //       111
+      //          //     ),
+      //          //     144),
+      //          //   // UTNP out #6
+      //          //   new MinedTransfer(
+      //          //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+      //          //     "0x74644fd700c11dcc262eed1c59715ee874f65251",
+      //          //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+      //          //     BigDecimal("30000").underlying,
+      //          //     new MinedTx(
+      //          //       "0x3f0c1e4f1e903381c1e8ad2ad909482db20a747e212fbc32a4c626cad6bb14ab",
+      //          //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
+      //          //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
+      //          //       new Block(
+      //          //         13631007,
+      //          //         "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
+      //          //         Instant.ofEpochSecond(1637125704)),
+      //          //       133
+      //          //     ),
+      //          //     173)
+      //          // ).asJava,
+      //          buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
+      //          List.empty[MinedTransfer].asJava,
+      //          Collections.emptyMap()
+      //        )
+      //      )
     }
 }
 
@@ -319,6 +358,14 @@ object CherryPicker extends LazyLogging {
         .orNull
     )
 
+  /** For a message incoming to CherryPicker, launch a new handler as a child Actor.
+   *
+   * @param messageName the name of the message (to use in logs and as the name for the Actor).
+   * @param replyTo     the actor that will receive a reply (typed `RESP`) to to the request.
+   * @param onError     a function generating a proper “on error” response message to reply, in case of any exception.
+   * @param handler     the code that will generate the proper reply (typed `RESP`) to the requestor
+   *                    (likely located at `replyTo`).
+   */
   @inline
   private[CherryPicker] final def requestHandlerActor[RESP](messageName: String,
                                                             replyTo: ActorRef[RESP],
