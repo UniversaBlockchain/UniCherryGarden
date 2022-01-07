@@ -78,12 +78,11 @@ inThisBuild(List(
       url = url("https://myodov.com/")
     )
   ),
-
   scalacOptions ++= Seq(
     // display deprecations, warnings and feature warnings on compilations
-    "-unchecked", "-deprecation", "-feature",
-    // enable some optimizations
-    "-opt:l:method,inline"),
+    "-unchecked", "-deprecation", "-feature")
+    ++ Seq("-Xelide-below", sys.props.getOrElse("elide.below", "0"))
+    ++ Seq(sys.props.getOrElse("scalacopt", "-opt:l:default")),
 ))
 
 usePgpKeyHex("BE53ACD082329B6231C5D4F41B6C3A2684CA4538")
