@@ -659,6 +659,12 @@ class PostgreSQLStorage(jdbcUrl: String,
                   filter_currency_keys != ARRAY[NULL]::TEXT[] AS has_filter_currency_keys
               FROM _vars
           ),
+          currencies AS (
+              SELECT currencies.*
+              FROM
+                  vars
+                  CROSS JOIN ucg_get_currencies_for_keys_filter(has_filter_currency_keys, filter_currency_keys) AS currencies
+          ),
           -- ETH transfers for the requested address,
           -- from the block calculated using `ucg_latest_block_with_eth_transfer_for_address`.
           -- All ETH transfers from this block are retrieved.
@@ -671,7 +677,7 @@ class PostgreSQLStorage(jdbcUrl: String,
                        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) AS max_transaction_index_in_block
               FROM
                   vars
-                  CROSS JOIN ucg_get_currencies_for_keys_filter(has_filter_currency_keys, filter_currency_keys) AS currencies
+                  CROSS JOIN currencies
                   INNER JOIN ucg_eth_transfer_tr_addr_w_balance AS eth_transfer
                              USING (currency_id, address)
                   INNER JOIN ucg_latest_block_with_eth_transfer_for_address(
@@ -695,7 +701,7 @@ class PostgreSQLStorage(jdbcUrl: String,
                        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) AS max_log_index_in_block
               FROM
                   vars
-                  CROSS JOIN ucg_get_currencies_for_keys_filter(has_filter_currency_keys, filter_currency_keys) AS currencies
+                  CROSS JOIN currencies
                   INNER JOIN ucg_erc20_transfer_for_verified_currency_tr_addr_w_balance AS erc20_transfer
                              USING (currency_id, address)
                   INNER JOIN ucg_latest_block_with_verified_erc20_transfer_for_address(
