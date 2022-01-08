@@ -43,6 +43,15 @@ public class GetBalances {
                                 @Nullable Set<String> filterCurrencyKeys) {
             assert confirmations >= 0 : confirmations;
             assert address != null && EthUtils.Addresses.isValidLowercasedAddress(address) : address;
+            // If filterCurrencyKeys is present, it is either a `null`;
+            // or, if it is not `null` - it is a set that doesn't contain nulls; and each item of the set
+            // is either an empty string (for ETH) or valid lowercased address.
+            assert filterCurrencyKeys == null ||
+                    filterCurrencyKeys
+                            .stream()
+                            .allMatch(addr -> (addr != null) && (addr.isEmpty() || EthUtils.Addresses.isValidLowercasedAddress(addr)))
+                    :
+                    filterCurrencyKeys;
 
             this.confirmations = confirmations;
             this.address = address;

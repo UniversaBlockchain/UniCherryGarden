@@ -647,12 +647,17 @@ class PostgreSQLStorage(jdbcUrl: String,
                                   )(implicit session: DBSession = ReadOnlyAutoSession): List[CurrencyBalanceFact] =
       sql"""
       WITH
-          vars AS (
+          _vars AS (
               SELECT
                   $maxBlock AS end_block,
                   $address AS address,
-                  ${currencyKeys.isDefined} AS has_filter_currency_keys,
-                  ARRAY [(${currencyKeys.map(_.toSeq).orNull})] AS filter_currency_keys
+                  ARRAY [${currencyKeys.map(_.toSeq).orNull}]::TEXT[] AS filter_currency_keys
+          ),
+          vars AS (
+              SELECT
+                  _vars.*,
+                  filter_currency_keys != ARRAY[NULL]::TEXT[] AS has_filter_currency_keys
+              FROM _vars
           ),
           -- ETH transfers for the requested address,
           -- from the block calculated using `ucg_latest_block_with_eth_transfer_for_address`.
@@ -756,8 +761,9 @@ object PostgreSQLStorage {
                           wipeOnStart: Boolean,
                           migrationPaths: List[String]
                          ): PostgreSQLStorage = {
-    // Initial size is 3 - 1 for TailSyncer, 1 for HeadSyncer, 1 for CherryGardener.
-    val poolSettings = ConnectionPoolSettings(initialSize = 3, maxSize = 16)
+    // Initial size is 6:
+    // 2 for TailSyncer, 2 for HeadSyncer, 1 for CherryGardener, 1 reserved for any incoming connection
+    val poolSettings = ConnectionPoolSettings(initialSize = 6, maxSize = 16)
     ConnectionPool.singleton(jdbcUrl, dbUser, dbPassword, poolSettings)
     new PostgreSQLStorage(jdbcUrl, dbUser, dbPassword, wipeOnStart, migrationPaths)
   }
