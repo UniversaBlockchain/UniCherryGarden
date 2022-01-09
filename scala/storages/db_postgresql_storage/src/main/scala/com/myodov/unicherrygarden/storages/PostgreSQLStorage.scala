@@ -776,23 +776,24 @@ class PostgreSQLStorage(jdbcUrl: String,
                   vars
                   CROSS JOIN ucg_get_currencies_for_keys_filter(has_filter_currency_keys, filter_currency_keys) AS currencies
           ),
-          eth_transfers_from AS (
-              SELECT
-                  eth_transfer.*,
-                  (last_value(transaction_index)
-                   OVER (PARTITION BY currency_id, "from"
-                       ORDER BY block_number, transaction_index
-                       ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) AS max_transaction_index_in_block,
-                  transaction_index AS second_order_key
+          eth_transfers AS (
+              SELECT eth_transfer.*
               FROM
                   vars
                   CROSS JOIN currencies
-                  INNER JOIN ucg_eth_transfer_tr_addr_w_balance AS eth_transfer
-                             USING (currency_id, "from")
-                  INNER JOIN ucg_latest_block_with_eth_transfer_from_address(
-                          currency_id, "from", end_block) USING(block_number)
+                  INNER JOIN ucg_eth_transfer AS eth_transfer
+                             USING (currency_id)
               WHERE
-                  (vars."from" IS NOT NULL AND vars."to" IS NULL) AND
+                  -- Extra condition for "from"
+                  CASE vars."from" IS NULL
+                      WHEN TRUE THEN TRUE -- no condition
+                      ELSE eth_transfer."from" = vars."from" -- "from" condition
+                  END AND
+                  -- Extra condition for "to"
+                  CASE vars."to" IS NULL
+                      WHEN TRUE THEN TRUE -- no condition
+                      ELSE eth_transfer."to" = vars."to" -- "to" condition
+                  END AND
                   -- Extra condition for start block
                   CASE start_block IS NULL
                       WHEN TRUE THEN TRUE -- no condition
@@ -801,123 +802,24 @@ class PostgreSQLStorage(jdbcUrl: String,
                   -- Extra condition for end block
                   eth_transfer.block_number <= end_block
           ),
-          eth_transfers_to AS (
-              SELECT
-                  eth_transfer.*,
-                  (last_value(transaction_index)
-                   OVER (PARTITION BY currency_id, "to"
-                       ORDER BY block_number, transaction_index
-                       ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) AS max_transaction_index_in_block,
-                  transaction_index AS second_order_key
+          erc20_transfers AS (
+              SELECT erc20_transfer.*
               FROM
                   vars
                   CROSS JOIN currencies
-                  INNER JOIN ucg_eth_transfer_tr_addr_w_balance AS eth_transfer
-                             USING (currency_id, "to")
-                  INNER JOIN ucg_latest_block_with_eth_transfer_to_address(
-                          currency_id, "to", end_block) USING(block_number)
+                  INNER JOIN ucg_erc20_transfer_for_verified_currency AS erc20_transfer
+                             USING (currency_id)
               WHERE
-                  (vars."from" IS NULL AND vars."to" IS NOT NULL) AND
-                  -- Extra condition for start block
-                  CASE start_block IS NULL
+                  -- Extra condition for "from"
+                  CASE vars."from" IS NULL
                       WHEN TRUE THEN TRUE -- no condition
-                      ELSE eth_transfer.block_number >= start_block -- start_block condition
+                      ELSE erc20_transfer."from" = vars."from" -- "from" condition
                   END AND
-                  -- Extra condition for end block
-                  eth_transfer.block_number <= end_block
-          ),
-          eth_transfers_from_to AS (
-              SELECT
-                  eth_transfer.*,
-                  (last_value(transaction_index)
-                   OVER (PARTITION BY currency_id, "from", "to"
-                       ORDER BY block_number, transaction_index
-                       ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) AS max_transaction_index_in_block,
-                  transaction_index AS second_order_key
-              FROM
-                  vars
-                  CROSS JOIN currencies
-                  INNER JOIN ucg_eth_transfer_tr_addr_w_balance AS eth_transfer
-                             USING (currency_id, "from", "to")
-                  INNER JOIN ucg_latest_block_with_eth_transfer_from_address(
-                          currency_id, "from", end_block) USING(block_number)
-              WHERE
-                  (vars."from" IS NOT NULL AND vars."to" IS NOT NULL) AND
-                  -- Extra condition for start block
-                  CASE start_block IS NULL
+                  -- Extra condition for "to"
+                  CASE vars."to" IS NULL
                       WHEN TRUE THEN TRUE -- no condition
-                      ELSE eth_transfer.block_number >= start_block -- start_block condition
+                      ELSE erc20_transfer."to" = vars."to" -- "to" condition
                   END AND
-                  -- Extra condition for end block
-                  eth_transfer.block_number <= end_block
-          ),
-          erc20_transfers_from AS (
-              SELECT
-                  erc20_transfer.*,
-                  (last_value(log_index)
-                   OVER (PARTITION BY currency_id, "from"
-                       ORDER BY block_number, log_index
-                       ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) AS max_log_index_in_block,
-                  log_index AS second_order_key
-              FROM
-                  vars
-                  CROSS JOIN currencies
-                  INNER JOIN ucg_erc20_transfer_for_verified_currency_tr_addr_w_balance AS erc20_transfer
-                             USING (currency_id, "from")
-                  INNER JOIN ucg_latest_block_with_verified_erc20_transfer_from_address(
-                          currency_id, "from", end_block) USING(block_number)
-              WHERE
-                  (vars."from" IS NOT NULL AND vars."to" IS NULL) AND
-                  -- Extra condition for start block
-                  CASE start_block IS NULL
-                      WHEN TRUE THEN TRUE -- no condition
-                      ELSE erc20_transfer.block_number >= start_block -- start_block condition
-                  END AND
-                  -- Extra condition for end block
-                  erc20_transfer.block_number <= end_block
-          ),
-          erc20_transfers_to AS (
-              SELECT
-                  erc20_transfer.*,
-                  (last_value(log_index)
-                   OVER (PARTITION BY currency_id, "to"
-                       ORDER BY block_number, log_index
-                       ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) AS max_log_index_in_block,
-                  log_index AS second_order_key
-              FROM
-                  vars
-                  CROSS JOIN currencies
-                  INNER JOIN ucg_erc20_transfer_for_verified_currency_tr_addr_w_balance AS erc20_transfer
-                             USING (currency_id, "to")
-                  INNER JOIN ucg_latest_block_with_verified_erc20_transfer_to_address(
-                          currency_id, "to", end_block) USING(block_number)
-              WHERE
-                  (vars."from" IS NULL AND vars."to" IS NOT NULL) AND
-                  -- Extra condition for start block
-                  CASE start_block IS NULL
-                      WHEN TRUE THEN TRUE -- no condition
-                      ELSE erc20_transfer.block_number >= start_block -- start_block condition
-                  END AND
-                  -- Extra condition for end block
-                  erc20_transfer.block_number <= end_block
-          ),
-          erc20_transfers_from_to AS (
-              SELECT
-                  erc20_transfer.*,
-                  (last_value(log_index)
-                   OVER (PARTITION BY currency_id, "from", "to"
-                       ORDER BY block_number, log_index
-                       ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)) AS max_log_index_in_block,
-                  log_index AS second_order_key
-              FROM
-                  vars
-                  CROSS JOIN currencies
-                  INNER JOIN ucg_erc20_transfer_for_verified_currency_tr_addr_w_balance AS erc20_transfer
-                             USING (currency_id, "from", "to")
-                  INNER JOIN ucg_latest_block_with_verified_erc20_transfer_from_address(
-                          currency_id, "from", end_block) USING(block_number)
-              WHERE
-                  (vars."from" IS NOT NULL AND vars."to" IS NOT NULL) AND
                   -- Extra condition for start block
                   CASE start_block IS NULL
                       WHEN TRUE THEN TRUE -- no condition
@@ -933,48 +835,22 @@ class PostgreSQLStorage(jdbcUrl: String,
                   txhash,
                   block_number,
                   currency_id,
-                  second_order_key
-              FROM eth_transfers_from
-              UNION
-              SELECT
-                  txhash,
-                  block_number,
-                  currency_id,
-                  second_order_key
-              FROM eth_transfers_to
-              UNION
-              SELECT
-                  txhash,
-                  block_number,
-                  currency_id,
-                  second_order_key
-              FROM eth_transfers_from_to
+                  transaction_index AS second_order_key_in_block,
+                  NULL AS log_index
+              FROM eth_transfers
               UNION
               SELECT
                   transaction_hash AS txhash,
                   block_number,
                   currency_id,
-                  second_order_key
-              FROM erc20_transfers_from
-              UNION
-              SELECT
-                  transaction_hash AS txhash,
-                  block_number,
-                  currency_id,
-                  second_order_key
-              FROM erc20_transfers_to
-              UNION
-              SELECT
-                  transaction_hash AS txhash,
-                  block_number,
-                  currency_id,
-                  erc20_transfers_from_to.second_order_key
-              FROM erc20_transfers_from_to
+                  log_index AS second_order_key_in_block,
+                  log_index
+              FROM erc20_transfers
           ) AS transfers
       ORDER BY
           block_number,
           currency_id,
-          second_order_key;
+          second_order_key_in_block;
       """.map(rs => null).list.apply
 
       (List.empty[MinedTransfer], Map.empty[String, BigDecimal])
