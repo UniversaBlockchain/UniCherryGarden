@@ -269,7 +269,11 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
 
             // Either sender; or receiver; or both; – can be optional. Make a sequence of those who are non-None.
             val balanceKeys: Seq[String] = Seq(Option(payload.sender), Option(payload.receiver)).flatten
-            val balances: Map[String, List[BalanceRequestResult.CurrencyBalanceFact]] = balanceKeys.map(addr => addr -> dbStorage.balances.getBalances(addr, endBlock, optCurrencyKeys)).toMap
+            val balances: Map[String, List[BalanceRequestResult.CurrencyBalanceFact]] =
+              if (payload.includeBalances)
+                balanceKeys.map(addr => addr -> dbStorage.balances.getBalances(addr, endBlock, optCurrencyKeys)).toMap
+              else
+                Map.empty
 
             new GetTransfers.TransfersRequestResult(
               buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),

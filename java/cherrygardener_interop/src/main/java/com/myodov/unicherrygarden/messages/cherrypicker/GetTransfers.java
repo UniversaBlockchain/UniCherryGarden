@@ -42,13 +42,16 @@ public class GetTransfers {
         @Nullable
         public final Set<String> filterCurrencyKeys;
 
+        public final boolean includeBalances;
+
         @JsonCreator
         public GTRequestPayload(int confirmations,
                                 @Nullable String sender,
                                 @Nullable String receiver,
                                 @Nullable Integer startBlock,
                                 @Nullable Integer endBlock,
-                                @Nullable Set<String> filterCurrencyKeys) {
+                                @Nullable Set<String> filterCurrencyKeys,
+                                boolean includeBalances) {
             assert confirmations >= 0 : confirmations;
             assert sender == null || EthUtils.Addresses.isValidLowercasedAddress(sender) : sender;
             assert receiver == null || EthUtils.Addresses.isValidLowercasedAddress(receiver) : receiver;
@@ -64,12 +67,13 @@ public class GetTransfers {
             this.startBlock = startBlock;
             this.endBlock = endBlock;
             this.filterCurrencyKeys = filterCurrencyKeys;
+            this.includeBalances = includeBalances;
         }
 
         @Override
         public String toString() {
-            return String.format("GetTransfers.GTRequestPayload(%s, %s, %s, %s, %s, %s)",
-                    confirmations, sender, receiver, startBlock, endBlock, filterCurrencyKeys);
+            return String.format("GetTransfers.GTRequestPayload(%s, %s, %s, %s, %s, %s, %s)",
+                    confirmations, sender, receiver, startBlock, endBlock, filterCurrencyKeys, includeBalances);
         }
     }
 
@@ -163,6 +167,12 @@ public class GetTransfers {
 
                 transfersIndexedByToThenFrom = freezeBiIndex(outerMapByTo);
             }
+        }
+
+        @Override
+        public String toString() {
+            return String.format("GetTransfers.TransfersRequestResult(%s, %s, %s)",
+                    syncStatus, transfers, balances);
         }
 
         /**

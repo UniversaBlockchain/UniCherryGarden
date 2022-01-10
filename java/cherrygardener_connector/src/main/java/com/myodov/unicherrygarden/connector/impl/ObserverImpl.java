@@ -198,7 +198,8 @@ public class ObserverImpl implements Observer {
             @Nullable String receiver,
             @Nullable Integer startBlock,
             @Nullable Integer endBlock,
-            @Nullable Set<String> filterCurrencyKeys
+            @Nullable Set<String> filterCurrencyKeys,
+            boolean includeBalances
     ) {
         // Validations
         requireValidBlockNumber("confirmations", confirmations);
@@ -225,7 +226,8 @@ public class ObserverImpl implements Observer {
                                 receiver,
                                 startBlock,
                                 endBlock,
-                                filterCurrencyKeys),
+                                filterCurrencyKeys,
+                                includeBalances),
                         ConnectorActor.DEFAULT_CALL_TIMEOUT,
                         actorSystem.scheduler());
 

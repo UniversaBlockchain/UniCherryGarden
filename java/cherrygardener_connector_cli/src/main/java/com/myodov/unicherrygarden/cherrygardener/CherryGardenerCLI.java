@@ -1,5 +1,6 @@
 package com.myodov.unicherrygarden.cherrygardener;
 
+import com.myodov.unicherrygarden.api.types.MinedTransfer;
 import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
 import com.myodov.unicherrygarden.api.types.Transfer;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
@@ -92,7 +93,8 @@ public class CherryGardenerCLI {
                             "--receiver (optional; valid Ethereum address);\n" +
                             "--from-block (optional; default: first available);\n" +
                             "--to-block (optional; default: last available, but not newer than " +
-                            "the --confirmations value permit).\n"
+                            "the --confirmations value permit);\n" +
+                            "--with-balances (optional; default: omitted)."
 
             ));
             setRequired(true);
@@ -131,6 +133,11 @@ public class CherryGardenerCLI {
                         "Should contain a number of the block (0 or more).\n" +
                         "If --from-block is also present, --to-block value should be greater or equal " +
                         "to --from-block value."
+        );
+        options.addOption(
+                null, "with-balances", false,
+                "Whether the request should also retrieve the balances of the mentioned addresses. \n" +
+                        "If present, the balances are requested; if omitted; the balances are not requested."
         );
     }
 
@@ -652,6 +659,8 @@ public class CherryGardenerCLI {
         final @NonNull Optional<Integer> fromBlockOpt = parseBlockNumberOption(line, "from-block", false);
         final @NonNull Optional<Integer> toBlockOpt = parseBlockNumberOption(line, "to-block", false);
 
+        final boolean withBalances = line.hasOption("with-balances");
+
         if (true &&
                 connectionSettingsOpt.isPresent() &&
                 confirmationsOpt.isPresent()
@@ -698,14 +707,14 @@ public class CherryGardenerCLI {
                             connectionSettings.connectUrls,
                             connectionSettings.listenPort,
                             confirmations);
-//                    final GetTransfers.@NonNull TransfersRequestResult result =
                     final Optional<GetTransfers.TransfersRequestResult> resultOpt = Optional.ofNullable(connector.getObserver().getTransfers(
                             0, // on top of connector-level confirmations number
                             senderOpt.orElse(null),
                             receiverOpt.orElse(null),
                             fromBlockOpt.orElse(null),
                             toBlockOpt.orElse(null),
-                            null
+                            null,
+                            withBalances
                     ));
                     if (!resultOpt.isPresent()) {
                         System.err.printf("ERROR: Could not get the transfers %s!\n", transfersDescription);
@@ -714,12 +723,11 @@ public class CherryGardenerCLI {
 
                         System.err.printf("Received the transfers %s:\n", transfersDescription);
 
-                        for (final Transfer transfer : result.transfers) {
-                            System.err.printf("  * %s of %s from %s to %s\n",
-                                    transfer.amount,
-                                    transfer.currencyKey,
-                                    transfer.from,
-                                    transfer.to
+                        for (final MinedTransfer tr : result.transfers) {
+                            final String currencyName = tr.currencyKey.isEmpty()? "ETH": tr.currencyKey;
+                            System.err.printf("  * %s of %s from %s to %s (in tx %s from block %d)\n",
+                                    tr.amount, currencyName, tr.from, tr.to,
+                                    tr.tx.txhash, tr.tx.block.blockNumber
                             );
                         }
                         printOverallStatus(result.syncStatus);

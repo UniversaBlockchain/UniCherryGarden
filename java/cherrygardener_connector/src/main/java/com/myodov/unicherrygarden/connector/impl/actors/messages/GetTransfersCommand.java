@@ -70,10 +70,11 @@ public class GetTransfersCommand
             @Nullable String receiver,
             @Nullable Integer startBlock,
             @Nullable Integer endBlock,
-            @Nullable Set<String> filterCurrencyKeys) {
+            @Nullable Set<String> filterCurrencyKeys,
+            boolean getTransfers) {
         return (replyTo) -> new GetTransfersCommand(
                 replyTo,
-                new GetTransfers.GTRequestPayload(confirmations, sender, receiver, startBlock, endBlock, filterCurrencyKeys));
+                new GetTransfers.GTRequestPayload(confirmations, sender, receiver, startBlock, endBlock, filterCurrencyKeys, getTransfers));
     }
 
     @NonNull

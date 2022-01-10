@@ -109,6 +109,47 @@ public interface Observer {
 
     /**
      * Get transfers (optionally filtered by currency, sender, receiver, start-block number, end-block number).
+     * Optionally, the balances of mentioned addreses (whether `sender` or `receiver` are mentioned) are requested.
+     *
+     * @param confirmations      The number of extra confirmations required, i.e. the offset from the latest data.
+     *                           Should be 0 or higher. Normally it is 6–12 confirmations,
+     *                           20 confirmations on large crypto exchanges.
+     *                           Each confirmation roughly takes 15 seconds, i.e. 4 confirmations per minute.
+     * @param sender             (optional; at least one of <code>sender</code> or <code>receiver</code> is mandatory)
+     *                           only transfers sent <b>from</b> this Ethereum address should be present;
+     *                           must contain a valid lowercased Ethereum address.
+     *                           If <code>null</code>, the results are not filtered to have the specific sender.
+     * @param receiver           (optional; at least one of <code>sender</code> or <code>receiver</code> is mandatory)
+     *                           only transfers sent <b>to</b> this Ethereum address should be present;
+     *                           must contain a valid lowercased Ethereum address.
+     *                           If <code>null</code>, the results are not filtered to have the specific receiver.
+     * @param startBlock         (optional) the first block number (of Ethereum blockchain) containing
+     *                           the transfers to find.
+     *                           (Note: the transfers in this block <b>are</b> included).
+     *                           If <code>null</code>, the transfers are returned from the earliest available block.
+     * @param endBlock           (optional) the last block number (of Ethereum blockchain) containing
+     *                           the transfers to find.
+     *                           (Note: the transfers in this block <b>are</b> included).
+     *                           If <code>null</code>, the transfers are returned till the latest available block.
+     * @param filterCurrencyKeys (optional) the set of the currency keys, for which to get the balances.
+     *                           If <code>null</code>, gets the balances for all the supported currencies.
+     *                           (Note if the set is empty, it will return the empty balances).
+     * @param includeBalances    Should the final balances be returned in the <code>transfers</code> part of the result.
+     *                           If <code>false</code>, <code>result.transfers</code> will be empty.
+     * @return The structure containing the data about the balances;
+     * or <code>null</code> if the request failed.
+     */
+    GetTransfers.@Nullable TransfersRequestResult getTransfers(
+            int confirmations,
+            @Nullable String sender,
+            @Nullable String receiver,
+            @Nullable Integer startBlock,
+            @Nullable Integer endBlock,
+            @Nullable Set<String> filterCurrencyKeys,
+            boolean includeBalances);
+
+    /**
+     * Get transfers (optionally filtered by currency, sender, receiver, start-block number, end-block number).
      *
      * @param confirmations      The number of extra confirmations required, i.e. the offset from the latest data.
      *                           Should be 0 or higher. Normally it is 6–12 confirmations,
@@ -135,12 +176,16 @@ public interface Observer {
      *                           (Note if the set is empty, it will return the empty balances).
      * @return The structure containing the data about the balances;
      * or <code>null</code> if the request failed.
+     * Note that the balances are <b>not</b> requested, so the result will contain
+     * the empty <code>result.transfers</code> field.
      */
-    GetTransfers.@Nullable TransfersRequestResult getTransfers(
+    default GetTransfers.@Nullable TransfersRequestResult getTransfers(
             int confirmations,
             @Nullable String sender,
             @Nullable String receiver,
             @Nullable Integer startBlock,
             @Nullable Integer endBlock,
-            @Nullable Set<String> filterCurrencyKeys);
+            @Nullable Set<String> filterCurrencyKeys) {
+        return getTransfers(confirmations, sender, receiver, startBlock, endBlock, filterCurrencyKeys);
+    }
 }
