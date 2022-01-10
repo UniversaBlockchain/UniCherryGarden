@@ -14,7 +14,6 @@ import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -104,7 +103,7 @@ public class GetTransfers {
         /**
          * The balances of addresses mentioned in the query.
          */
-        public final Map<String, BigDecimal> balances;
+        public final Map<String, List<GetBalances.BalanceRequestResult.CurrencyBalanceFact>> balances;
 
 
         /**
@@ -113,14 +112,20 @@ public class GetTransfers {
         @JsonCreator
         public TransfersRequestResult(@NonNull SystemSyncStatus syncStatus,
                                       @NonNull List<MinedTransfer> transfers,
-                                      @NonNull Map<String, BigDecimal> balances) {
+                                      @NonNull Map<String, List<GetBalances.BalanceRequestResult.CurrencyBalanceFact>> balances) {
             assert syncStatus != null;
             assert transfers != null;
             assert balances != null;
 
             this.syncStatus = syncStatus;
             this.transfers = Collections.unmodifiableList(transfers);
-            this.balances = Collections.unmodifiableMap(balances);
+
+            final Map<String, List<GetBalances.BalanceRequestResult.CurrencyBalanceFact>> tempModifiableMap =
+                    balances.entrySet().stream().collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            e -> Collections.unmodifiableList(e.getValue())
+                    ));
+            this.balances = Collections.unmodifiableMap(tempModifiableMap);
 
             // Generate map `byFromThenTo`
             {

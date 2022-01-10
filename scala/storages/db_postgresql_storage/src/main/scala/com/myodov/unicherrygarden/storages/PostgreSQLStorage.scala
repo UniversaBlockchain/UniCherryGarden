@@ -5,6 +5,7 @@ import java.sql.SQLException
 import com.myodov.unicherrygarden.Tools.seqIsIncrementing
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.types.MinedTransfer
+import com.myodov.unicherrygarden.api.types.dlt.{Block, MinedTx}
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult.CurrencyBalanceFact
@@ -753,7 +754,7 @@ class PostgreSQLStorage(jdbcUrl: String,
                                      optStartBlock: Option[Int],
                                      endBlock: Int,
                                      currencyKeys: Option[Set[String]]
-                                   )(implicit session: DBSession = ReadOnlyAutoSession): (List[MinedTransfer], Map[String, BigDecimal]) = {
+                                   )(implicit session: DBSession = ReadOnlyAutoSession): List[MinedTransfer] =
       sql"""
       WITH
           _vars AS (
@@ -828,33 +829,68 @@ class PostgreSQLStorage(jdbcUrl: String,
                   -- Extra condition for end block
                   erc20_transfer.block_number <= end_block
           )
-      SELECT *
+      SELECT
+          transfers.*,
+          COALESCE(ucg_currency.dapp_address, '') AS currency_key,
+          ucg_block.hash AS block_hash,
+          ucg_block.timestamp AS block_timestamp,
+          ucg_transaction."from" AS tx_from,
+          ucg_transaction."to" AS tx_to,
+          ucg_transaction.transaction_index
       FROM
           (
               SELECT
+                  transaction_id,
                   txhash,
                   block_number,
                   currency_id,
                   transaction_index AS second_order_key_in_block,
-                  NULL AS log_index
+                  NULL AS log_index,
+                  "from",
+                  "to",
+                  value_human
               FROM eth_transfers
               UNION
               SELECT
+                  transaction_id,
                   transaction_hash AS txhash,
                   block_number,
                   currency_id,
                   log_index AS second_order_key_in_block,
-                  log_index
+                  log_index,
+                  "from",
+                  "to",
+                  value_human
               FROM erc20_transfers
           ) AS transfers
+          INNER JOIN ucg_currency
+              ON ucg_currency.id = transfers.currency_id
+          INNER JOIN ucg_block
+              ON ucg_block.number = transfers.block_number
+          INNER JOIN ucg_transaction
+              ON ucg_transaction.id = transfers.transaction_id
       ORDER BY
           block_number,
           currency_id,
           second_order_key_in_block;
-      """.map(rs => null).list.apply
-
-      (List.empty[MinedTransfer], Map.empty[String, BigDecimal])
-    }
+      """.map(rs => new MinedTransfer(
+        rs.string("from"),
+        rs.string("to"),
+        rs.string("currency_key"),
+        rs.bigDecimal("value_human"),
+        new MinedTx(
+          rs.string("txhash"),
+          rs.string("tx_from"),
+          rs.stringOpt("tx_to").orNull,
+          new Block(
+            rs.int("block_number"),
+            rs.string("block_hash"),
+            rs.timestamp("block_timestamp").toInstant
+          ),
+          rs.int("transaction_index")
+        ),
+        rs.intOpt("log_index").map(Integer.valueOf).orNull
+      )).list.apply
   }
 
 }

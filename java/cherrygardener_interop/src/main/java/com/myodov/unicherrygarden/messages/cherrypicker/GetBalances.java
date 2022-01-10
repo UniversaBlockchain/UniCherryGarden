@@ -116,7 +116,7 @@ public class GetBalances {
 
             @Override
             public String toString() {
-                return String.format("BalanceRequestResult.CurrencyBalanceFact(%s: amount=%s at block %s)",
+                return String.format("CurrencyBalanceFact(%s: amount=%s at block %s)",
                         currency, amount, blockNumber);
             }
         }

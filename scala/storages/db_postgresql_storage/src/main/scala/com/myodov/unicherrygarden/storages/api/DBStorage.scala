@@ -185,7 +185,7 @@ object DBStorageAPI {
                       optStartBlock: Option[Int],
                       endBlock: Int,
                       currencyKeys: Option[Set[String]]
-                    )(implicit session: DBSession = ReadOnlyAutoSession): (List[MinedTransfer], Map[String, BigDecimal])
+                    )(implicit session: DBSession = ReadOnlyAutoSession): List[MinedTransfer]
   }
 
 }

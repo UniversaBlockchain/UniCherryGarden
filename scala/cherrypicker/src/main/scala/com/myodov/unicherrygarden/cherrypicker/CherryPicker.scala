@@ -10,6 +10,7 @@ import com.myodov.unicherrygarden.cherrypicker.syncers.{HeadSyncer, SyncerMessag
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.AddTrackedAddressesRequestResult
+import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.TrackedAddressesRequestResult
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses, GetTransfers}
 import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
@@ -251,66 +252,32 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
 
             logger.debug(s"Get transfers for $payload at $maxBlock ($endBlock)")
 
-            val (transfers, balances) = dbStorage.transfers.getTransfers(
-              Option(payload.sender), // of nullable
-              Option(payload.receiver), // of nullable
-              Option(payload.startBlock).map(_.toInt), // of nullable; safe conversion to Option[Int]
+            val optSender = Option(payload.sender) // of nullable
+            val optReceiver = Option(payload.receiver) // of nullable
+            val optStartBlock = Option(payload.startBlock).map(_.toInt) // of nullable; safe conversion to Option[Int]
+            val optCurrencyKeys = Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
+
+            val transfers = dbStorage.transfers.getTransfers(
+              optSender,
+              optReceiver,
+              optStartBlock,
               endBlock,
-              Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
+              optCurrencyKeys
             )
+            // We already have the transfers. But the query payload contained optional filters for sender and receiver;
+            // so let's try to get balances for both.
+
+            // Either sender; or receiver; or both; – can be optional. Make a sequence of those who are non-None.
+            val balanceKeys: Seq[String] = Seq(Option(payload.sender), Option(payload.receiver)).flatten
+            val balances: Map[String, List[BalanceRequestResult.CurrencyBalanceFact]] = balanceKeys.map(addr => addr -> dbStorage.balances.getBalances(addr, endBlock, optCurrencyKeys)).toMap
 
             new GetTransfers.TransfersRequestResult(
               buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
               transfers.asJava,
-              balances.map {case (key, value) => key -> value.bigDecimal}.asJava
+              balances.map { case (k, v) => k -> v.asJava }.asJava
             )
-
         }
       )
-
-
-      //      new GetTransfers.Response(
-      //        new GetTransfers.TransfersRequestResult(
-      //          // List(
-      //          //   new MinedTransfer(
-      //          //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-      //          //     "0xedcc6f8f20962e6747369a71a5b89256289da87f",
-      //          //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-      //          //     BigDecimal("10045.6909000003").underlying,
-      //          //     new MinedTx(
-      //          //       "0x9cb54df2444658891df0c8165fecaecb4a2f1197ebe7b175dda1130b91ea4c9f",
-      //          //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-      //          //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-      //          //       new Block(
-      //          //         13628884,
-      //          //         "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
-      //          //         Instant.ofEpochSecond(1637096843)),
-      //          //       111
-      //          //     ),
-      //          //     144),
-      //          //   // UTNP out #6
-      //          //   new MinedTransfer(
-      //          //     "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-      //          //     "0x74644fd700c11dcc262eed1c59715ee874f65251",
-      //          //     "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-      //          //     BigDecimal("30000").underlying,
-      //          //     new MinedTx(
-      //          //       "0x3f0c1e4f1e903381c1e8ad2ad909482db20a747e212fbc32a4c626cad6bb14ab",
-      //          //       "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
-      //          //       "0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7",
-      //          //       new Block(
-      //          //         13631007,
-      //          //         "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
-      //          //         Instant.ofEpochSecond(1637125704)),
-      //          //       133
-      //          //     ),
-      //          //     173)
-      //          // ).asJava,
-      //          buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
-      //          List.empty[MinedTransfer].asJava,
-      //          Collections.emptyMap()
-      //        )
-      //      )
     }
 }
 
