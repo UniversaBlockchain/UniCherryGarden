@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 
 /**
@@ -21,6 +22,9 @@ public class MinedTx extends Tx {
      */
     public final int transactionIndex;
 
+    @NonNull
+    public final BigDecimal fees;
+
     /**
      * Constructor.
      */
@@ -29,20 +33,27 @@ public class MinedTx extends Tx {
                    @NonNull String from,
                    @Nullable String to,
                    @NonNull Block block,
-                   int transactionIndex) {
+                   int transactionIndex,
+                   @NonNull BigDecimal fees) {
         super(txhash, from, to);
 
-        assert block != null : block;
-        assert transactionIndex >= 0 : transactionIndex;
+        assert block != null :
+                String.format("%s, %s", txhash, block);
+        assert transactionIndex >= 0 :
+                String.format("%s, %s", txhash, transactionIndex);
+        assert fees != null && fees.compareTo(BigDecimal.ZERO) >= 0 : // fees > BigDecimal.ZERO
+                String.format("%s, %s", txhash, fees);
+
         this.block = block;
         this.transactionIndex = transactionIndex;
+        this.fees = fees;
     }
 
     @Override
     public String toString() {
-        return String.format("%s(%s, %s, %s, #%d in %s)",
+        return String.format("%s(%s, %s, %s, #%d in %s, fees %s)",
                 this.getClass().getSimpleName(),
-                txhash, from, to, transactionIndex, block);
+                txhash, from, to, transactionIndex, block, fees);
     }
 
     @Override

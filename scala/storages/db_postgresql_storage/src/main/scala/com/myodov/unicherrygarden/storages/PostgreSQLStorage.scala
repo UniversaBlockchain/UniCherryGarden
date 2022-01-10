@@ -848,7 +848,8 @@ class PostgreSQLStorage(jdbcUrl: String,
                   NULL AS log_index,
                   "from",
                   "to",
-                  value_human
+                  value_human,
+                  fees_total_human
               FROM eth_transfers
               UNION
               SELECT
@@ -860,7 +861,8 @@ class PostgreSQLStorage(jdbcUrl: String,
                   log_index,
                   "from",
                   "to",
-                  value_human
+                  value_human,
+                  0 AS fees_total_human
               FROM erc20_transfers
           ) AS transfers
           INNER JOIN ucg_currency
@@ -887,7 +889,8 @@ class PostgreSQLStorage(jdbcUrl: String,
             rs.string("block_hash"),
             rs.timestamp("block_timestamp").toInstant
           ),
-          rs.int("transaction_index")
+          rs.int("transaction_index"),
+          rs.bigDecimal("fees_total_human")
         ),
         rs.intOpt("log_index").map(Integer.valueOf).orNull
       )).list.apply

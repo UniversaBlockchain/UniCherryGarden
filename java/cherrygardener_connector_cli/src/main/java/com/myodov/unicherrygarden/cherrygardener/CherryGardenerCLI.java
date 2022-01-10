@@ -725,9 +725,10 @@ public class CherryGardenerCLI {
 
                         for (final MinedTransfer tr : result.transfers) {
                             final String currencyName = tr.currencyKey.isEmpty()? "ETH": tr.currencyKey;
-                            System.err.printf("  * %s of %s from %s to %s (in tx %s from block %d)\n",
+                            System.err.printf("  * %s %s from %s to %s (in tx %s from block %d), fees %s.\n",
                                     tr.amount, currencyName, tr.from, tr.to,
-                                    tr.tx.txhash, tr.tx.block.blockNumber
+                                    tr.tx.txhash, tr.tx.block.blockNumber,
+                                    tr.tx.fees
                             );
                         }
                         printOverallStatus(result.syncStatus);

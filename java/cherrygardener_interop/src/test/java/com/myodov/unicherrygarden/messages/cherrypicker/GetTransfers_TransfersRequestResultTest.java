@@ -56,7 +56,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                         12088227,
                                         "0x3e56ce3b76fc22ab36d0d9527d1b5669f90c625228a6e81303bf7d1ed57f76bd",
                                         Instant.ofEpochSecond(1616410837)),
-                                130
+                                130,
+                                new BigDecimal("0.003140765694893082")
                         ),
                         107));
                 // ETH in #1
@@ -73,7 +74,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                         13315889,
                                         "0x3ab6c594478ed4ccf5bec6ba63eecc5f03826f3677a865fb77737cd09d5ed9be",
                                         Instant.ofEpochSecond(1632853922)),
-                                381
+                                381,
+                                new BigDecimal("0.001334929756944")
                         ),
                         null));
                 // ETH in #2
@@ -90,7 +92,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                         13482556,
                                         "0x318d8b71a5a4950034815c1d625aac7f67dc9bd2713a43704163ccecc130bbb8",
                                         Instant.ofEpochSecond(1635111142)),
-                                17
+                                17,
+                                new BigDecimal("0.004489642931613")
                         ),
                         null));
                 // UTNP out #1
@@ -107,7 +110,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                         13537227,
                                         "0x7fe32b0d67fc180534870ac95a406e588e71f951f8ac9859a7cfb41f25022ce0",
                                         Instant.ofEpochSecond(1635852034)),
-                                132
+                                132,
+                                new BigDecimal("0.007045515")
                         ),
                         126));
                 // Some token in #1
@@ -124,7 +128,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                         13548591,
                                         "0x26dc66b6d13aa23f79768abfb766f62de9e0e77b701811ebf7fa586fdf43acc3",
                                         Instant.ofEpochSecond(1636006619)),
-                                75
+                                75,
+                                new BigDecimal("0.03696635218980534")
                         ),
                         138));
                 // UTNP out #2 (same addr, transfer 1 of 3)
@@ -141,7 +146,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                         13550555,
                                         "0x4246574f55f6bb00326e17fa5ed6724df0b821babd3bf456cee2fd6a7b4dd25a",
                                         Instant.ofEpochSecond(1636033366)),
-                                220
+                                220,
+                                new BigDecimal("0.00455845")
                         ),
                         258));
                 // UTNP out #3 (same addr, transfer 2 of 3)
@@ -158,7 +164,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                         13550616,
                                         "0xdc73aa4e8b3109e5215d541d4604b1fb700f4dcdb65efe3ac68b49568ddb1da7",
                                         Instant.ofEpochSecond(1636034174)),
-                                204
+                                204,
+                                new BigDecimal("0.00456157")
                         ),
                         305));
                 // UTNP out #4 (same addr, transfer 3 of 3)
@@ -175,7 +182,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                         13550669,
                                         "0x02f05a9b028e163872ba600b406d6701dd8506afc0e9f31fa4b2d885e9185044",
                                         Instant.ofEpochSecond(1636034986)),
-                                373
+                                373,
+                                new BigDecimal("0.004598231")
                         ),
                         399));
                 // UTNP out #5
@@ -192,7 +200,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                         13628884,
                                         "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
                                         Instant.ofEpochSecond(1637096843)),
-                                111
+                                111,
+                                new BigDecimal("0.007358649")
                         ),
                         144));
                 // UTNP out #6
@@ -209,7 +218,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                         13631007,
                                         "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
                                         Instant.ofEpochSecond(1637125704)),
-                                133
+                                133,
+                                new BigDecimal("0.00636413")
                         ),
                         173));
             }},
@@ -230,7 +240,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                 13550616,
                                 "0xdc73aa4e8b3109e5215d541d4604b1fb700f4dcdb65efe3ac68b49568ddb1da7",
                                 Instant.ofEpochSecond(1636034174)),
-                        204
+                        204,
+                        new BigDecimal("0.00456157")
                 ),
                 305));
         // UTNP out #4 (same addr, transfer 3 of 3)
@@ -247,7 +258,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                 13550669,
                                 "0x02f05a9b028e163872ba600b406d6701dd8506afc0e9f31fa4b2d885e9185044",
                                 Instant.ofEpochSecond(1636034986)),
-                        373
+                        373,
+                        new BigDecimal("0.004598231")
                 ),
                 399));
         // ETH in #1
@@ -264,7 +276,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                 13315889,
                                 "0x3ab6c594478ed4ccf5bec6ba63eecc5f03826f3677a865fb77737cd09d5ed9be",
                                 Instant.ofEpochSecond(1632853922)),
-                        381
+                        381,
+                        new BigDecimal("0.001334929756944")
                 ),
                 null));
         // ETH in #2
@@ -281,7 +294,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                 13482556,
                                 "0x318d8b71a5a4950034815c1d625aac7f67dc9bd2713a43704163ccecc130bbb8",
                                 Instant.ofEpochSecond(1635111142)),
-                        17
+                        17,
+                        new BigDecimal("0.004489642931613")
                 ),
                 null));
         // UTNP out #1
@@ -298,7 +312,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                 13537227,
                                 "0x7fe32b0d67fc180534870ac95a406e588e71f951f8ac9859a7cfb41f25022ce0",
                                 Instant.ofEpochSecond(1635852034)),
-                        132
+                        132,
+                        new BigDecimal("0.007045515")
                 ),
                 126));
         // UTNP in #1
@@ -315,7 +330,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                 12088227,
                                 "0x3e56ce3b76fc22ab36d0d9527d1b5669f90c625228a6e81303bf7d1ed57f76bd",
                                 Instant.ofEpochSecond(1616410837)),
-                        130
+                        130,
+                        new BigDecimal("0.003140765694893082")
                 ),
                 107));
         // Some token in #1
@@ -332,7 +348,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                 13548591,
                                 "0x26dc66b6d13aa23f79768abfb766f62de9e0e77b701811ebf7fa586fdf43acc3",
                                 Instant.ofEpochSecond(1636006619)),
-                        75
+                        75,
+                        new BigDecimal("0.03696635218980534")
                 ),
                 138));
         // UTNP out #2 (same addr, transfer 1 of 3)
@@ -349,7 +366,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                 13550555,
                                 "0x4246574f55f6bb00326e17fa5ed6724df0b821babd3bf456cee2fd6a7b4dd25a",
                                 Instant.ofEpochSecond(1636033366)),
-                        220
+                        220,
+                        new BigDecimal("0.00455845")
                 ),
                 258));
         // UTNP out #5
@@ -366,7 +384,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                 13628884,
                                 "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
                                 Instant.ofEpochSecond(1637096843)),
-                        111
+                        111,
+                        new BigDecimal("0.007358649")
                 ),
                 144));
         // UTNP out #6
@@ -383,7 +402,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                 13631007,
                                 "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
                                 Instant.ofEpochSecond(1637125704)),
-                        133
+                        133,
+                        new BigDecimal("0.00636413")
                 ),
                 173));
     }};
@@ -452,7 +472,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13537227,
                                             "0x7fe32b0d67fc180534870ac95a406e588e71f951f8ac9859a7cfb41f25022ce0",
                                             Instant.ofEpochSecond(1635852034)),
-                                    132
+                                    132,
+                                    new BigDecimal("0.007045515")
                             ),
                             126));
                     // UTNP out #2 (same addr, transfer 1 of 3)
@@ -469,7 +490,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13550555,
                                             "0x4246574f55f6bb00326e17fa5ed6724df0b821babd3bf456cee2fd6a7b4dd25a",
                                             Instant.ofEpochSecond(1636033366)),
-                                    220
+                                    220,
+                                    new BigDecimal("0.00455845")
                             ),
                             258));
                     // UTNP out #3 (same addr, transfer 2 of 3)
@@ -486,7 +508,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13550616,
                                             "0xdc73aa4e8b3109e5215d541d4604b1fb700f4dcdb65efe3ac68b49568ddb1da7",
                                             Instant.ofEpochSecond(1636034174)),
-                                    204
+                                    204,
+                                    new BigDecimal("0.00456157")
                             ),
                             305));
                     // UTNP out #4 (same addr, transfer 3 of 3)
@@ -503,7 +526,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13550669,
                                             "0x02f05a9b028e163872ba600b406d6701dd8506afc0e9f31fa4b2d885e9185044",
                                             Instant.ofEpochSecond(1636034986)),
-                                    373
+                                    373,
+                                    new BigDecimal("0.004598231")
                             ),
                             399));
                     // UTNP out #5
@@ -520,7 +544,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13628884,
                                             "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
                                             Instant.ofEpochSecond(1637096843)),
-                                    111
+                                    111,
+                                    new BigDecimal("0.007358649")
                             ),
                             144));
                     // UTNP out #6
@@ -537,7 +562,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13631007,
                                             "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
                                             Instant.ofEpochSecond(1637125704)),
-                                    133
+                                    133,
+                                    new BigDecimal("0.00636413")
                             ),
                             173));
                 }},
@@ -559,7 +585,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13548591,
                                             "0x26dc66b6d13aa23f79768abfb766f62de9e0e77b701811ebf7fa586fdf43acc3",
                                             Instant.ofEpochSecond(1636006619)),
-                                    75
+                                    75,
+                                    new BigDecimal("0.03696635218980534")
                             ),
                             138));
                 }},
@@ -581,7 +608,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13482556,
                                             "0x318d8b71a5a4950034815c1d625aac7f67dc9bd2713a43704163ccecc130bbb8",
                                             Instant.ofEpochSecond(1635111142)),
-                                    17
+                                    17,
+                                    new BigDecimal("0.004489642931613")
                             ),
                             null));
                 }},
@@ -603,7 +631,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13315889,
                                             "0x3ab6c594478ed4ccf5bec6ba63eecc5f03826f3677a865fb77737cd09d5ed9be",
                                             Instant.ofEpochSecond(1632853922)),
-                                    381
+                                    381,
+                                    new BigDecimal("0.001334929756944")
                             ),
                             null));
                 }},
@@ -625,7 +654,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             12088227,
                                             "0x3e56ce3b76fc22ab36d0d9527d1b5669f90c625228a6e81303bf7d1ed57f76bd",
                                             Instant.ofEpochSecond(1616410837)),
-                                    130
+                                    130,
+                                    new BigDecimal("0.003140765694893082")
                             ),
                             107));
                 }},
@@ -651,7 +681,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             12088227,
                                             "0x3e56ce3b76fc22ab36d0d9527d1b5669f90c625228a6e81303bf7d1ed57f76bd",
                                             Instant.ofEpochSecond(1616410837)),
-                                    130
+                                    130,
+                                    new BigDecimal("0.003140765694893082")
                             ),
                             107));
                     // ETH in #1
@@ -668,7 +699,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13315889,
                                             "0x3ab6c594478ed4ccf5bec6ba63eecc5f03826f3677a865fb77737cd09d5ed9be",
                                             Instant.ofEpochSecond(1632853922)),
-                                    381
+                                    381,
+                                    new BigDecimal("0.001334929756944")
                             ),
                             null));
                     // ETH in #2
@@ -685,7 +717,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13482556,
                                             "0x318d8b71a5a4950034815c1d625aac7f67dc9bd2713a43704163ccecc130bbb8",
                                             Instant.ofEpochSecond(1635111142)),
-                                    17
+                                    17,
+                                    new BigDecimal("0.004489642931613")
                             ),
                             null));
                     // Some token in #1
@@ -702,7 +735,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13548591,
                                             "0x26dc66b6d13aa23f79768abfb766f62de9e0e77b701811ebf7fa586fdf43acc3",
                                             Instant.ofEpochSecond(1636006619)),
-                                    75
+                                    75,
+                                    new BigDecimal("0.03696635218980534")
                             ),
                             138));
                 }},
@@ -724,7 +758,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13537227,
                                             "0x7fe32b0d67fc180534870ac95a406e588e71f951f8ac9859a7cfb41f25022ce0",
                                             Instant.ofEpochSecond(1635852034)),
-                                    132
+                                    132,
+                                    new BigDecimal("0.007045515")
                             ),
                             126));
                 }},
@@ -746,7 +781,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13550555,
                                             "0x4246574f55f6bb00326e17fa5ed6724df0b821babd3bf456cee2fd6a7b4dd25a",
                                             Instant.ofEpochSecond(1636033366)),
-                                    220
+                                    220,
+                                    new BigDecimal("0.00455845")
                             ),
                             258));
                     // UTNP out #3 (same addr, transfer 2 of 3)
@@ -763,7 +799,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13550616,
                                             "0xdc73aa4e8b3109e5215d541d4604b1fb700f4dcdb65efe3ac68b49568ddb1da7",
                                             Instant.ofEpochSecond(1636034174)),
-                                    204
+                                    204,
+                                    new BigDecimal("0.00456157")
                             ),
                             305));
                     // UTNP out #4 (same addr, transfer 3 of 3)
@@ -780,7 +817,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13550669,
                                             "0x02f05a9b028e163872ba600b406d6701dd8506afc0e9f31fa4b2d885e9185044",
                                             Instant.ofEpochSecond(1636034986)),
-                                    373
+                                    373,
+                                    new BigDecimal("0.004598231")
                             ),
                             399));
                 }},
@@ -802,7 +840,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13628884,
                                             "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
                                             Instant.ofEpochSecond(1637096843)),
-                                    111
+                                    111,
+                                    new BigDecimal("0.007358649")
                             ),
                             144));
                 }},
@@ -824,7 +863,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13631007,
                                             "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
                                             Instant.ofEpochSecond(1637125704)),
-                                    133
+                                    133,
+                                    new BigDecimal("0.00636413")
                             ),
                             173));
                 }},
@@ -916,7 +956,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13537227,
                                                 "0x7fe32b0d67fc180534870ac95a406e588e71f951f8ac9859a7cfb41f25022ce0",
                                                 Instant.ofEpochSecond(1635852034)),
-                                        132
+                                        132,
+                                        new BigDecimal("0.007045515")
                                 ),
                                 126));
                         // UTNP out #2 (same addr, transfer 1 of 3)
@@ -933,7 +974,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13550555,
                                                 "0x4246574f55f6bb00326e17fa5ed6724df0b821babd3bf456cee2fd6a7b4dd25a",
                                                 Instant.ofEpochSecond(1636033366)),
-                                        220
+                                        220,
+                                        new BigDecimal("0.00455845")
                                 ),
                                 258));
                         // UTNP out #3 (same addr, transfer 2 of 3)
@@ -950,7 +992,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13550616,
                                                 "0xdc73aa4e8b3109e5215d541d4604b1fb700f4dcdb65efe3ac68b49568ddb1da7",
                                                 Instant.ofEpochSecond(1636034174)),
-                                        204
+                                        204,
+                                        new BigDecimal("0.00456157")
                                 ),
                                 305));
                         // UTNP out #4 (same addr, transfer 3 of 3)
@@ -967,7 +1010,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13550669,
                                                 "0x02f05a9b028e163872ba600b406d6701dd8506afc0e9f31fa4b2d885e9185044",
                                                 Instant.ofEpochSecond(1636034986)),
-                                        373
+                                        373,
+                                        new BigDecimal("0.004598231")
                                 ),
                                 399));
                         // UTNP out #5
@@ -984,7 +1028,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13628884,
                                                 "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
                                                 Instant.ofEpochSecond(1637096843)),
-                                        111
+                                        111,
+                                        new BigDecimal("0.007358649")
                                 ),
                                 144));
                         // UTNP out #6
@@ -1001,7 +1046,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13631007,
                                                 "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
                                                 Instant.ofEpochSecond(1637125704)),
-                                        133
+                                        133,
+                                        new BigDecimal("0.00636413")
                                 ),
                                 173));
                     }},
@@ -1023,7 +1069,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13548591,
                                                 "0x26dc66b6d13aa23f79768abfb766f62de9e0e77b701811ebf7fa586fdf43acc3",
                                                 Instant.ofEpochSecond(1636006619)),
-                                        75
+                                        75,
+                                        new BigDecimal("0.03696635218980534")
                                 ),
                                 138));
                     }},
@@ -1045,7 +1092,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13482556,
                                                 "0x318d8b71a5a4950034815c1d625aac7f67dc9bd2713a43704163ccecc130bbb8",
                                                 Instant.ofEpochSecond(1635111142)),
-                                        17
+                                        17,
+                                        new BigDecimal("0.004489642931613")
                                 ),
                                 null));
                     }},
@@ -1067,7 +1115,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13315889,
                                                 "0x3ab6c594478ed4ccf5bec6ba63eecc5f03826f3677a865fb77737cd09d5ed9be",
                                                 Instant.ofEpochSecond(1632853922)),
-                                        381
+                                        381,
+                                        new BigDecimal("0.001334929756944")
                                 ),
                                 null));
                     }},
@@ -1089,7 +1138,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 12088227,
                                                 "0x3e56ce3b76fc22ab36d0d9527d1b5669f90c625228a6e81303bf7d1ed57f76bd",
                                                 Instant.ofEpochSecond(1616410837)),
-                                        130
+                                        130,
+                                        new BigDecimal("0.003140765694893082")
                                 ),
                                 107));
                     }},
@@ -1114,7 +1164,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 12088227,
                                                 "0x3e56ce3b76fc22ab36d0d9527d1b5669f90c625228a6e81303bf7d1ed57f76bd",
                                                 Instant.ofEpochSecond(1616410837)),
-                                        130
+                                        130,
+                                        new BigDecimal("0.003140765694893082")
                                 ),
                                 107));
                         // ETH in #1
@@ -1131,7 +1182,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13315889,
                                                 "0x3ab6c594478ed4ccf5bec6ba63eecc5f03826f3677a865fb77737cd09d5ed9be",
                                                 Instant.ofEpochSecond(1632853922)),
-                                        381
+                                        381,
+                                        new BigDecimal("0.001334929756944")
                                 ),
                                 null));
                         // ETH in #2
@@ -1148,7 +1200,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13482556,
                                                 "0x318d8b71a5a4950034815c1d625aac7f67dc9bd2713a43704163ccecc130bbb8",
                                                 Instant.ofEpochSecond(1635111142)),
-                                        17
+                                        17,
+                                        new BigDecimal("0.004489642931613")
                                 ),
                                 null));
                         // Some token in #1
@@ -1165,7 +1218,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13548591,
                                                 "0x26dc66b6d13aa23f79768abfb766f62de9e0e77b701811ebf7fa586fdf43acc3",
                                                 Instant.ofEpochSecond(1636006619)),
-                                        75
+                                        75,
+                                        new BigDecimal("0.03696635218980534")
                                 ),
                                 138));
                     }},
@@ -1187,7 +1241,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13537227,
                                                 "0x7fe32b0d67fc180534870ac95a406e588e71f951f8ac9859a7cfb41f25022ce0",
                                                 Instant.ofEpochSecond(1635852034)),
-                                        132
+                                        132,
+                                        new BigDecimal("0.007045515")
                                 ),
                                 126));
                     }},
@@ -1209,7 +1264,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13550555,
                                                 "0x4246574f55f6bb00326e17fa5ed6724df0b821babd3bf456cee2fd6a7b4dd25a",
                                                 Instant.ofEpochSecond(1636033366)),
-                                        220
+                                        220,
+                                        new BigDecimal("0.00455845")
                                 ),
                                 258));
                         // UTNP out #3 (same addr, transfer 2 of 3)
@@ -1226,7 +1282,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13550616,
                                                 "0xdc73aa4e8b3109e5215d541d4604b1fb700f4dcdb65efe3ac68b49568ddb1da7",
                                                 Instant.ofEpochSecond(1636034174)),
-                                        204
+                                        204,
+                                        new BigDecimal("0.00456157")
                                 ),
                                 305));
                         // UTNP out #4 (same addr, transfer 3 of 3)
@@ -1243,7 +1300,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13550669,
                                                 "0x02f05a9b028e163872ba600b406d6701dd8506afc0e9f31fa4b2d885e9185044",
                                                 Instant.ofEpochSecond(1636034986)),
-                                        373
+                                        373,
+                                        new BigDecimal("0.004598231")
                                 ),
                                 399));
                     }},
@@ -1265,7 +1323,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13628884,
                                                 "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
                                                 Instant.ofEpochSecond(1637096843)),
-                                        111
+                                        111,
+                                        new BigDecimal("0.007358649")
                                 ),
                                 144));
                     }},
@@ -1287,7 +1346,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                                 13631007,
                                                 "0x57e6c79ffcbcc1d77d9d9debb1f7bbe1042e685e0d2f5bb7e7bf37df0494e096",
                                                 Instant.ofEpochSecond(1637125704)),
-                                        133
+                                        133,
+                                        new BigDecimal("0.00636413")
                                 ),
                                 173));
                     }},
@@ -1314,7 +1374,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13548591,
                                             "0x26dc66b6d13aa23f79768abfb766f62de9e0e77b701811ebf7fa586fdf43acc3",
                                             Instant.ofEpochSecond(1636006619)),
-                                    75
+                                    75,
+                                    new BigDecimal("0.03696635218980534")
                             ),
                             138));
                 }},
@@ -1338,7 +1399,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13315889,
                                             "0x3ab6c594478ed4ccf5bec6ba63eecc5f03826f3677a865fb77737cd09d5ed9be",
                                             Instant.ofEpochSecond(1632853922)),
-                                    381
+                                    381,
+                                    new BigDecimal("0.001334929756944")
                             ),
                             null));
                 }},
@@ -1364,7 +1426,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13628884,
                                             "0xbaafd3ce570a2ebc9cf87ebc40680ceb1ff8c0f158e4d03fe617d8d5e67fd4e5",
                                             Instant.ofEpochSecond(1637096843)),
-                                    111
+                                    111,
+                                    new BigDecimal("0.007358649")
                             ),
                             144));
                 }},
@@ -1389,7 +1452,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13550555,
                                             "0x4246574f55f6bb00326e17fa5ed6724df0b821babd3bf456cee2fd6a7b4dd25a",
                                             Instant.ofEpochSecond(1636033366)),
-                                    220
+                                    220,
+                                    new BigDecimal("0.00455845")
                             ),
                             258));
                     // UTNP out #3 (same addr, transfer 2 of 3)
@@ -1406,7 +1470,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13550616,
                                             "0xdc73aa4e8b3109e5215d541d4604b1fb700f4dcdb65efe3ac68b49568ddb1da7",
                                             Instant.ofEpochSecond(1636034174)),
-                                    204
+                                    204,
+                                    new BigDecimal("0.00456157")
                             ),
                             305));
                     // UTNP out #4 (same addr, transfer 3 of 3)
@@ -1423,7 +1488,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                             13550669,
                                             "0x02f05a9b028e163872ba600b406d6701dd8506afc0e9f31fa4b2d885e9185044",
                                             Instant.ofEpochSecond(1636034986)),
-                                    373
+                                    373,
+                                    new BigDecimal("0.004598231")
                             ),
                             399));
                 }},
