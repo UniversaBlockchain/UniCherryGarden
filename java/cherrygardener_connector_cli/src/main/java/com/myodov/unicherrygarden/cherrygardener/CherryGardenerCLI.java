@@ -23,6 +23,8 @@ import java.util.*;
 import java.util.concurrent.CompletionException;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 
 /**
@@ -86,7 +88,8 @@ public class CherryGardenerCLI {
                             "Should be a valid Ethereum address;\n" +
                             "e.g. \"0x884191033518be08616821d7676ca01695698451\".\n" +
                             "See also:\n" +
-                            "--confirmations (optional; default: 0).")
+                            "--confirmations (optional; default: 0).\n" +
+                            "--parallel (optional; default: omitted, run sequentially).")
                     .build()
             );
             addOption(new Option(
@@ -102,7 +105,6 @@ public class CherryGardenerCLI {
                             "--to-block (optional; default: last available, but not newer than " +
                             "the --confirmations value permit);\n" +
                             "--with-balances (optional; default: omitted)."
-
             ));
             setRequired(true);
         }};
@@ -145,6 +147,11 @@ public class CherryGardenerCLI {
                 null, "with-balances", false,
                 "Whether the request should also retrieve the balances of the mentioned addresses. \n" +
                         "If present, the balances are requested; if omitted; the balances are not requested."
+        );
+        options.addOption(
+                "par", "parallel", false,
+                "If multiple arguments passed, specifies whether the queries should run in parallel. " +
+                        "Will run sequentially if omitted."
         );
     }
 
@@ -203,8 +210,7 @@ public class CherryGardenerCLI {
     private static Optional<List<String>> _parseConnectUrls(@NonNull CommandLine line) {
         final Optional<List<String>> connectUrlsConf = confFile.getConnectUrls();
 
-        @Nullable
-        final String[] connectEntriesArr = line.getOptionValues("connect");
+        @Nullable final String[] connectEntriesArr = line.getOptionValues("connect");
 
         if (connectEntriesArr != null) {
             final List<String> connectUrls = Collections.unmodifiableList(Arrays.asList(connectEntriesArr));
@@ -653,6 +659,7 @@ public class CherryGardenerCLI {
                 parseEthereumAddressesOption(line, "get-balances", true, true);
         final @NonNull Optional<Integer> confirmationsOpt =
                 parseConfirmations(line);
+        final boolean runInParallel = line.hasOption("parallel");
 
         if (true &&
                 connectionSettingsOpt.isPresent() &&
@@ -662,39 +669,55 @@ public class CherryGardenerCLI {
             final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
             final @NonNull List<String> addresses = addressesOpt.get();
 
-            final String address = addresses.get(0);
-
             final int confirmations = confirmationsOpt.get().intValue();
 
-            System.err.printf("Getting balances for %s with %s confirmation(s)...\n",
-                    addresses, confirmations);
+            System.err.printf("Getting balances for %s with %s confirmation(s), %s...\n",
+                    String.join(", ", addresses), confirmations,
+                    (runInParallel ? "in parallel" : "sequentially"));
 
             try {
                 final ClientConnector connector = new ClientConnectorImpl(
                         connectionSettings.connectUrls,
                         connectionSettings.listenPort,
                         confirmations);
-                final Optional<GetBalances.BalanceRequestResult> resultOpt = Optional.ofNullable(
-                        connector.getObserver().getAddressBalances(
-                                0, // on top of connector-level confirmations number
-                                address,
-                                null
-                        ));
-                if (!resultOpt.isPresent()) {
-                    System.err.printf("ERROR: Could not get the balances for %s!\n", address);
-                } else {
-                    final GetBalances.BalanceRequestResult result = resultOpt.get();
-                    System.err.printf("Received the balances for %s (with %s confirmation(s)), %s records:\n",
-                            address, confirmations, result.balances.size());
 
-                    for (final GetBalances.BalanceRequestResult.CurrencyBalanceFact balanceFact : result.balances) {
-                        System.err.printf("  %s: %s (at block %s)\n",
-                                balanceFact.currency,
-                                balanceFact.amount,
-                                balanceFact.blockNumber
-                        );
-                    }
-                    printOverallStatus(result.syncStatus);
+                final Stream<String> addressStream = runInParallel ?
+                        addresses.stream().parallel() :
+                        addresses.stream();
+
+                final List<Optional<GetBalances.BalanceRequestResult>> resultOpts =
+                        addressStream
+                                .map((final String address) -> connector.getObserver().getAddressBalances(
+                                        0, // on top of connector-level confirmations number
+                                        address,
+                                        null
+                                ))
+                                .map(Optional::ofNullable)
+                                .collect(Collectors.toList());
+                if (!resultOpts.stream().allMatch(Optional::isPresent) || (addresses.size() != resultOpts.size())) {
+                    System.err.printf("ERROR: Could not get some of the balances for %s!\n", addresses);
+                } else {
+                    final List<GetBalances.BalanceRequestResult> results = resultOpts.stream().map(Optional::get).collect(Collectors.toList());
+
+                    System.err.printf("Received the balances for %s (with %s confirmation(s)), %d result(s):\n",
+                            addresses, confirmations, results.size());
+
+                    IntStream.range(0, results.size()).forEach((int i) -> {
+                        final String address = addresses.get(i);
+                        final GetBalances.BalanceRequestResult result = results.get(i);
+
+                        System.err.printf("--- %d of %d: %s\n",
+                                i + 1, results.size(), address);
+                        for (final GetBalances.BalanceRequestResult.CurrencyBalanceFact balanceFact : result.balances) {
+                            System.err.printf("  %s: %s (at block %s)\n",
+                                    balanceFact.currency,
+                                    balanceFact.amount,
+                                    balanceFact.blockNumber
+                            );
+                        }
+                        printOverallStatus(result.syncStatus);
+                    });
+                    System.err.println("--- done.");
                 }
                 connector.shutdown();
             } catch (CompletionException exc) {

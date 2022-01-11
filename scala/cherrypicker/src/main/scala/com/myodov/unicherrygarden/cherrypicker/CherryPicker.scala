@@ -1,5 +1,7 @@
 package com.myodov.unicherrygarden
 
+import java.util.UUID
+
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
@@ -88,7 +90,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
               msgName,
               message.replyTo,
               GetTrackedAddresses.Response.failed) { () => handleGetTrackedAddresses(message.payload) },
-            msgName
+            s"$msgName-${UUID.randomUUID}"
           )
           Behaviors.same
         }
@@ -99,7 +101,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
               msgName,
               message.replyTo,
               AddTrackedAddresses.Response.failed) { () => handleAddTrackedAddresses(message.payload) },
-            msgName
+            s"$msgName-${UUID.randomUUID}"
           )
           Behaviors.same
         }
@@ -110,7 +112,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
               msgName,
               message.replyTo,
               GetBalances.Response.failed) { () => handleGetBalances(message.payload) },
-            msgName
+            s"$msgName-${UUID.randomUUID}"
           )
           Behaviors.same
         }
@@ -121,7 +123,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
               msgName,
               message.replyTo,
               GetTransfers.Response.failed) { () => handleGetTransfers(message.payload) },
-            msgName
+            s"$msgName-${UUID.randomUUID}"
           )
           Behaviors.same
         }

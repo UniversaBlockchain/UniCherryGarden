@@ -127,7 +127,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
 
         final Set<ActorRef<PingCherryGardener.Request>> reachableInstances =
                 msg.listing.getServiceInstances(PingCherryGardener.SERVICE_KEY);
-        logger.debug("Received onGetCurrenciesReceptionistResponse with reachable instances {}",
+        logger.debug("Received onReceptionistSubscribeCherryGardenResponse with reachable instances {}",
                 reachableInstances);
 
         // If we received at least one CherryGarden instance, we call all those who wait for CherryGarden to boot,
