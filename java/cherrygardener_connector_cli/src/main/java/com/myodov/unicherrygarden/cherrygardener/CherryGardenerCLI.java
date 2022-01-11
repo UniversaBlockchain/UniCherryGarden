@@ -2,7 +2,6 @@ package com.myodov.unicherrygarden.cherrygardener;
 
 import com.myodov.unicherrygarden.api.types.MinedTransfer;
 import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
-import com.myodov.unicherrygarden.api.types.Transfer;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.connector.api.Observer;
@@ -23,6 +22,7 @@ import java.io.PrintStream;
 import java.util.*;
 import java.util.concurrent.CompletionException;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 
 /**
@@ -41,10 +41,13 @@ public class CherryGardenerCLI {
     protected static final int DEFAULT_NUMBER_OF_CONFIRMATIONS = 6;
 
     static {
-        options.addOption(
-                "c", "connect", true,
-                "Comma-separated list of addresses to connect;\n" +
-                        "e.g. \"127.0.0.1:2551,127.0.0.1:2552\".");
+        options.addOption(Option.builder("c")
+                .longOpt("connect")
+                .hasArgs()
+                .valueSeparator(',')
+                .desc("Comma-separated list of addresses to connect;\n" +
+                        "e.g. \"127.0.0.1:2551,127.0.0.1:2552\".")
+                .build());
         options.addOption(
                 null, "confirmations", true,
                 "The number of confirmations (Ethereum blocks already mined after an event);\n" +
@@ -75,13 +78,17 @@ public class CherryGardenerCLI {
                             "See also:\n" +
                             "--track-from-block (mandatory),\n" +
                             "--comment (optional)."));
-            addOption(new Option(
-                    "gb", "get-balances", true,
-                    "Get balances (of currencies/tokens) for an (already tracked) Ethereum address.\n" +
+            addOption(Option.builder("gb")
+                    .longOpt("get-balances")
+                    .hasArgs()
+                    .valueSeparator(',')
+                    .desc("Get balances (of currencies/tokens) for an (already tracked) Ethereum address.\n" +
                             "Should be a valid Ethereum address;\n" +
                             "e.g. \"0x884191033518be08616821d7676ca01695698451\".\n" +
                             "See also:\n" +
-                            "--confirmations (optional; default: 0)."));
+                            "--confirmations (optional; default: 0).")
+                    .build()
+            );
             addOption(new Option(
                     "gt", "get-transfers", false,
                     "Get the transfers balances (of currencies/tokens).\n" +
@@ -148,7 +155,7 @@ public class CherryGardenerCLI {
      * Load {@link Properties} from a .properties-formatted file in the artifact resources.
      */
     @NonNull
-    private static final Properties loadPropsFromNamedResource(@NonNull String resourceName) {
+    private static Properties loadPropsFromNamedResource(@NonNull String resourceName) {
         final String resourcePath = "unicherrygarden/" + resourceName;
         final Properties props = new Properties();
         final @Nullable InputStream resourceAsStream = CherryGardenerCLI.class.getClassLoader().getResourceAsStream(resourcePath);
@@ -196,10 +203,11 @@ public class CherryGardenerCLI {
     private static Optional<List<String>> _parseConnectUrls(@NonNull CommandLine line) {
         final Optional<List<String>> connectUrlsConf = confFile.getConnectUrls();
 
-        if (line.hasOption("connect")) {
-            final String optUnstripped = line.getOptionValue("connect");
-            final String optStripped = optUnstripped.replaceAll("^\\s+|\\s+$", ""); // TODO Since Java 11: optUnstripped.strip()
-            final List<String> connectUrls = Arrays.asList(optStripped.split(","));
+        @Nullable
+        final String[] connectEntriesArr = line.getOptionValues("connect");
+
+        if (connectEntriesArr != null) {
+            final List<String> connectUrls = Collections.unmodifiableList(Arrays.asList(connectEntriesArr));
             if (connectUrls.isEmpty()) {
                 System.err.println("WARNING: --connect option must be non-empty! " +
                         "Recommended 2 or more URLs, like \"127.0.0.1:2551,127.0.0.1:2552\".");
@@ -212,7 +220,8 @@ public class CherryGardenerCLI {
             return connectUrlsConf;
         } else {
             // Final fallback: no defaults
-            System.err.println("WARNING: --connect option must be present!");
+            System.err.println("WARNING: --connect option must be present, " +
+                    "or `connect.urls` setting defined in conf file!");
             return Optional.empty();
         }
     }
@@ -252,9 +261,9 @@ public class CherryGardenerCLI {
      * if it has been properly parsed;
      * “empty” optional if parsing failed (and all required warnings were printed).
      */
-    private static final Optional<String> parseEthereumAddressOption(@NonNull CommandLine line,
-                                                                     @NonNull String optionName,
-                                                                     boolean mandatory) {
+    private static Optional<String> parseEthereumAddressOption(@NonNull CommandLine line,
+                                                               @NonNull String optionName,
+                                                               boolean mandatory) {
         @Nullable final String address = line.getOptionValue(optionName);
         if (address == null) {
             if (mandatory) {
@@ -266,6 +275,47 @@ public class CherryGardenerCLI {
             return Optional.empty();
         } else {
             return Optional.of(address.toLowerCase());
+        }
+    }
+
+    /**
+     * Parse an option (with the name of the option passed as the "optionName" argument)
+     * that should contain a list of comma-separated Ethereum addresses,
+     * printing all necessary warnings in the process.
+     *
+     * @param optionName The name of the option to parse.
+     * @return non-empty {@link Optional<>} with the list of parsed (lowercased) Ethereum addresses
+     * if it has been properly parsed;
+     * “empty” optional if parsing failed (and all required warnings were printed).
+     */
+    private static Optional<List<String>> parseEthereumAddressesOption(@NonNull CommandLine line,
+                                                                       @NonNull String optionName,
+                                                                       boolean mandatory,
+                                                                       boolean nonEmpty) {
+        @Nullable final String[] addressesArr = line.getOptionValues(optionName);
+
+        if (addressesArr == null) {
+            if (mandatory) {
+                System.err.printf("WARNING: --%s option should be present!\n", optionName);
+            }
+            return Optional.empty();
+        } else {
+            final List<String> addresses = Collections.unmodifiableList(Arrays.asList(addressesArr));
+            if (nonEmpty && addresses.isEmpty()) {
+                System.err.printf("WARNING: --%s option should contain a valid non-empty comma-separated list of Ethereum addresses!\n",
+                        optionName);
+                return Optional.empty();
+            } else if (!addresses.stream().allMatch(EthUtils.Addresses::isValidAddress)) {
+                System.err.printf("WARNING: --%s option should contain a valid comma-separated list of Ethereum addresses!\n",
+                        optionName);
+                return Optional.empty();
+            } else {
+                return Optional.of(
+                        addresses.stream()
+                                .map(String::toLowerCase)
+                                .collect(Collectors.toList())
+                );
+            }
         }
     }
 
@@ -470,7 +520,7 @@ public class CherryGardenerCLI {
         }
     }
 
-    private static final void handleGetCurrencies(@NonNull CommandLine line) {
+    private static void handleGetCurrencies(@NonNull CommandLine line) {
         assert line != null;
 
         printTitle(System.err);
@@ -509,7 +559,7 @@ public class CherryGardenerCLI {
         }
     }
 
-    private static final void handleGetTrackedAddresses(@NonNull CommandLine line) {
+    private static void handleGetTrackedAddresses(@NonNull CommandLine line) {
         assert line != null;
 
         printTitle(System.err);
@@ -543,7 +593,7 @@ public class CherryGardenerCLI {
         }
     }
 
-    private static final void handleAddTrackedAddress(@NonNull CommandLine line) {
+    private static void handleAddTrackedAddress(@NonNull CommandLine line) {
         assert line != null;
 
         printTitle(System.err);
@@ -592,26 +642,32 @@ public class CherryGardenerCLI {
         }
     }
 
-    private static final void handleGetBalances(@NonNull CommandLine line) {
+    private static void handleGetBalances(@NonNull CommandLine line) {
         assert line != null;
 
         printTitle(System.err);
 
-        final @NonNull Optional<ConnectionSettings> connectionSettingsOpt = parseConnectionSettings(line);
-        final @NonNull Optional<String> addressOpt = parseEthereumAddressOption(line, "get-balances", true);
-        final @NonNull Optional<Integer> confirmationsOpt = parseConfirmations(line);
+        final @NonNull Optional<ConnectionSettings> connectionSettingsOpt =
+                parseConnectionSettings(line);
+        final @NonNull Optional<List<String>> addressesOpt =
+                parseEthereumAddressesOption(line, "get-balances", true, true);
+        final @NonNull Optional<Integer> confirmationsOpt =
+                parseConfirmations(line);
 
         if (true &&
                 connectionSettingsOpt.isPresent() &&
-                addressOpt.isPresent() &&
+                addressesOpt.isPresent() &&
                 confirmationsOpt.isPresent()
         ) {
             final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
-            final @NonNull String address = addressOpt.get();
+            final @NonNull List<String> addresses = addressesOpt.get();
+
+            final String address = addresses.get(0);
+
             final int confirmations = confirmationsOpt.get().intValue();
 
             System.err.printf("Getting balances for %s with %s confirmation(s)...\n",
-                    address, confirmations);
+                    addresses, confirmations);
 
             try {
                 final ClientConnector connector = new ClientConnectorImpl(
@@ -647,7 +703,7 @@ public class CherryGardenerCLI {
         }
     }
 
-    private static final void handleGetTransfers(@NonNull CommandLine line) {
+    private static void handleGetTransfers(@NonNull CommandLine line) {
         assert line != null;
 
         printTitle(System.err);
@@ -724,7 +780,7 @@ public class CherryGardenerCLI {
                         System.err.printf("Received the transfers %s:\n", transfersDescription);
 
                         for (final MinedTransfer tr : result.transfers) {
-                            final String currencyName = tr.currencyKey.isEmpty()? "ETH": tr.currencyKey;
+                            final String currencyName = tr.currencyKey.isEmpty() ? "ETH" : tr.currencyKey;
                             System.err.printf("  * %s %s from %s to %s (in tx %s from block %d), fees %s.\n",
                                     tr.amount, currencyName, tr.from, tr.to,
                                     tr.tx.txhash, tr.tx.block.blockNumber,
@@ -759,7 +815,7 @@ public class CherryGardenerCLI {
         );
     }
 
-    private static final void printOverallStatus(@NonNull SystemSyncStatus syncStatus) {
+    private static void printOverallStatus(@NonNull SystemSyncStatus syncStatus) {
         System.err.printf("" +
                         "Overall status:\n" +
                         "  Blockchain:\n" +
@@ -778,7 +834,7 @@ public class CherryGardenerCLI {
 
     }
 
-    private static final void printHelp() {
+    private static void printHelp() {
         final HelpFormatter formatter = new HelpFormatter();
         formatter.setOptionComparator(null); // don’t sort the options
         formatter.printHelp("java -jar cherrygardener", options);
