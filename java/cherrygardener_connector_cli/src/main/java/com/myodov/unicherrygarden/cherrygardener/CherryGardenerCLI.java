@@ -19,8 +19,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.CompletionException;
+import java.util.concurrent.*;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -251,7 +253,7 @@ public class CherryGardenerCLI {
         final Optional<List<String>> connectUrlsOpt = _parseConnectUrls(line);
 
         if (listenPortOpt.isPresent() && connectUrlsOpt.isPresent()) {
-            return Optional.of(new ConnectionSettings(listenPortOpt.get().intValue(), connectUrlsOpt.get()));
+            return Optional.of(new ConnectionSettings(listenPortOpt.get(), connectUrlsOpt.get()));
         } else {
             return Optional.empty();
         }
@@ -376,7 +378,7 @@ public class CherryGardenerCLI {
             assert (mode == AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK) == (block != null)
                     :
                     String.format("%s:%s", mode, block);
-            assert (block == null) || (block.intValue() >= 0) : block;
+            assert (block == null) || (block >= 0) : block;
             this.mode = mode;
             this.block = block;
         }
@@ -461,7 +463,7 @@ public class CherryGardenerCLI {
     private static Optional<Integer> parseConfirmations(@NonNull CommandLine line,
                                                         @Nullable Integer _default) {
         assert line != null;
-        assert (_default == null) || (_default.intValue() >= 0) : _default;
+        assert (_default == null) || (_default >= 0) : _default;
 
         final @Nullable String confirmationsStr = line.getOptionValue("confirmations");
         if (confirmationsStr == null) {
@@ -669,11 +671,13 @@ public class CherryGardenerCLI {
             final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
             final @NonNull List<String> addresses = addressesOpt.get();
 
-            final int confirmations = confirmationsOpt.get().intValue();
+            final int confirmations = confirmationsOpt.get();
 
             System.err.printf("Getting balances for %s with %s confirmation(s), %s...\n",
                     String.join(", ", addresses), confirmations,
                     (runInParallel ? "in parallel" : "sequentially"));
+
+            final AbstractExecutorService executor = new ForkJoinPool(addresses.size());
 
             try {
                 final ClientConnector connector = new ClientConnectorImpl(
@@ -685,7 +689,9 @@ public class CherryGardenerCLI {
                         addresses.stream().parallel() :
                         addresses.stream();
 
-                final List<Optional<GetBalances.BalanceRequestResult>> resultOpts =
+                final Instant startTime = Instant.now();
+
+                final List<Optional<GetBalances.BalanceRequestResult>> resultOpts = executor.submit( () ->
                         addressStream
                                 .map((final String address) -> connector.getObserver().getAddressBalances(
                                         0, // on top of connector-level confirmations number
@@ -693,14 +699,18 @@ public class CherryGardenerCLI {
                                         null
                                 ))
                                 .map(Optional::ofNullable)
-                                .collect(Collectors.toList());
+                                .collect(Collectors.toList())
+                ).get();
+
                 if (!resultOpts.stream().allMatch(Optional::isPresent) || (addresses.size() != resultOpts.size())) {
                     System.err.printf("ERROR: Could not get some of the balances for %s!\n", addresses);
                 } else {
+                    final Duration duration = Duration.between(startTime, Instant.now());
+
                     final List<GetBalances.BalanceRequestResult> results = resultOpts.stream().map(Optional::get).collect(Collectors.toList());
 
-                    System.err.printf("Received the balances for %s (with %s confirmation(s)), %d result(s):\n",
-                            addresses, confirmations, results.size());
+                    System.err.printf("Received the balances for %s (with %s confirmation(s)), %d result(s) in %s:\n",
+                            addresses, confirmations, results.size(), duration);
 
                     IntStream.range(0, results.size()).forEach((int i) -> {
                         final String address = addresses.get(i);
@@ -722,6 +732,13 @@ public class CherryGardenerCLI {
                 connector.shutdown();
             } catch (CompletionException exc) {
                 System.err.println("ERROR: Could not connect to UniCherryGarden!");
+            } catch (InterruptedException e) {
+                System.err.printf("ERROR: Could not connect to UniCherryGarden! InterruptedException %s\n", e);
+            } catch (ExecutionException e) {
+                System.err.printf("ERROR: Could not connect to UniCherryGarden! ExecutionException %s\n", e);
+            }
+            finally {
+                executor.shutdownNow();
             }
         }
     }
