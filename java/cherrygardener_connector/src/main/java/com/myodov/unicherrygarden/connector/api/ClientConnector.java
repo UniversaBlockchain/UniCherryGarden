@@ -1,10 +1,8 @@
 package com.myodov.unicherrygarden.connector.api;
 
-import com.myodov.unicherrygarden.api.types.dlt.Currency;
+import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
-
-import java.util.List;
 
 /**
  * The general interface for creating “cherry gardeners”, i.e. connectors
@@ -21,29 +19,22 @@ public interface ClientConnector {
      * Get all the supported currencies. Depending on the settings, may include verified, unverified currencies,
      * or both.
      *
-     * @return <code>null</code> if any error occurred during getting the data
-     * (in particular, if the client is in “offline mode”).
-     * or the list of all supported currencies.
-     *
+     * @return the response with all the supported currencies.
      * @throws IllegalArgumentException if neither `getVerified` nor `getUnverified` are defined.
      */
-    @Nullable
     @SuppressWarnings("unused")
-    List<Currency> getCurrencies(boolean getVerified, boolean getUnverified);
+    GetCurrencies.@NonNull Response getCurrencies(boolean getVerified, boolean getUnverified);
 
     /**
      * Get all the supported currencies. Only the currencies pre-validated (“verified”) are returned.
      *
-     * @return <code>null</code> if any error occurred during getting the data
-     * (in particular, if the client is in “offline mode”).
-     * or the list of all supported currencies.
+     * @return the response with all the supported currencies.
+     * @throws IllegalArgumentException if neither `getVerified` nor `getUnverified` are defined.
      */
-    @Nullable
     @SuppressWarnings("unused")
-    default List<Currency> getCurrencies() {
+    default GetCurrencies.@NonNull Response getCurrencies() {
         return getCurrencies(true, false);
-    };
-
+    }
 
     /**
      * Returns the engine/subsystem that allows you to confirm the Ethereum address ownership.

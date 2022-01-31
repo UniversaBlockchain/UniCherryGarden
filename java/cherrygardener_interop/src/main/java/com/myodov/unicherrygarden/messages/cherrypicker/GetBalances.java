@@ -5,9 +5,12 @@ import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
+import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
+import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
+import com.myodov.unicherrygarden.api.types.responseresult.SuccessPayload;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
+import com.myodov.unicherrygarden.messages.CherryGardenResponseWithResult;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
-import com.myodov.unicherrygarden.messages.CherryPickerResponseWithResult;
 import com.myodov.unicherrygarden.messages.RequestPayload;
 import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -77,7 +80,7 @@ public class GetBalances {
     }
 
 
-    public static class BalanceRequestResult {
+    public static class BalanceRequestResultPayload implements SuccessPayload {
 
         public static class CurrencyBalanceFact {
             /**
@@ -134,8 +137,8 @@ public class GetBalances {
          * Constructor.
          */
         @JsonCreator
-        public BalanceRequestResult(@NonNull SystemSyncStatus syncStatus,
-                                    @NonNull List<CurrencyBalanceFact> balances) {
+        public BalanceRequestResultPayload(@NonNull SystemSyncStatus syncStatus,
+                                           @NonNull List<CurrencyBalanceFact> balances) {
             assert syncStatus != null;
             assert balances != null;
 
@@ -151,15 +154,24 @@ public class GetBalances {
     }
 
 
-    public static final class Response extends CherryPickerResponseWithResult<BalanceRequestResult> {
+    public static class BalanceRequestResultFailure implements SpecificFailurePayload {
+    }
+
+
+    public static final class Response
+            extends CherryGardenResponseWithResult<BalanceRequestResultPayload, BalanceRequestResultFailure> {
+
         @JsonCreator
-        public Response(@Nullable BalanceRequestResult result) {
-            super(result);
+        public Response(@Nullable BalanceRequestResultPayload payload,
+                        @Nullable CommonFailurePayload commonFailure,
+                        @Nullable BalanceRequestResultFailure specificFailure) {
+            super(payload, commonFailure, specificFailure);
         }
 
         @NonNull
-        public static Response failed() {
-            return new Response(null);
+        public static Response fromCommonFailure(@NonNull CommonFailurePayload commonFailure) {
+            assert commonFailure != null : commonFailure;
+            return new Response(null, commonFailure, null);
         }
     }
 }

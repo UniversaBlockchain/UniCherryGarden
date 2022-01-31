@@ -6,14 +6,16 @@ import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.api.types.SystemSyncStatus
+import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload
 import com.myodov.unicherrygarden.cherrypicker.EthereumStatePoller
 import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.EthereumNodeStatus
 import com.myodov.unicherrygarden.cherrypicker.syncers.{HeadSyncer, SyncerMessages, TailSyncer}
 import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
-import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.AddTrackedAddressesRequestResult
-import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult
-import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.TrackedAddressesRequestResult
+import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.AddTrackedAddressesRequestResultPayload
+import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResultPayload
+import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.TrackedAddressesRequestResultPayload
+import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers.TransfersRequestResultData
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses, GetTransfers}
 import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
@@ -89,7 +91,8 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
             requestHandlerActor[GetTrackedAddresses.Response](
               msgName,
               message.replyTo,
-              GetTrackedAddresses.Response.failed) { () => handleGetTrackedAddresses(message.payload) },
+              msg => GetTrackedAddresses.Response.fromCommonFailure(new FailurePayload.UnspecifiedFailure(msg))
+            ) { () => handleGetTrackedAddresses(message.payload) },
             s"$msgName-${UUID.randomUUID}"
           )
           Behaviors.same
@@ -100,7 +103,8 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
             requestHandlerActor[AddTrackedAddresses.Response](
               msgName,
               message.replyTo,
-              AddTrackedAddresses.Response.failed) { () => handleAddTrackedAddresses(message.payload) },
+              msg => AddTrackedAddresses.Response.fromCommonFailure(new FailurePayload.UnspecifiedFailure(msg))
+            ) { () => handleAddTrackedAddresses(message.payload) },
             s"$msgName-${UUID.randomUUID}"
           )
           Behaviors.same
@@ -111,7 +115,8 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
             requestHandlerActor[GetBalances.Response](
               msgName,
               message.replyTo,
-              GetBalances.Response.failed) { () => handleGetBalances(message.payload) },
+              msg => GetBalances.Response.fromCommonFailure(new FailurePayload.UnspecifiedFailure(msg))
+            ) { () => handleGetBalances(message.payload) },
             s"$msgName-${UUID.randomUUID}"
           )
           Behaviors.same
@@ -122,7 +127,8 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
             requestHandlerActor[GetTransfers.Response](
               msgName,
               message.replyTo,
-              GetTransfers.Response.failed) { () => handleGetTransfers(message.payload) },
+              msg => GetTransfers.Response.fromCommonFailure(new FailurePayload.UnspecifiedFailure(msg))
+            ) { () => handleGetTransfers(message.payload) },
             s"$msgName-${UUID.randomUUID}"
           )
           Behaviors.same
@@ -138,13 +144,13 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
   private[this] def handleGetTrackedAddresses(payload: GetTrackedAddresses.GTARequestPayload): GetTrackedAddresses.Response =
   // Construct all the response in a single atomic readonly DB transaction
     DB readOnly { implicit session =>
-      val results: List[TrackedAddressesRequestResult.TrackedAddressInformation] = dbStorage
+      val results: List[TrackedAddressesRequestResultPayload.TrackedAddressInformation] = dbStorage
         .trackedAddresses
         .getTrackedAddresses(
           payload.includeComment,
           payload.includeSyncedFrom)
         .map { item =>
-          new TrackedAddressesRequestResult.TrackedAddressInformation(
+          new TrackedAddressesRequestResultPayload.TrackedAddressInformation(
             item.address,
             // The subsequent items may be Java-nullable
             item.comment.orNull,
@@ -155,11 +161,13 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
         }
 
       new GetTrackedAddresses.Response(
-        new GetTrackedAddresses.TrackedAddressesRequestResult(
+        new TrackedAddressesRequestResultPayload(
           results.asJava,
           payload.includeComment,
           payload.includeSyncedFrom
-        )
+        ),
+        null,
+        null
       )
     }
 
@@ -192,7 +200,9 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
       logger.debug(s"Actually added the following addresses to watch: $addressesActuallyAdded")
 
       new AddTrackedAddresses.Response(
-        new AddTrackedAddressesRequestResult(addressesActuallyAdded.asJava)
+        new AddTrackedAddressesRequestResultPayload(addressesActuallyAdded.asJava),
+        null,
+        null
       )
     }
 
@@ -219,11 +229,13 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
               maxBlock,
               Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
             )
-            new GetBalances.BalanceRequestResult(
+            new BalanceRequestResultPayload(
               buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
               results.asJava
             )
-        }
+        },
+        null,
+        null
       )
     }
 
@@ -271,18 +283,20 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
 
             // Either sender; or receiver; or both; – can be optional. Make a sequence of those who are non-None.
             val balanceKeys: Seq[String] = Seq(Option(payload.sender), Option(payload.receiver)).flatten
-            val balances: Map[String, List[BalanceRequestResult.CurrencyBalanceFact]] =
+            val balances: Map[String, List[BalanceRequestResultPayload.CurrencyBalanceFact]] =
               if (payload.includeBalances)
                 balanceKeys.map(addr => addr -> dbStorage.balances.getBalances(addr, endBlock, optCurrencyKeys)).toMap
               else
                 Map.empty
 
-            new GetTransfers.TransfersRequestResult(
+            new TransfersRequestResultData(
               buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
               transfers.asJava,
               balances.map { case (k, v) => k -> v.asJava }.asJava
             )
-        }
+        },
+        null,
+        null
       )
     }
 }
@@ -342,7 +356,7 @@ object CherryPicker extends LazyLogging {
   @inline
   private[CherryPicker] final def requestHandlerActor[RESP](messageName: String,
                                                             replyTo: ActorRef[RESP],
-                                                            onError: () => RESP)
+                                                            onError: (String) => RESP)
                                                            (handler: () => RESP): Behavior[Any] = Behaviors.setup { context =>
     logger.debug(s"Handling $messageName message in child actor")
 
@@ -350,8 +364,9 @@ object CherryPicker extends LazyLogging {
       handler()
     } catch {
       case NonFatal(e) =>
-        logger.error(s"Unexpected error in handling $messageName", e)
-        onError()
+        val msg = s"Unexpected error in handling $messageName"
+        logger.error(msg, e)
+        onError(s"{msg}: $e")
     }
 
     logger.debug(s"Replying to $messageName with $response")

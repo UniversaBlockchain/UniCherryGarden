@@ -3,12 +3,16 @@ package com.myodov.unicherrygarden.cherrygardener;
 import com.myodov.unicherrygarden.api.types.MinedTransfer;
 import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
+import com.myodov.unicherrygarden.api.types.responseresult.ResponseResult;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.connector.api.Observer;
 import com.myodov.unicherrygarden.connector.impl.ClientConnectorImpl;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
+import com.myodov.unicherrygarden.messages.CherryGardenResponseWithResult;
+import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
+import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers;
 import org.apache.commons.cli.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -22,7 +26,10 @@ import java.io.PrintStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.AbstractExecutorService;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -542,10 +549,16 @@ public class CherryGardenerCLI {
             try {
                 final ClientConnector connector =
                         new ClientConnectorImpl(connectionSettings.connectUrls, connectionSettings.listenPort);
-                final @Nullable List<Currency> currencies = connector.getCurrencies();
-                if (currencies == null) {
-                    System.err.println("ERROR: Could not get the supported currencies!");
+
+                final GetCurrencies.Response response = connector.getCurrencies();
+
+                if (response.isFailure()) {
+                    System.err.printf("ERROR: Could not get the currencies! Problem: %s\n",
+                            response.getCommonFailure());
                 } else {
+                    final GetCurrencies.CurrenciesRequestResultPayload payload = response.getPayload();
+                    final List<Currency> currencies = payload.currencies;
+
                     System.err.printf("Supported currencies (%s):\n", currencies.size());
                     for (final Currency c : currencies) {
                         final @Nullable String optComment = c.getComment();
@@ -583,13 +596,19 @@ public class CherryGardenerCLI {
                         new ClientConnectorImpl(connectionSettings.connectUrls, connectionSettings.listenPort);
                 final Observer observer = connector.getObserver();
 
-                final @Nullable List<@NonNull String> trackedAddresses = observer.getTrackedAddresses();
-                if (trackedAddresses == null) {
-                    System.err.println("ERROR: Could not get the tracked addresses!");
+                final GetTrackedAddresses.Response response = observer.getTrackedAddresses();
+                if (response.isFailure()) {
+                    System.err.printf("ERROR: Could not get the tracked addresses! Problem: %s\n",
+                            response.getCommonFailure());
                 } else {
+                    final GetTrackedAddresses.TrackedAddressesRequestResultPayload payload = response.getPayload();
+                    final List<GetTrackedAddresses.TrackedAddressesRequestResultPayload.TrackedAddressInformation> trackedAddresses = payload.addresses;
+
                     System.err.printf("Tracked addresses (%s):\n", trackedAddresses.size());
-                    for (final String addr : trackedAddresses) {
-                        System.err.printf("  %s\n", addr);
+                    for (GetTrackedAddresses.TrackedAddressesRequestResultPayload.TrackedAddressInformation addr : trackedAddresses) {
+                        System.err.printf("  %s%s\n",
+                                addr.address,
+                                (addr.comment != null) ? "" : String.format("(%s)", addr.comment));
                     }
                     System.err.println("---");
                 }
@@ -632,15 +651,22 @@ public class CherryGardenerCLI {
                         new ClientConnectorImpl(connectionSettings.connectUrls, connectionSettings.listenPort);
                 final Observer observer = connector.getObserver();
 
-                final boolean success = observer.startTrackingAddress(
+                final AddTrackedAddresses.Response response = observer.startTrackingAddress(
                         address,
                         trackFromBlock.mode,
                         trackFromBlock.block,
                         commentOpt.orElse(null));
-                if (success) {
-                    System.err.printf("Address %s successfully added!\n", address);
+                if (response.isFailure()) {
+                    System.err.printf("ERROR: Could not add the tracked address %s! Problem: %s\n",
+                            address, response.getCommonFailure());
                 } else {
-                    System.err.printf("ERROR: Address %s failed to add!\n", address);
+                    final AddTrackedAddresses.AddTrackedAddressesRequestResultPayload payload = response.getPayload();
+                    final Set<String> addedAddresses = payload.addresses;
+                    if (addedAddresses.size() == 1 && addedAddresses.stream().findFirst().get().equals(address)) {
+                        System.err.printf("Address %s successfully added!\n", address);
+                    } else {
+                        System.err.printf("ERROR: Address %s failed to add!\n", address);
+                    }
                 }
                 connector.shutdown();
             } catch (CompletionException exc) {
@@ -691,34 +717,34 @@ public class CherryGardenerCLI {
 
                 final Instant startTime = Instant.now();
 
-                final List<Optional<GetBalances.BalanceRequestResult>> resultOpts = executor.submit( () ->
+                final List<GetBalances.@NonNull Response> responses = executor.submit(() ->
                         addressStream
                                 .map((final String address) -> connector.getObserver().getAddressBalances(
                                         0, // on top of connector-level confirmations number
                                         address,
                                         null
                                 ))
-                                .map(Optional::ofNullable)
                                 .collect(Collectors.toList())
                 ).get();
 
-                if (!resultOpts.stream().allMatch(Optional::isPresent) || (addresses.size() != resultOpts.size())) {
+                if (!responses.stream().allMatch(ResponseResult::isSuccess) || addresses.size() != responses.size()) {
                     System.err.printf("ERROR: Could not get some of the balances for %s!\n", addresses);
                 } else {
                     final Duration duration = Duration.between(startTime, Instant.now());
 
-                    final List<GetBalances.BalanceRequestResult> results = resultOpts.stream().map(Optional::get).collect(Collectors.toList());
+                    final List<GetBalances.BalanceRequestResultPayload> results =
+                            responses.stream().map(CherryGardenResponseWithResult::getPayload).collect(Collectors.toList());
 
                     System.err.printf("Received the balances for %s (with %s confirmation(s)), %d result(s) in %s:\n",
                             addresses, confirmations, results.size(), duration);
 
                     IntStream.range(0, results.size()).forEach((int i) -> {
                         final String address = addresses.get(i);
-                        final GetBalances.BalanceRequestResult result = results.get(i);
+                        final GetBalances.BalanceRequestResultPayload result = results.get(i);
 
                         System.err.printf("--- %d of %d: %s\n",
                                 i + 1, results.size(), address);
-                        for (final GetBalances.BalanceRequestResult.CurrencyBalanceFact balanceFact : result.balances) {
+                        for (final GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact balanceFact : result.balances) {
                             System.err.printf("  %s: %s (at block %s)\n",
                                     balanceFact.currency,
                                     balanceFact.amount,
@@ -736,8 +762,7 @@ public class CherryGardenerCLI {
                 System.err.printf("ERROR: Could not connect to UniCherryGarden! InterruptedException %s\n", e);
             } catch (ExecutionException e) {
                 System.err.printf("ERROR: Could not connect to UniCherryGarden! ExecutionException %s\n", e);
-            }
-            finally {
+            } finally {
                 executor.shutdownNow();
             }
         }
@@ -803,7 +828,8 @@ public class CherryGardenerCLI {
                             connectionSettings.connectUrls,
                             connectionSettings.listenPort,
                             confirmations);
-                    final Optional<GetTransfers.TransfersRequestResult> resultOpt = Optional.ofNullable(connector.getObserver().getTransfers(
+
+                    final GetTransfers.Response response = connector.getObserver().getTransfers(
                             0, // on top of connector-level confirmations number
                             senderOpt.orElse(null),
                             receiverOpt.orElse(null),
@@ -811,15 +837,16 @@ public class CherryGardenerCLI {
                             toBlockOpt.orElse(null),
                             null,
                             withBalances
-                    ));
-                    if (!resultOpt.isPresent()) {
-                        System.err.printf("ERROR: Could not get the transfers %s!\n", transfersDescription);
+                    );
+                    if (response.isFailure()) {
+                        System.err.printf("ERROR: Could not add the transfers! Problem: %s\n",
+                                response.getCommonFailure());
                     } else {
-                        final GetTransfers.TransfersRequestResult result = resultOpt.get();
+                        final GetTransfers.TransfersRequestResultData payload = response.getPayload();
 
                         System.err.printf("Received the transfers %s:\n", transfersDescription);
 
-                        for (final MinedTransfer tr : result.transfers) {
+                        for (final MinedTransfer tr : payload.transfers) {
                             final String currencyName = tr.currencyKey.isEmpty() ? "ETH" : tr.currencyKey;
                             System.err.printf("  * %s %s from %s to %s (in tx %s from block %d), fees %s.\n",
                                     tr.amount, currencyName, tr.from, tr.to,
@@ -827,7 +854,7 @@ public class CherryGardenerCLI {
                                     tr.tx.fees
                             );
                         }
-                        printOverallStatus(result.syncStatus);
+                        printOverallStatus(payload.syncStatus);
                     }
                     connector.shutdown();
                 } catch (CompletionException exc) {

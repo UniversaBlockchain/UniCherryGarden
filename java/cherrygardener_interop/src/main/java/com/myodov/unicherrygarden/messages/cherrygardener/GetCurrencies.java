@@ -5,11 +5,15 @@ import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
+import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
+import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
+import com.myodov.unicherrygarden.api.types.responseresult.SuccessPayload;
+import com.myodov.unicherrygarden.messages.CherryGardenResponseWithResult;
 import com.myodov.unicherrygarden.messages.CherryGardenerRequest;
-import com.myodov.unicherrygarden.messages.CherryGardenerResponse;
 import com.myodov.unicherrygarden.messages.RequestPayload;
 import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.List;
 
@@ -67,19 +71,39 @@ public class GetCurrencies {
     }
 
 
-    public static final class Response
-            implements CherryGardenerResponse {
+    public static class CurrenciesRequestResultPayload implements SuccessPayload {
         @NonNull
         public final List<Currency> currencies;
 
         @JsonCreator
-        public Response(@NonNull List<Currency> currencies) {
+        public CurrenciesRequestResultPayload(@NonNull List<Currency> currencies) {
             this.currencies = currencies;
         }
 
         @Override
         public String toString() {
-            return String.format("GetCurrencies.Response(%s)", currencies);
+            return String.format("CurrenciesRequestResultPayload(currencies=%s)", currencies);
+        }
+    }
+
+    public static class CurrenciesRequestResultFailure implements SpecificFailurePayload {
+    }
+
+
+    public static final class Response
+            extends CherryGardenResponseWithResult<CurrenciesRequestResultPayload, CurrenciesRequestResultFailure> {
+
+        @JsonCreator
+        public Response(@Nullable CurrenciesRequestResultPayload payload,
+                        @Nullable CommonFailurePayload commonFailure,
+                        @Nullable CurrenciesRequestResultFailure specificFailure) {
+            super(payload, commonFailure, specificFailure);
+        }
+
+        @NonNull
+        public static Response fromCommonFailure(@NonNull CommonFailurePayload commonFailure) {
+            assert commonFailure != null : commonFailure;
+            return new Response(null, commonFailure, null);
         }
     }
 }

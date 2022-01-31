@@ -8,7 +8,7 @@ import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector
 import com.myodov.unicherrygarden.messages.cherrygardener.{GetCurrencies, PingCherryGardener}
 import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryPickerRequest, CherryPlanterRequest}
-import com.myodov.unicherrygarden.storages.api.{DBStorage, DBStorageAPI}
+import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.jdk.CollectionConverters._
@@ -21,7 +21,7 @@ class CherryGardener(private val dbStorage: DBStorageAPI,
   /** Reply to [[GetCurrencies]] request. */
   def getCurrencies(getVerified: Boolean, getUnverified: Boolean): GetCurrencies.Response = {
     val result: List[Currency] = dbStorage.currencies.getCurrencies(getVerified, getUnverified).map(_.asCurrency)
-    new GetCurrencies.Response(result.asJava)
+    new GetCurrencies.Response(new GetCurrencies.CurrenciesRequestResultPayload(result.asJava), null, null)
   }
 }
 

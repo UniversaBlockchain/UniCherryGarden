@@ -1,5 +1,6 @@
 package com.myodov.unicherrygarden.connector.impl;
 
+import com.myodov.unicherrygarden.api.types.UniCherryGardenError;
 import com.myodov.unicherrygarden.connector.api.Keygen;
 import com.myodov.unicherrygarden.api.types.PrivateKey;
 import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
@@ -30,7 +31,7 @@ public class KeygenImpl implements Keygen {
             final ECKeyPair pair = Keys.createEcKeyPair();
             return new PrivateKeyImpl(pair);
         } catch (NoSuchAlgorithmException|NoSuchProviderException|InvalidAlgorithmParameterException e) {
-            throw new RuntimeException(e);
+            throw new UniCherryGardenError(e.toString());
         }
     }
 }

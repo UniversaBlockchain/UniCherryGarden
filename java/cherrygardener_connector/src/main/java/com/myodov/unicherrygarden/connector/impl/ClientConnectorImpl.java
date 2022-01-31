@@ -8,7 +8,8 @@ import akka.actor.typed.javadsl.AskPattern;
 import akka.cluster.typed.Cluster;
 import akka.cluster.typed.ClusterCommand;
 import akka.cluster.typed.JoinSeedNodes;
-import com.myodov.unicherrygarden.api.types.dlt.Currency;
+import com.myodov.unicherrygarden.api.types.UniCherryGardenError;
+import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload;
 import com.myodov.unicherrygarden.connector.api.AddressOwnershipConfirmator;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.connector.api.Keygen;
@@ -17,6 +18,7 @@ import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActor;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.GetCurrenciesCommand;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.WaitForBootCommand;
+import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -95,18 +97,20 @@ public class ClientConnectorImpl implements ClientConnector {
                                int listenPort,
                                int mandatoryConfirmations) throws CompletionException {
         if (gardenerUrls == null) {
-            throw new IllegalArgumentException("gardenerUrls should not be null! " +
+            throw new UniCherryGardenError.ArgumentError("gardenerUrls should not be null! " +
                     "Pass an empty list of URLs if you want an offline mode");
         }
         if (!gardenerUrls.isEmpty()) {
             // The listenPort and mandatoryConfirmations validations are relevant only if non-offline mode
             if (!(0 <= listenPort && listenPort <= 65535)) {
-                throw new IllegalArgumentException("When in non-offline mode, listenPort should be " +
-                        "between 0 and 65535 inclusive!");
+                throw new UniCherryGardenError.ArgumentError(
+                        "When in non-offline mode, listenPort should be " +
+                                "between 0 and 65535 inclusive!");
             }
             if (mandatoryConfirmations < 0) {
-                throw new IllegalArgumentException("When in non-offline mode, mandatoryConfirmations should be " +
-                        "at least 0, the higher the better!");
+                throw new UniCherryGardenError.ArgumentError(
+                        "When in non-offline mode, mandatoryConfirmations should be " +
+                                "at least 0, the higher the better!");
             }
         }
 
@@ -232,10 +236,9 @@ public class ClientConnectorImpl implements ClientConnector {
     //
 
     @Override
-    @Nullable
-    public List<Currency> getCurrencies(boolean getVerified, boolean getUnverified) {
+    public GetCurrencies.@NonNull Response getCurrencies(boolean getVerified, boolean getUnverified) {
         if (offlineMode) {
-            return null;
+            return GetCurrencies.Response.fromCommonFailure(FailurePayload.NOT_AVAILABLE_IN_OFFLINE_MODE);
         } else {
             final CompletionStage<GetCurrenciesCommand.Result> stage =
                     AskPattern.ask(
@@ -245,11 +248,10 @@ public class ClientConnectorImpl implements ClientConnector {
                             actorSystem.scheduler());
 
             try {
-                final GetCurrenciesCommand.Result result = stage.toCompletableFuture().join();
-                return result.response.currencies;
+                return stage.toCompletableFuture().join().response;
             } catch (CancellationException | CompletionException exc) {
                 logger.error("Could not complete GetCurrenciesCommand command", exc);
-                return null;
+                return GetCurrencies.Response.fromCommonFailure(FailurePayload.CANCELLATION_COMPLETION_FAILURE);
             }
         }
     }

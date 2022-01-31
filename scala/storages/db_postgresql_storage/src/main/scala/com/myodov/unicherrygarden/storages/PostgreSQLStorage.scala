@@ -8,7 +8,7 @@ import com.myodov.unicherrygarden.api.types.MinedTransfer
 import com.myodov.unicherrygarden.api.types.dlt.{Block, MinedTx}
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
-import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResult.CurrencyBalanceFact
+import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact
 import com.myodov.unicherrygarden.storages.api.DBStorage.Currencies.DBCurrency
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging

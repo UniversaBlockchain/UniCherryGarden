@@ -2,6 +2,8 @@ package com.myodov.unicherrygarden.connector.impl;
 
 import akka.actor.typed.ActorSystem;
 import akka.actor.typed.javadsl.AskPattern;
+import com.myodov.unicherrygarden.api.types.UniCherryGardenError;
+import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload;
 import com.myodov.unicherrygarden.connector.api.Observer;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActor;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
@@ -20,12 +22,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
-import java.util.stream.Collectors;
 
 /**
  * The default implementation for {@link Observer} interface.
@@ -48,28 +48,26 @@ public class ObserverImpl implements Observer {
     /**
      * @throws RuntimeException if <code>data</code> is not a valid lowercased Ethereum address;
      */
-    private final void requireValidEthereumAddress(@NonNull String argname, @NonNull String data) {
+    private void requireValidEthereumAddress(@NonNull String argname, @NonNull String data) {
         assert argname != null : argname;
         assert data != null : data;
         if (!EthUtils.Addresses.isValidLowercasedAddress(data)) {
-            throw new RuntimeException(String.format(
-                    "%s (%s) must be properly formed lowercased Ethereum address!", argname, data));
+            throw new UniCherryGardenError.NotALowercasedEthereumAddressError(data);
         }
     }
 
     /**
      * @throws RuntimeException if <code>data</code> is not a valid block number;
      */
-    private final void requireValidBlockNumber(@NonNull String argname, int data) {
+    private void requireValidBlockNumber(@NonNull String argname, int data) {
         assert argname != null : argname;
         if (data < 0) {
-            throw new RuntimeException(String.format(
-                    "%s (%d) is a block number so must be 0 or higher!", argname, data));
+            throw new UniCherryGardenError.NotAnBlockNumber(String.valueOf(data));
         }
     }
 
     @Override
-    public boolean startTrackingAddress(
+    public AddTrackedAddresses.@NonNull Response startTrackingAddress(
             @NonNull String address,
             AddTrackedAddresses.@NonNull StartTrackingAddressMode mode,
             @Nullable Integer blockNumber,
@@ -77,7 +75,7 @@ public class ObserverImpl implements Observer {
         assert address != null : address;
         requireValidEthereumAddress("address", address);
         if ((mode == AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK) != (blockNumber != null)) {
-            throw new RuntimeException(String.format(
+            throw new UniCherryGardenError.ArgumentError(String.format(
                     "Tracking mode (%s) should be FROM_BLOCK if and only if blockNumber (%s) is not null!",
                     mode, blockNumber));
         }
@@ -96,34 +94,15 @@ public class ObserverImpl implements Observer {
                         actorSystem.scheduler());
 
         try {
-            final AddTrackedAddresses.Response response = stage.toCompletableFuture().join().response;
-            final AddTrackedAddresses.@Nullable AddTrackedAddressesRequestResult responseResult = response.result;
-
-            if (responseResult == null) {
-                logger.error("No response received for startTrackingAddress(%s); failure", address);
-                return false;
-            } else {
-                // We've requested just a single address. Therefore, the result `response.addresses`
-                // should be a set containing just it.
-                if (responseResult.addresses.size() == 1 &&
-                        responseResult.addresses.iterator().next().equals(address)) {
-                    return true;
-                } else {
-                    logger.error("Received the weird response (not a single item {} but {}), " +
-                                    "treating as failure.",
-                            address, responseResult.addresses);
-                    return false;
-                }
-            }
+            return stage.toCompletableFuture().join().response;
         } catch (CancellationException | CompletionException exc) {
             logger.error("Could not complete AddTrackedAddressesCommand command", exc);
-            return false;
+            return AddTrackedAddresses.Response.fromCommonFailure(FailurePayload.CANCELLATION_COMPLETION_FAILURE);
         }
     }
 
     @Override
-    @Nullable
-    public List<@NonNull String> getTrackedAddresses() {
+    public GetTrackedAddresses.@NonNull Response getTrackedAddresses() {
         final CompletionStage<GetTrackedAddressesCommand.Result> stage =
                 AskPattern.ask(
                         actorSystem,
@@ -135,35 +114,15 @@ public class ObserverImpl implements Observer {
                         actorSystem.scheduler());
 
         try {
-            final GetTrackedAddresses.Response response = stage.toCompletableFuture().join().response;
-            final GetTrackedAddresses.@Nullable TrackedAddressesRequestResult responseResult = response.result;
-
-            if (responseResult == null) {
-                logger.error("No response received for getTrackedAddresses(); failure");
-                return null;
-            } else {
-                // We didn’t request the comments/syncedFrom/syncedTo,
-                // so they should not be present in the response.
-                assert responseResult.includeComment == false : responseResult;
-                assert responseResult.includeSyncedFrom == false : responseResult;
-                return responseResult.addresses.stream().map(trAddInf -> {
-                    // We didn’t request the comments/syncedFrom/syncedTo,
-                    // so they REALLY should not be present in the response.
-                    assert trAddInf.comment == null : trAddInf;
-                    assert trAddInf.syncedFrom == null : trAddInf;
-                    // But the address should be, and should be non-empty. And valid Ethereum address!
-                    assert (trAddInf.address != null) && EthUtils.Addresses.isValidLowercasedAddress(trAddInf.address) : trAddInf;
-                    return trAddInf.address;
-                }).collect(Collectors.toList());
-            }
+            return stage.toCompletableFuture().join().response;
         } catch (CancellationException | CompletionException exc) {
             logger.error("Could not complete GetTrackedAddressesCommand command", exc);
-            return null;
+            return GetTrackedAddresses.Response.fromCommonFailure(FailurePayload.CANCELLATION_COMPLETION_FAILURE);
         }
     }
 
     @Override
-    public GetBalances.@Nullable BalanceRequestResult getAddressBalances(
+    public GetBalances.@NonNull Response getAddressBalances(
             int confirmations,
             @NonNull String address,
             @Nullable Set<String> filterCurrencyKeys) {
@@ -183,16 +142,15 @@ public class ObserverImpl implements Observer {
                         actorSystem.scheduler());
 
         try {
-            final GetBalances.Response response = stage.toCompletableFuture().join().response;
-            return response.result;
+            return stage.toCompletableFuture().join().response;
         } catch (CancellationException | CompletionException exc) {
             logger.error("Could not complete GetBalances command", exc);
-            return null;
+            return GetBalances.Response.fromCommonFailure(FailurePayload.CANCELLATION_COMPLETION_FAILURE);
         }
     }
 
     @Override
-    public GetTransfers.@Nullable TransfersRequestResult getTransfers(
+    public GetTransfers.@NonNull Response getTransfers(
             int confirmations,
             @Nullable String sender,
             @Nullable String receiver,
@@ -207,13 +165,13 @@ public class ObserverImpl implements Observer {
         if (sender != null) requireValidEthereumAddress("sender", sender);
         if (receiver != null) requireValidEthereumAddress("receiver", receiver);
         if (sender == null && receiver == null) {
-            throw new RuntimeException("At least sender or receiver must be specified!");
+            throw new UniCherryGardenError.ArgumentError("At least sender or receiver must be specified!");
         }
 
         if (startBlock != null) requireValidBlockNumber("startBlock", startBlock);
         if (endBlock != null) requireValidBlockNumber("endBlock", endBlock);
         if (startBlock != null && endBlock != null && startBlock > endBlock) {
-            throw new RuntimeException(String.format(
+            throw new UniCherryGardenError.ArgumentError(String.format(
                     "If both are defined, startBlock (%d) must be <= endBlock (%d)!", startBlock, endBlock));
         }
 
@@ -230,13 +188,11 @@ public class ObserverImpl implements Observer {
                                 includeBalances),
                         ConnectorActor.DEFAULT_CALL_TIMEOUT,
                         actorSystem.scheduler());
-
         try {
-            final GetTransfers.Response response = stage.toCompletableFuture().join().response;
-            return response.result;
+            return stage.toCompletableFuture().join().response;
         } catch (CancellationException | CompletionException exc) {
             logger.error("Could not complete GetTransfers command", exc);
-            return null;
+            return GetTransfers.Response.fromCommonFailure(FailurePayload.CANCELLATION_COMPLETION_FAILURE);
         }
     }
 }

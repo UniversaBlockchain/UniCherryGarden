@@ -3,9 +3,12 @@ package com.myodov.unicherrygarden.messages.cherrypicker;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
+import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
+import com.myodov.unicherrygarden.api.types.responseresult.SuccessPayload;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
+import com.myodov.unicherrygarden.messages.CherryGardenResponseWithResult;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
-import com.myodov.unicherrygarden.messages.CherryPickerResponseWithResult;
 import com.myodov.unicherrygarden.messages.RequestPayload;
 import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -49,7 +52,7 @@ public class GetTrackedAddresses {
         }
     }
 
-    public static class TrackedAddressesRequestResult {
+    public static class TrackedAddressesRequestResultPayload implements SuccessPayload {
 
         public static final class TrackedAddressInformation {
             @NonNull
@@ -103,9 +106,9 @@ public class GetTrackedAddresses {
          * Constructor.
          */
         @JsonCreator
-        public TrackedAddressesRequestResult(@NonNull List<TrackedAddressInformation> addresses,
-                                             boolean includeComment,
-                                             boolean includeSyncedFrom) {
+        public TrackedAddressesRequestResultPayload(@NonNull List<TrackedAddressInformation> addresses,
+                                                    boolean includeComment,
+                                                    boolean includeSyncedFrom) {
             assert addresses != null;
             this.addresses = addresses;
             this.includeComment = includeComment;
@@ -119,16 +122,23 @@ public class GetTrackedAddresses {
         }
     }
 
+    public static class TrackedAddressesRequestResultFailure implements SpecificFailurePayload {
+    }
 
-    public static final class Response extends CherryPickerResponseWithResult<TrackedAddressesRequestResult> {
+    public static class Response
+            extends CherryGardenResponseWithResult<TrackedAddressesRequestResultPayload, TrackedAddressesRequestResultFailure> {
+
         @JsonCreator
-        public Response(@Nullable TrackedAddressesRequestResult result) {
-            super(result);
+        public Response(@Nullable TrackedAddressesRequestResultPayload payload,
+                        @Nullable CommonFailurePayload commonFailure,
+                        @Nullable TrackedAddressesRequestResultFailure specificFailure) {
+            super(payload, commonFailure, specificFailure);
         }
 
         @NonNull
-        public static Response failed() {
-            return new Response(null);
+        public static Response fromCommonFailure(@NonNull CommonFailurePayload commonFailure) {
+            assert commonFailure != null : commonFailure;
+            return new Response(null, commonFailure, null);
         }
     }
 }

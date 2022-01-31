@@ -6,9 +6,12 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.myodov.unicherrygarden.api.types.MinedTransfer;
 import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
+import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
+import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
+import com.myodov.unicherrygarden.api.types.responseresult.SuccessPayload;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
+import com.myodov.unicherrygarden.messages.CherryGardenResponseWithResult;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
-import com.myodov.unicherrygarden.messages.CherryPickerResponseWithResult;
 import com.myodov.unicherrygarden.messages.RequestPayload;
 import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -88,7 +91,7 @@ public class GetTransfers {
     }
 
 
-    public static class TransfersRequestResult {
+    public static class TransfersRequestResultData implements SuccessPayload {
         /**
          * The total status of blockchain synchronization.
          */
@@ -107,16 +110,16 @@ public class GetTransfers {
         /**
          * The balances of addresses mentioned in the query.
          */
-        public final Map<String, List<GetBalances.BalanceRequestResult.CurrencyBalanceFact>> balances;
+        public final Map<String, List<GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact>> balances;
 
 
         /**
          * Constructor.
          */
         @JsonCreator
-        public TransfersRequestResult(@NonNull SystemSyncStatus syncStatus,
-                                      @NonNull List<MinedTransfer> transfers,
-                                      @NonNull Map<String, List<GetBalances.BalanceRequestResult.CurrencyBalanceFact>> balances) {
+        public TransfersRequestResultData(@NonNull SystemSyncStatus syncStatus,
+                                          @NonNull List<MinedTransfer> transfers,
+                                          @NonNull Map<String, List<GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact>> balances) {
             assert syncStatus != null;
             assert transfers != null;
             assert balances != null;
@@ -124,7 +127,7 @@ public class GetTransfers {
             this.syncStatus = syncStatus;
             this.transfers = Collections.unmodifiableList(transfers);
 
-            final Map<String, List<GetBalances.BalanceRequestResult.CurrencyBalanceFact>> tempModifiableMap =
+            final Map<String, List<GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact>> tempModifiableMap =
                     balances.entrySet().stream().collect(Collectors.toMap(
                             Map.Entry::getKey,
                             e -> Collections.unmodifiableList(e.getValue())
@@ -319,16 +322,22 @@ public class GetTransfers {
         }
     }
 
+    public static class TransfersRequestResultFailure implements SpecificFailurePayload {
+    }
 
-    public static final class Response extends CherryPickerResponseWithResult<TransfersRequestResult> {
+    public static final class Response
+            extends CherryGardenResponseWithResult<TransfersRequestResultData, TransfersRequestResultFailure> {
         @JsonCreator
-        public Response(@Nullable TransfersRequestResult result) {
-            super(result);
+        public Response(@Nullable TransfersRequestResultData payload,
+                        @Nullable CommonFailurePayload commonFailure,
+                        @Nullable TransfersRequestResultFailure specificFailure) {
+            super(payload, commonFailure, specificFailure);
         }
 
         @NonNull
-        public static Response failed() {
-            return new Response(null);
+        public static Response fromCommonFailure(@NonNull CommonFailurePayload commonFailure) {
+            assert commonFailure != null : commonFailure;
+            return new Response(null, commonFailure, null);
         }
     }
 }
