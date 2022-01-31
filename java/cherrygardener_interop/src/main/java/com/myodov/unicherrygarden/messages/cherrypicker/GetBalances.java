@@ -7,6 +7,7 @@ import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
+import com.myodov.unicherrygarden.api.types.responseresult.ResponsePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.SuccessPayload;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryGardenResponseWithResult;
@@ -80,7 +81,7 @@ public class GetBalances {
     }
 
 
-    public static class BalanceRequestResultPayload implements SuccessPayload {
+    public static class BalanceRequestResultPayload extends SuccessPayload {
 
         public static class CurrencyBalanceFact {
             /**
@@ -154,7 +155,7 @@ public class GetBalances {
     }
 
 
-    public static class BalanceRequestResultFailure implements SpecificFailurePayload {
+    public static class BalanceRequestResultFailure extends SpecificFailurePayload {
     }
 
 
@@ -162,16 +163,26 @@ public class GetBalances {
             extends CherryGardenResponseWithResult<BalanceRequestResultPayload, BalanceRequestResultFailure> {
 
         @JsonCreator
-        public Response(@Nullable BalanceRequestResultPayload payload,
-                        @Nullable CommonFailurePayload commonFailure,
-                        @Nullable BalanceRequestResultFailure specificFailure) {
-            super(payload, commonFailure, specificFailure);
+        private Response(@NonNull ResponsePayload payload) {
+            super(payload);
+        }
+
+        public Response(@NonNull BalanceRequestResultPayload payload) {
+            this((ResponsePayload) payload);
+        }
+
+        public Response(@NonNull CommonFailurePayload commonFailure) {
+            this((ResponsePayload) commonFailure);
+        }
+
+        public Response(@NonNull BalanceRequestResultFailure specificFailure) {
+            this((ResponsePayload) specificFailure);
         }
 
         @NonNull
         public static Response fromCommonFailure(@NonNull CommonFailurePayload commonFailure) {
             assert commonFailure != null : commonFailure;
-            return new Response(null, commonFailure, null);
+            return new Response(commonFailure);
         }
     }
 }

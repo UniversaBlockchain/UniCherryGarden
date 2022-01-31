@@ -36,7 +36,7 @@ public class GetTransfers_TransfersRequestResultTest {
     // 2. Transfer-outs of UTNP tokens (several)
     // 2.1. Including three transfers of UTNP tokens to the same address.
     // 3. Transfer-in of ETH (several).
-    static final GetTransfers.TransfersRequestResultData SAMPLE1 = new GetTransfers.TransfersRequestResultData(
+    static final GetTransfers.TransfersRequestResultPayload SAMPLE1 = new GetTransfers.TransfersRequestResultPayload(
             new SystemSyncStatus(
                     SystemSyncStatus.Blockchain.create(15631007, 14631007),
                     SystemSyncStatus.CherryPicker.create(13631007, 13631007, 13631007)
@@ -412,7 +412,7 @@ public class GetTransfers_TransfersRequestResultTest {
     public void testSortedTransfers() {
         assertEquals("Unsorted SAMPLE1 gets sorted properly",
                 SAMPLE1.transfers,
-                GetTransfers.TransfersRequestResultData.sortedTransfers(SAMPLE1_UNSORTED_TRANSFERS)
+                GetTransfers.TransfersRequestResultPayload.sortedTransfers(SAMPLE1_UNSORTED_TRANSFERS)
         );
     }
 

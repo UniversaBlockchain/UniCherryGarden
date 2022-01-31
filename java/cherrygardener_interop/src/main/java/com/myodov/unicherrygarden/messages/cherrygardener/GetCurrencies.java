@@ -7,13 +7,13 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
+import com.myodov.unicherrygarden.api.types.responseresult.ResponsePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.SuccessPayload;
 import com.myodov.unicherrygarden.messages.CherryGardenResponseWithResult;
 import com.myodov.unicherrygarden.messages.CherryGardenerRequest;
 import com.myodov.unicherrygarden.messages.RequestPayload;
 import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.List;
 
@@ -71,7 +71,7 @@ public class GetCurrencies {
     }
 
 
-    public static class CurrenciesRequestResultPayload implements SuccessPayload {
+    public static class CurrenciesRequestResultPayload extends SuccessPayload {
         @NonNull
         public final List<Currency> currencies;
 
@@ -86,7 +86,7 @@ public class GetCurrencies {
         }
     }
 
-    public static class CurrenciesRequestResultFailure implements SpecificFailurePayload {
+    public static class CurrenciesRequestResultFailure extends SpecificFailurePayload {
     }
 
 
@@ -94,16 +94,26 @@ public class GetCurrencies {
             extends CherryGardenResponseWithResult<CurrenciesRequestResultPayload, CurrenciesRequestResultFailure> {
 
         @JsonCreator
-        public Response(@Nullable CurrenciesRequestResultPayload payload,
-                        @Nullable CommonFailurePayload commonFailure,
-                        @Nullable CurrenciesRequestResultFailure specificFailure) {
-            super(payload, commonFailure, specificFailure);
+        private Response(@NonNull ResponsePayload payload) {
+            super(payload);
+        }
+
+        public Response(@NonNull CurrenciesRequestResultPayload payload) {
+            this((ResponsePayload)payload);
+        }
+
+        public Response(@NonNull CommonFailurePayload commonFailure) {
+            this((ResponsePayload)commonFailure);
+        }
+
+        public Response(@NonNull CurrenciesRequestResultFailure specificFailure) {
+            this((ResponsePayload)specificFailure);
         }
 
         @NonNull
         public static Response fromCommonFailure(@NonNull CommonFailurePayload commonFailure) {
             assert commonFailure != null : commonFailure;
-            return new Response(null, commonFailure, null);
+            return new Response(commonFailure);
         }
     }
 }

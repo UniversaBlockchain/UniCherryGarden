@@ -15,13 +15,12 @@ import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 
 /** "Cherry Gardener": the high-level interface to Ethereum blockchain. */
-class CherryGardener(private val dbStorage: DBStorageAPI,
-                     private val ethereumConnector: AbstractEthereumNodeConnector) extends LazyLogging {
+class CherryGardener(private val dbStorage: DBStorageAPI) extends LazyLogging {
 
   /** Reply to [[GetCurrencies]] request. */
   def getCurrencies(getVerified: Boolean, getUnverified: Boolean): GetCurrencies.Response = {
     val result: List[Currency] = dbStorage.currencies.getCurrencies(getVerified, getUnverified).map(_.asCurrency)
-    new GetCurrencies.Response(new GetCurrencies.CurrenciesRequestResultPayload(result.asJava), null, null)
+    new GetCurrencies.Response(new GetCurrencies.CurrenciesRequestResultPayload(result.asJava))
   }
 }
 
@@ -33,14 +32,13 @@ object CherryGardener extends LazyLogging {
   lazy val propBuildTimestampStr = props.getProperty("build_timestamp", "");
 
   def apply(dbStorage: DBStorageAPI,
-            ethereumConnector: AbstractEthereumNodeConnector,
             cherryPickerOpt: Option[ActorRef[CherryPickerRequest]],
             cherryPlanterOpt: Option[ActorRef[CherryPlanterRequest]]
            ): Behavior[CherryGardenerRequest] = {
 
     logger.debug(s"Setting up CherryGardener: picker $cherryPickerOpt, planter $cherryPlanterOpt")
 
-    val gardener = new CherryGardener(dbStorage, ethereumConnector)
+    val gardener = new CherryGardener(dbStorage)
 
     Behaviors.setup { context =>
       logger.info(s"Launching CherryGardener: v. $propVersionStr, built at $propBuildTimestampStr")

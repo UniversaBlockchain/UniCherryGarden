@@ -8,6 +8,7 @@ import com.myodov.unicherrygarden.api.types.MinedTransfer;
 import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
+import com.myodov.unicherrygarden.api.types.responseresult.ResponsePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.SuccessPayload;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryGardenResponseWithResult;
@@ -91,7 +92,7 @@ public class GetTransfers {
     }
 
 
-    public static class TransfersRequestResultData implements SuccessPayload {
+    public static class TransfersRequestResultPayload extends SuccessPayload {
         /**
          * The total status of blockchain synchronization.
          */
@@ -117,9 +118,9 @@ public class GetTransfers {
          * Constructor.
          */
         @JsonCreator
-        public TransfersRequestResultData(@NonNull SystemSyncStatus syncStatus,
-                                          @NonNull List<MinedTransfer> transfers,
-                                          @NonNull Map<String, List<GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact>> balances) {
+        public TransfersRequestResultPayload(@NonNull SystemSyncStatus syncStatus,
+                                             @NonNull List<MinedTransfer> transfers,
+                                             @NonNull Map<String, List<GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact>> balances) {
             assert syncStatus != null;
             assert transfers != null;
             assert balances != null;
@@ -322,22 +323,33 @@ public class GetTransfers {
         }
     }
 
-    public static class TransfersRequestResultFailure implements SpecificFailurePayload {
+    public static class TransfersRequestResultFailure extends SpecificFailurePayload {
     }
 
     public static final class Response
-            extends CherryGardenResponseWithResult<TransfersRequestResultData, TransfersRequestResultFailure> {
+            extends CherryGardenResponseWithResult<TransfersRequestResultPayload, TransfersRequestResultFailure> {
+
         @JsonCreator
-        public Response(@Nullable TransfersRequestResultData payload,
-                        @Nullable CommonFailurePayload commonFailure,
-                        @Nullable TransfersRequestResultFailure specificFailure) {
-            super(payload, commonFailure, specificFailure);
+        private Response(@NonNull ResponsePayload payload) {
+            super(payload);
+        }
+
+        public Response(GetTransfers.@NonNull TransfersRequestResultPayload payload) {
+            this((ResponsePayload) payload);
+        }
+
+        public Response(@NonNull CommonFailurePayload commonFailure) {
+            this((ResponsePayload) commonFailure);
+        }
+
+        public Response(@NonNull TransfersRequestResultFailure specificFailure) {
+            this((ResponsePayload) specificFailure);
         }
 
         @NonNull
         public static Response fromCommonFailure(@NonNull CommonFailurePayload commonFailure) {
             assert commonFailure != null : commonFailure;
-            return new Response(null, commonFailure, null);
+            return new Response(commonFailure);
         }
     }
 }

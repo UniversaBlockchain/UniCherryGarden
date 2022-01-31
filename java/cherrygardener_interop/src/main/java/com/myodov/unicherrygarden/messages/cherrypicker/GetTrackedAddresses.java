@@ -5,6 +5,7 @@ import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
+import com.myodov.unicherrygarden.api.types.responseresult.ResponsePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.SuccessPayload;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryGardenResponseWithResult;
@@ -52,7 +53,7 @@ public class GetTrackedAddresses {
         }
     }
 
-    public static class TrackedAddressesRequestResultPayload implements SuccessPayload {
+    public static class TrackedAddressesRequestResultPayload extends SuccessPayload {
 
         public static final class TrackedAddressInformation {
             @NonNull
@@ -122,23 +123,33 @@ public class GetTrackedAddresses {
         }
     }
 
-    public static class TrackedAddressesRequestResultFailure implements SpecificFailurePayload {
+    public static class TrackedAddressesRequestResultFailure extends SpecificFailurePayload {
     }
 
     public static class Response
             extends CherryGardenResponseWithResult<TrackedAddressesRequestResultPayload, TrackedAddressesRequestResultFailure> {
 
         @JsonCreator
-        public Response(@Nullable TrackedAddressesRequestResultPayload payload,
-                        @Nullable CommonFailurePayload commonFailure,
-                        @Nullable TrackedAddressesRequestResultFailure specificFailure) {
-            super(payload, commonFailure, specificFailure);
+        private Response(@NonNull ResponsePayload payload) {
+            super(payload);
+        }
+
+        public Response(@NonNull TrackedAddressesRequestResultPayload payload) {
+            this((ResponsePayload) payload);
+        }
+
+        public Response(@NonNull CommonFailurePayload commonFailure) {
+            this((ResponsePayload) commonFailure);
+        }
+
+        public Response(@NonNull TrackedAddressesRequestResultFailure specificFailure) {
+            this((ResponsePayload) specificFailure);
         }
 
         @NonNull
         public static Response fromCommonFailure(@NonNull CommonFailurePayload commonFailure) {
             assert commonFailure != null : commonFailure;
-            return new Response(null, commonFailure, null);
+            return new Response(commonFailure);
         }
     }
 }

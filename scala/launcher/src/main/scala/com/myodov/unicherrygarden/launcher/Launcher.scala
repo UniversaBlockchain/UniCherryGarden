@@ -245,9 +245,8 @@ object LauncherActor extends LazyLogging {
           logger.info(s"Launched CherryGardener (which now knows about CherryPicker and CherryPlanter)")
           val cherryGardener: ActorRef[CherryGardenerRequest] =
             context.spawn(
-              CherryGardener(dbStorage, ethereumConnector, Some(cherryPicker), Some(cherryPlanter)),
+              CherryGardener(dbStorage, Some(cherryPicker), Some(cherryPlanter)),
               "CherryGardener")
-          //          cherryGardener ! new Balances.GetBalance(context.self, "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24")
 
           val clusterSubscriber = context.spawn(ClusterSubscriber(), "ClusterSubscriber")
 

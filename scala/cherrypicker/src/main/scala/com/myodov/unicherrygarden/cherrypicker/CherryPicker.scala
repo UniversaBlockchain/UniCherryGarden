@@ -15,7 +15,7 @@ import com.myodov.unicherrygarden.messages.CherryPickerRequest
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.AddTrackedAddressesRequestResultPayload
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResultPayload
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.TrackedAddressesRequestResultPayload
-import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers.TransfersRequestResultData
+import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers.TransfersRequestResultPayload
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses, GetTransfers}
 import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
@@ -165,9 +165,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
           results.asJava,
           payload.includeComment,
           payload.includeSyncedFrom
-        ),
-        null,
-        null
+        )
       )
     }
 
@@ -200,9 +198,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
       logger.debug(s"Actually added the following addresses to watch: $addressesActuallyAdded")
 
       new AddTrackedAddresses.Response(
-        new AddTrackedAddressesRequestResultPayload(addressesActuallyAdded.asJava),
-        null,
-        null
+        new AddTrackedAddressesRequestResultPayload(addressesActuallyAdded.asJava)
       )
     }
 
@@ -233,9 +229,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
               buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
               results.asJava
             )
-        },
-        null,
-        null
+        }
       )
     }
 
@@ -289,14 +283,12 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
               else
                 Map.empty
 
-            new TransfersRequestResultData(
+            new TransfersRequestResultPayload(
               buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
               transfers.asJava,
               balances.map { case (k, v) => k -> v.asJava }.asJava
             )
-        },
-        null,
-        null
+        }
       )
     }
 }

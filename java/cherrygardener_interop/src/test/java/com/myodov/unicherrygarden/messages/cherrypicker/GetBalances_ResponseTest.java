@@ -1,7 +1,6 @@
 package com.myodov.unicherrygarden.messages.cherrypicker;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.myodov.unicherrygarden.AbstractJacksonSerializationTest;
 import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload;
@@ -13,11 +12,7 @@ import java.util.ArrayList;
 
 import static org.junit.Assert.assertEquals;
 
-public class GetBalances_ResponseTest {
-    private static final String makeJson(Object value) throws JsonProcessingException {
-        return new ObjectMapper().writeValueAsString(value);
-    }
-
+public class GetBalances_ResponseTest extends AbstractJacksonSerializationTest {
     @Test
     public void testJacksonSerialization() throws IOException {
         final Currency eth = Currency.newEthCurrency();
@@ -36,7 +31,7 @@ public class GetBalances_ResponseTest {
         }};
 
         assertEquals(
-                "{\"commonFailure\":null,\"specificFailure\":null,\"payload\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetBalances$BalanceRequestResultPayload\",\"syncStatus\":{\"blockchain\":{\"currentBlock\":20,\"highestBlock\":25},\"cherryPicker\":{\"latestKnownBlock\":17,\"latestPartiallySyncedBlock\":13,\"latestFullySyncedBlock\":11}},\"balances\":[{\"currency\":{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"key\":\"\",\"currencyType\":\"ETH\",\"dappAddress\":null},\"amount\":123.45,\"blockNumber\":7328},{\"currency\":{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"key\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\",\"currencyType\":\"ERC20\",\"dappAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"},\"amount\":456.789,\"blockNumber\":7932}]}}",
+                "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetBalances$BalanceRequestResultPayload\",\"syncStatus\":{\"blockchain\":{\"currentBlock\":20,\"highestBlock\":25},\"cherryPicker\":{\"latestKnownBlock\":17,\"latestPartiallySyncedBlock\":13,\"latestFullySyncedBlock\":11}},\"balances\":[{\"currency\":{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"key\":\"\",\"type\":\"ETH\",\"dAppAddress\":null},\"amount\":\"123.45\",\"blockNumber\":7328},{\"currency\":{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"key\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"},\"amount\":\"456.789\",\"blockNumber\":7932}]}}",
                 makeJson(new GetBalances.Response(
                         new GetBalances.BalanceRequestResultPayload(
                                 new SystemSyncStatus(
@@ -45,24 +40,23 @@ public class GetBalances_ResponseTest {
                                 new ArrayList<GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact>() {{
                                     add(new GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact(eth, new BigDecimal("123.45"), 7328));
                                     add(new GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact(utnp, new BigDecimal("456.789"), 7932));
-                                }}),
-                        null,
-                        null))
+                                }})
+                ))
         );
 
         assertEquals(
-                "{\"commonFailure\":{\"@class\":\"com.myodov.unicherrygarden.api.types.responseresult.FailurePayload$CancellationCompletionFailure\"},\"specificFailure\":null,\"payload\":null}",
+                "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.api.types.responseresult.FailurePayload$CancellationCompletionFailure\"}}",
                 makeJson(GetBalances.Response.fromCommonFailure(FailurePayload.CommonFailurePayload.CANCELLATION_COMPLETION_FAILURE))
         );
 
         assertEquals(
-                "{\"commonFailure\":{\"@class\":\"com.myodov.unicherrygarden.api.types.responseresult.FailurePayload$NotAvailableInOfflineMode\"},\"specificFailure\":null,\"payload\":null}",
+                "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.api.types.responseresult.FailurePayload$NotAvailableInOfflineMode\"}}",
                 makeJson(GetBalances.Response.fromCommonFailure(FailurePayload.CommonFailurePayload.NOT_AVAILABLE_IN_OFFLINE_MODE))
         );
 
         assertEquals(
-                "{\"commonFailure\":null,\"specificFailure\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetBalances$BalanceRequestResultFailure\"},\"payload\":null}",
-                makeJson(new GetBalances.Response(null, null, new GetBalances.BalanceRequestResultFailure()))
+                "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetBalances$BalanceRequestResultFailure\"}}",
+                makeJson(new GetBalances.Response(new GetBalances.BalanceRequestResultFailure()))
         );
     }
 }

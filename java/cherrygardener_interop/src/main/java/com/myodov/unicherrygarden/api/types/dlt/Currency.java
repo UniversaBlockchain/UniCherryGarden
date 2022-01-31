@@ -1,6 +1,8 @@
 package com.myodov.unicherrygarden.api.types.dlt;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.Serializable;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -104,7 +106,7 @@ public class Currency implements Serializable {
     /**
      * Create a new "ETH" currency.
      */
-    public static final Currency newEthCurrency() {
+    public static Currency newEthCurrency() {
         return new Currency(
                 CurrencyType.ETH,
                 null,
@@ -118,7 +120,7 @@ public class Currency implements Serializable {
     /**
      * Create a new "ERC20" token.
      */
-    public static final Currency newErc20Token(
+    public static Currency newErc20Token(
             @NonNull String dAppAddress,
             @Nullable String name,
             @Nullable String symbol,
@@ -179,6 +181,7 @@ public class Currency implements Serializable {
      * Get the currency type of this currency: is this a top-level blockchain “ETH” coin,
      * or some token, like ERC20 token.
      */
+    @JsonGetter("type")
     @NonNull
     public CurrencyType getCurrencyType() {
         return type;
@@ -213,6 +216,7 @@ public class Currency implements Serializable {
      * @implNote the address is lowercased, not in EIP55. Example return string:
      * <code>"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7"</code>.
      */
+    @JsonGetter("dAppAddress")
     @Nullable
     public String getDAppAddress() {
         switch (type) {

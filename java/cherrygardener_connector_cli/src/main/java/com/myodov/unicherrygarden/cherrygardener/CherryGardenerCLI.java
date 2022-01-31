@@ -556,7 +556,7 @@ public class CherryGardenerCLI {
                     System.err.printf("ERROR: Could not get the currencies! Problem: %s\n",
                             response.getCommonFailure());
                 } else {
-                    final GetCurrencies.CurrenciesRequestResultPayload payload = response.getPayload();
+                    final GetCurrencies.CurrenciesRequestResultPayload payload = response.getSuccessfulPayload();
                     final List<Currency> currencies = payload.currencies;
 
                     System.err.printf("Supported currencies (%s):\n", currencies.size());
@@ -601,7 +601,7 @@ public class CherryGardenerCLI {
                     System.err.printf("ERROR: Could not get the tracked addresses! Problem: %s\n",
                             response.getCommonFailure());
                 } else {
-                    final GetTrackedAddresses.TrackedAddressesRequestResultPayload payload = response.getPayload();
+                    final GetTrackedAddresses.TrackedAddressesRequestResultPayload payload = response.getSuccessfulPayload();
                     final List<GetTrackedAddresses.TrackedAddressesRequestResultPayload.TrackedAddressInformation> trackedAddresses = payload.addresses;
 
                     System.err.printf("Tracked addresses (%s):\n", trackedAddresses.size());
@@ -660,7 +660,7 @@ public class CherryGardenerCLI {
                     System.err.printf("ERROR: Could not add the tracked address %s! Problem: %s\n",
                             address, response.getCommonFailure());
                 } else {
-                    final AddTrackedAddresses.AddTrackedAddressesRequestResultPayload payload = response.getPayload();
+                    final AddTrackedAddresses.AddTrackedAddressesRequestResultPayload payload = response.getSuccessfulPayload();
                     final Set<String> addedAddresses = payload.addresses;
                     if (addedAddresses.size() == 1 && addedAddresses.stream().findFirst().get().equals(address)) {
                         System.err.printf("Address %s successfully added!\n", address);
@@ -733,7 +733,7 @@ public class CherryGardenerCLI {
                     final Duration duration = Duration.between(startTime, Instant.now());
 
                     final List<GetBalances.BalanceRequestResultPayload> results =
-                            responses.stream().map(CherryGardenResponseWithResult::getPayload).collect(Collectors.toList());
+                            responses.stream().map(CherryGardenResponseWithResult::getSuccessfulPayload).collect(Collectors.toList());
 
                     System.err.printf("Received the balances for %s (with %s confirmation(s)), %d result(s) in %s:\n",
                             addresses, confirmations, results.size(), duration);
@@ -842,7 +842,7 @@ public class CherryGardenerCLI {
                         System.err.printf("ERROR: Could not add the transfers! Problem: %s\n",
                                 response.getCommonFailure());
                     } else {
-                        final GetTransfers.TransfersRequestResultData payload = response.getPayload();
+                        final GetTransfers.TransfersRequestResultPayload payload = response.getSuccessfulPayload();
 
                         System.err.printf("Received the transfers %s:\n", transfersDescription);
 

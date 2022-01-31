@@ -17,6 +17,11 @@ public interface FailurePayload extends ResponsePayload {
             CANCELLATION_COMPLETION_FAILURE
         }
 
+        @Override
+        public final ResponseResult.@NonNull Type getType() {
+            return ResponseResult.Type.FAILURE_COMMON;
+        }
+
         @JsonIgnore
         @NonNull
         abstract CommonFailureType getCommonFailureType();
@@ -86,6 +91,10 @@ public interface FailurePayload extends ResponsePayload {
     CancellationCompletionFailure CANCELLATION_COMPLETION_FAILURE = new CancellationCompletionFailure();
 
 
-    interface SpecificFailurePayload extends FailurePayload {
+    abstract class SpecificFailurePayload implements FailurePayload {
+        @Override
+        public final ResponseResult.@NonNull Type getType() {
+            return ResponseResult.Type.FAILURE_SPECIFIC;
+        }
     }
 }

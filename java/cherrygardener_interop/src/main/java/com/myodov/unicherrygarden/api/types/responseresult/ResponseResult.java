@@ -49,13 +49,13 @@ import org.checkerframework.checker.nullness.qual.NonNull;
  * </li>
  * <li>
  * If no problem occurred, the result will be an instance of {@link SuccessResponse}.
- * {@link #getPayload()} call will provide the details.
+ * {@link #getSuccessfulPayload()} call will provide the details.
  * You will want to handle this as success.
  * <br>
  * Example 1: a request to add a tracked address resulted in UniCherryGarden (UniCherryPicker) replying
  * that such address is registered already. This is not a error or even a problem (you are not obliged to check
  * if the address is registered before an attempt to add – EAFP!); the response will be a {@link SuccessResponse},
- * with {@link #getPayload()} informing you that the address was not actually added.<br>
+ * with {@link #getSuccessfulPayload()} informing you that the address was not actually added.<br>
  * Example 2: a request to get the balances came to UniCherryGarden which is not even configured yet
  * and not collecting the data. This is a common error which doesn’t allow almost any calls to be used;
  * the response will be an instance of {@link FailureResponse}, and even more specific, of {@link FailureResponse.CommonFailureResponse}.
@@ -82,7 +82,7 @@ public interface ResponseResult<
 
     /**
      * Whether request was successful.
-     * Use {@link #getPayload()} to get more details if available.
+     * Use {@link #getSuccessfulPayload()} to get more details if available.
      * Do not use {@link #getCommonFailure()}!
      * <p>
      * Antonym: {@link #isFailure()}.
@@ -97,16 +97,27 @@ public interface ResponseResult<
      * <p>
      * Available only if {@link #isSuccess()}.
      */
-    Payload getPayload();
+    @NonNull
+    ResponsePayload getPayload();
+
+    /**
+     * Get the payload of successful request execution; the payload contents is specific to the request.
+     * <p>
+     * Available only if {@link #isSuccess()}.
+     */
+    @JsonIgnore
+    @NonNull
+    Payload getSuccessfulPayload();
 
     /**
      * Whether request has failed.
      * Use {@link #getCommonFailure()} to get more details if available.
-     * Do not use {@link #getPayload()}!
+     * Do not use {@link #getSuccessfulPayload()}!
      * <p>
      * Antonym: {@link #isSuccess()}.
      */
     @JsonIgnore
+    @NonNull
     default boolean isFailure() {
         return getType() == Type.FAILURE_COMMON || getType() == Type.FAILURE_SPECIFIC;
     }
@@ -114,8 +125,10 @@ public interface ResponseResult<
     /**
      * Whether request has failed, and failure is common (may happen with different requests).
      * Use {@link #getCommonFailure()} to get more details if available.
-     * Do not use {@link #getPayload()}!
+     * Do not use {@link #getSuccessfulPayload()}!
      */
+    @JsonIgnore
+    @NonNull
     default boolean isCommonFailure() {
         return getType() == Type.FAILURE_COMMON;
     }
@@ -123,8 +136,10 @@ public interface ResponseResult<
     /**
      * Whether request has failed, and failure is specific to the request.
      * Use {@link #getSpecificFailure()} to get more details if available.
-     * Do not use {@link #getPayload()}!
+     * Do not use {@link #getSuccessfulPayload()}!
      */
+    @JsonIgnore
+    @NonNull
     default boolean isSpecificFailure() {
         return getType() == Type.FAILURE_SPECIFIC;
     }
@@ -132,14 +147,17 @@ public interface ResponseResult<
     /**
      * Get the data of request failure; the data is common to the requests.
      * <p>
-     * Available only if {@link #isFailure()}.
+     * Available only if {@link #isFailure()}, and moreover, if not {@link #isSpecificFailure()}.
      */
-    FailurePayload getCommonFailure();
+    @JsonIgnore
+    FailurePayload.@NonNull CommonFailurePayload getCommonFailure();
 
     /**
      * Get the data of request failure; the data is specific to the request.
      * <p>
      * Available only if {@link #isFailure()} and moreover, if {@link #isSpecificFailure()}.
      */
+    @JsonIgnore
+    @NonNull
     Failure getSpecificFailure();
 }
