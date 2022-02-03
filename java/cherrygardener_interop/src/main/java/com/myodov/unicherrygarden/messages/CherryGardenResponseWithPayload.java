@@ -4,39 +4,39 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.ResponsePayload;
-import com.myodov.unicherrygarden.api.types.responseresult.ResponseResult;
+import com.myodov.unicherrygarden.api.types.responseresult.ResponseWithPayload;
 import com.myodov.unicherrygarden.api.types.responseresult.SuccessPayload;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**
  * Abstract generic response which contains a request result (<code>Res</code>), normally nullable.
  */
-public class CherryGardenResponseWithResult<
+public class CherryGardenResponseWithPayload<
         Data extends SuccessPayload,
         Failure extends SpecificFailurePayload>
-        implements ResponseResult<Data, Failure>, CherryPickerResponse {
+        implements ResponseWithPayload<Data, Failure>, CherryPickerResponse {
 
     @NonNull
     private final ResponsePayload payload;
 
 
     @JsonCreator
-    protected CherryGardenResponseWithResult(@NonNull ResponsePayload payload) {
+    protected CherryGardenResponseWithPayload(@NonNull ResponsePayload payload) {
         // One, and only one, of `data`/`commonFailure`/`specificFailure`, must be non-null
         assert payload != null : payload;
 
         this.payload = payload;
     }
 
-    public CherryGardenResponseWithResult(@NonNull Data data) {
+    public CherryGardenResponseWithPayload(@NonNull Data data) {
         this((ResponsePayload) data);
     }
 
-    public CherryGardenResponseWithResult(@NonNull CommonFailurePayload commonFailure) {
+    public CherryGardenResponseWithPayload(@NonNull CommonFailurePayload commonFailure) {
         this((ResponsePayload) commonFailure);
     }
 
-    public CherryGardenResponseWithResult(@NonNull Failure specificFailure) {
+    public CherryGardenResponseWithPayload(@NonNull Failure specificFailure) {
         this((ResponsePayload) specificFailure);
     }
 
@@ -48,11 +48,6 @@ public class CherryGardenResponseWithResult<
     }
 
     @Override
-    public @NonNull Type getType() {
-        return payload.getType();
-    }
-
-    @Override
     @NonNull
     public ResponsePayload getPayload() {
         return payload;
@@ -60,18 +55,21 @@ public class CherryGardenResponseWithResult<
 
     @Override
     @NonNull
-    public Data getSuccessfulPayload() {
+    @SuppressWarnings("unchecked") // it is your duty to ensure it is castable
+    public Data getPayloadAsSuccessful() {
         return (Data) payload;
     }
 
     @Override
     @NonNull
+    @SuppressWarnings("unchecked") // it is your duty to ensure it is castable
     public CommonFailurePayload getCommonFailure() {
         return (CommonFailurePayload) payload;
     }
 
     @Override
     @NonNull
+    @SuppressWarnings("unchecked") // it is your duty to ensure it is castable
     public Failure getSpecificFailure() {
         return (Failure) payload;
     }

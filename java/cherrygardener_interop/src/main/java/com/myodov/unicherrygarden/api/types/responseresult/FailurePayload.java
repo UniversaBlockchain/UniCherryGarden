@@ -8,6 +8,23 @@ import org.checkerframework.checker.nullness.qual.NonNull;
  */
 public interface FailurePayload extends ResponsePayload {
 
+    /**
+     * Whether request has failed, and failure is common (may happen with different requests).
+     */
+    @JsonIgnore
+    default boolean isCommonFailure() {
+        return getType() == ResponsePayload.Type.FAILURE_COMMON;
+    }
+
+    /**
+     * Whether request has failed, and failure is specific to the request.
+     */
+    @JsonIgnore
+    default boolean isSpecificFailure() {
+        return getType() == ResponsePayload.Type.FAILURE_SPECIFIC;
+    }
+
+
     abstract class CommonFailurePayload implements FailurePayload {
         enum CommonFailureType {
             //            SPECIFIC, // This is not a common failure, but a request-specific one
@@ -18,10 +35,13 @@ public interface FailurePayload extends ResponsePayload {
         }
 
         @Override
-        public final ResponseResult.@NonNull Type getType() {
-            return ResponseResult.Type.FAILURE_COMMON;
+        public final Type getType() {
+            return ResponsePayload.Type.FAILURE_COMMON;
         }
 
+        /**
+         * For a common failure only (when {@link #isCommonFailure()})
+         */
         @JsonIgnore
         @NonNull
         abstract CommonFailureType getCommonFailureType();
@@ -51,7 +71,6 @@ public interface FailurePayload extends ResponsePayload {
             return CommonFailureType.UNSPECIFIED_FAILURE;
         }
     }
-
 
     final class NotAvailableInOfflineMode extends CommonFailurePayload {
         @Override
@@ -93,8 +112,8 @@ public interface FailurePayload extends ResponsePayload {
 
     abstract class SpecificFailurePayload implements FailurePayload {
         @Override
-        public final ResponseResult.@NonNull Type getType() {
-            return ResponseResult.Type.FAILURE_SPECIFIC;
+        public final Type getType() {
+            return ResponsePayload.Type.FAILURE_SPECIFIC;
         }
     }
 }

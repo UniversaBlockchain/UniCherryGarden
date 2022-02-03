@@ -3,12 +3,12 @@ package com.myodov.unicherrygarden.cherrygardener;
 import com.myodov.unicherrygarden.api.types.MinedTransfer;
 import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
-import com.myodov.unicherrygarden.api.types.responseresult.ResponseResult;
+import com.myodov.unicherrygarden.api.types.responseresult.ResponseWithPayload;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.connector.api.Observer;
 import com.myodov.unicherrygarden.connector.impl.ClientConnectorImpl;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
-import com.myodov.unicherrygarden.messages.CherryGardenResponseWithResult;
+import com.myodov.unicherrygarden.messages.CherryGardenResponseWithPayload;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
@@ -556,7 +556,7 @@ public class CherryGardenerCLI {
                     System.err.printf("ERROR: Could not get the currencies! Problem: %s\n",
                             response.getCommonFailure());
                 } else {
-                    final GetCurrencies.CurrenciesRequestResultPayload payload = response.getSuccessfulPayload();
+                    final GetCurrencies.CurrenciesRequestResultPayload payload = response.getPayloadAsSuccessful();
                     final List<Currency> currencies = payload.currencies;
 
                     System.err.printf("Supported currencies (%s):\n", currencies.size());
@@ -601,7 +601,7 @@ public class CherryGardenerCLI {
                     System.err.printf("ERROR: Could not get the tracked addresses! Problem: %s\n",
                             response.getCommonFailure());
                 } else {
-                    final GetTrackedAddresses.TrackedAddressesRequestResultPayload payload = response.getSuccessfulPayload();
+                    final GetTrackedAddresses.TrackedAddressesRequestResultPayload payload = response.getPayloadAsSuccessful();
                     final List<GetTrackedAddresses.TrackedAddressesRequestResultPayload.TrackedAddressInformation> trackedAddresses = payload.addresses;
 
                     System.err.printf("Tracked addresses (%s):\n", trackedAddresses.size());
@@ -660,7 +660,7 @@ public class CherryGardenerCLI {
                     System.err.printf("ERROR: Could not add the tracked address %s! Problem: %s\n",
                             address, response.getCommonFailure());
                 } else {
-                    final AddTrackedAddresses.AddTrackedAddressesRequestResultPayload payload = response.getSuccessfulPayload();
+                    final AddTrackedAddresses.AddTrackedAddressesRequestResultPayload payload = response.getPayloadAsSuccessful();
                     final Set<String> addedAddresses = payload.addresses;
                     if (addedAddresses.size() == 1 && addedAddresses.stream().findFirst().get().equals(address)) {
                         System.err.printf("Address %s successfully added!\n", address);
@@ -727,13 +727,13 @@ public class CherryGardenerCLI {
                                 .collect(Collectors.toList())
                 ).get();
 
-                if (!responses.stream().allMatch(ResponseResult::isSuccess) || addresses.size() != responses.size()) {
+                if (!responses.stream().allMatch(ResponseWithPayload::isSuccess) || addresses.size() != responses.size()) {
                     System.err.printf("ERROR: Could not get some of the balances for %s!\n", addresses);
                 } else {
                     final Duration duration = Duration.between(startTime, Instant.now());
 
                     final List<GetBalances.BalanceRequestResultPayload> results =
-                            responses.stream().map(CherryGardenResponseWithResult::getSuccessfulPayload).collect(Collectors.toList());
+                            responses.stream().map(CherryGardenResponseWithPayload::getPayloadAsSuccessful).collect(Collectors.toList());
 
                     System.err.printf("Received the balances for %s (with %s confirmation(s)), %d result(s) in %s:\n",
                             addresses, confirmations, results.size(), duration);
@@ -842,7 +842,7 @@ public class CherryGardenerCLI {
                         System.err.printf("ERROR: Could not add the transfers! Problem: %s\n",
                                 response.getCommonFailure());
                     } else {
-                        final GetTransfers.TransfersRequestResultPayload payload = response.getSuccessfulPayload();
+                        final GetTransfers.TransfersRequestResultPayload payload = response.getPayloadAsSuccessful();
 
                         System.err.printf("Received the transfers %s:\n", transfersDescription);
 

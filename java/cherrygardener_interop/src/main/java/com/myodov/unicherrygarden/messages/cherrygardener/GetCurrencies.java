@@ -9,7 +9,7 @@ import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.Common
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.ResponsePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.SuccessPayload;
-import com.myodov.unicherrygarden.messages.CherryGardenResponseWithResult;
+import com.myodov.unicherrygarden.messages.CherryGardenResponseWithPayload;
 import com.myodov.unicherrygarden.messages.CherryGardenerRequest;
 import com.myodov.unicherrygarden.messages.RequestPayload;
 import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
@@ -91,7 +91,7 @@ public class GetCurrencies {
 
 
     public static final class Response
-            extends CherryGardenResponseWithResult<CurrenciesRequestResultPayload, CurrenciesRequestResultFailure> {
+            extends CherryGardenResponseWithPayload<CurrenciesRequestResultPayload, CurrenciesRequestResultFailure> {
 
         @JsonCreator
         private Response(@NonNull ResponsePayload payload) {

@@ -8,7 +8,7 @@ import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.Specif
 import com.myodov.unicherrygarden.api.types.responseresult.ResponsePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.SuccessPayload;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
-import com.myodov.unicherrygarden.messages.CherryGardenResponseWithResult;
+import com.myodov.unicherrygarden.messages.CherryGardenResponseWithPayload;
 import com.myodov.unicherrygarden.messages.CherryPickerRequest;
 import com.myodov.unicherrygarden.messages.RequestPayload;
 import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
@@ -127,7 +127,7 @@ public class GetTrackedAddresses {
     }
 
     public static class Response
-            extends CherryGardenResponseWithResult<TrackedAddressesRequestResultPayload, TrackedAddressesRequestResultFailure> {
+            extends CherryGardenResponseWithPayload<TrackedAddressesRequestResultPayload, TrackedAddressesRequestResultFailure> {
 
         @JsonCreator
         private Response(@NonNull ResponsePayload payload) {

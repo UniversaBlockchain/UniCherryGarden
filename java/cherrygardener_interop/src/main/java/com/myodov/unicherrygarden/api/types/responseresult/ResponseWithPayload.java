@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.myodov.unicherrygarden.api.types.UniCherryGardenError;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * Error handling policy in UniCherryGarden, and UniCherryGarden connector:
@@ -12,64 +13,65 @@ import org.checkerframework.checker.nullness.qual.NonNull;
  * <li>
  * If something works locally (without any networking communication e.g. with UniCherryGarden cluster members),
  * it may return a regular Java type/class (it may even be nullable, depending on circumstances).<br>
- * If something works in networking configuration, it returns a instance of {@link ResponseResult}.
+ * If something works in networking configuration, it returns a instance of {@link ResponseWithPayload}.
+ * {@link ResponseWithPayload} has enough methods to understand whether the result was successful or not,
+ * and how to interpret the payload. But you may just use {@link ResponseWithPayload#getPayload} and,
+ * depending on what class it is, use it accordingly.
  * <br>
  * Example 1: an operation to sign a message with a private key happens completely in client memory space,
  * hence it may return just the needed Java classes.<br>
  * Example 2: a request to get the list of currencies/assets, supported by the network instance of UniCherryGarden,
- * involves a network call to CherryGardener. Hence the result is provided via {@link ResponseResult}.
+ * involves a network call to CherryGardener. Hence the result is provided via {@link ResponseWithPayload}.
  * </li>
  * <li>
  * If a problem occurred due to wrong nullability of arguments, you should except an NPE or {@link AssertionError}.
  * To prevent this, when using the code from Kotlin that is marked
- * with {@link org.checkerframework.checker.nullness.qual.NonNull} decorator, declare it as “<code>Type</code>”;<br>
+ * with {@link NonNull} decorator, declare it as “<code>Type</code>”;<br>
  * When using the code from Kotlin that is marked
- * with {@link org.checkerframework.checker.nullness.qual.Nullable} decorator, declare it as “<code>Type?</code>”.
+ * with {@link Nullable} decorator, declare it as “<code>Type?</code>”.
  * </li>
  * <li>
- * If a problem happened due to the bad arguments, and could be prevented by changing the code,
+ * If a problem happened due to the bad arguments (violating the requirements usually defined in the Javadoc),
+ * and could be prevented by changing the code,
  * then, according to the Java Error/Exception best practices, the code throws an {@link Error},
  * actually a subclass of {@link UniCherryGardenError}.
  * Do not catch it, fix the code!<br>
  * If a problem occurred deeper during the network processing/handling, probably on the server side,
- * the result will not throw an exception, but it will be an instance of {@link FailureResponse}.
- * {@link #getCommonFailure()} call will provide the details.
+ * the result will not throw an exception, but it will be {@link #isFailure()}, and payload will be an instance of
+ * {@link FailurePayload}.
  * You may want to handle this problem, getting more specific or less specific into the details, as you wish.
  *   <ul>
  *     <li>
  *     Some problems can be common to many requests, e.g. calling UniCherryGarden which is in a state when it cannot
  *     handle the queries.
- *     The result will be an instance of {@link FailureResponse.CommonFailureResponse}.
+ *     The payload will be an instance of {@link FailurePayload.CommonFailurePayload}.
+ *     You can get it directly as {@link #getCommonFailure()}, but only if {@link #isCommonFailure()}.
  *     </li>
  *     <li>
  *     Some problems can be specific to the request type.
- *     The result will be an instance of {@link FailureResponse.SpecificFailureResponse}.
+ *     The payload will be an instance of {@link FailurePayload.SpecificFailurePayload}.
+ *     You can get it directly as {@link #getSpecificFailure()}, but only if {@link #isSpecificFailure()}.
  *     </li>
  *   </ul>
  * </li>
  * <li>
- * If no problem occurred, the result will be an instance of {@link SuccessResponse}.
- * {@link #getSuccessfulPayload()} call will provide the details.
- * You will want to handle this as success.
+ * If no problem occurred, the result payload will be an instance of {@link SuccessPayload}.
+ * You can get it directly as {@link #getPayloadAsSuccessful()} but only if {@link #isSuccess()}.
  * <br>
  * Example 1: a request to add a tracked address resulted in UniCherryGarden (UniCherryPicker) replying
  * that such address is registered already. This is not a error or even a problem (you are not obliged to check
- * if the address is registered before an attempt to add – EAFP!); the response will be a {@link SuccessResponse},
- * with {@link #getSuccessfulPayload()} informing you that the address was not actually added.<br>
+ * if the address is registered before an attempt to add – EAFP!); the payload will be a {@link SuccessPayload},
+ * with {@link #getPayloadAsSuccessful()} informing you that the address was not actually added.<br>
  * Example 2: a request to get the balances came to UniCherryGarden which is not even configured yet
  * and not collecting the data. This is a common error which doesn’t allow almost any calls to be used;
- * the response will be an instance of {@link FailureResponse}, and even more specific, of {@link FailureResponse.CommonFailureResponse}.
+ * the response will be an instance of {@link FailurePayload},
+ * and even more specific, of {@link FailurePayload.CommonFailurePayload}.
  * </li>.
  * </ol>
  */
-public interface ResponseResult<
+public interface ResponseWithPayload<
         Payload extends SuccessPayload,
         Failure extends SpecificFailurePayload> {
-    enum Type {
-        SUCCESS,
-        FAILURE_COMMON,
-        FAILURE_SPECIFIC
-    }
 
     /**
      * Type of the result.
@@ -77,25 +79,37 @@ public interface ResponseResult<
      * Most of the times you don’t want to use this method, use {@link #isSuccess} or {@link #isFailure} instead.
      */
     @JsonIgnore
-    @NonNull
-    Type getType();
+    default ResponsePayload.@NonNull Type getType() {
+        return getPayload().getType();
+    }
 
     /**
      * Whether request was successful.
-     * Use {@link #getSuccessfulPayload()} to get more details if available.
+     * Use {@link #getPayloadAsSuccessful()} to get more details if available.
      * Do not use {@link #getCommonFailure()}!
      * <p>
      * Antonym: {@link #isFailure()}.
      */
     @JsonIgnore
     default boolean isSuccess() {
-        return getType() == Type.SUCCESS;
+        return getType() == ResponsePayload.Type.SUCCESS;
     }
 
     /**
-     * Get the payload of successful request execution; the payload contents is specific to the request.
+     * Whether request has failed.
+     * Use {@link #getCommonFailure()} to get more details if available.
+     * Do not use {@link #getPayloadAsSuccessful()}!
      * <p>
-     * Available only if {@link #isSuccess()}.
+     * Antonym: {@link #isSuccess()}.
+     */
+    @JsonIgnore
+    default boolean isFailure() {
+        final ResponsePayload.Type type = getType();
+        return type == ResponsePayload.Type.FAILURE_COMMON || type == ResponsePayload.Type.FAILURE_SPECIFIC;
+    }
+
+    /**
+     * Get the payload of request execution; response may be successful or not.
      */
     @NonNull
     ResponsePayload getPayload();
@@ -103,51 +117,54 @@ public interface ResponseResult<
     /**
      * Get the payload of successful request execution; the payload contents is specific to the request.
      * <p>
-     * Available only if {@link #isSuccess()}.
+     * Works only if {@link #isSuccess()}. Otherwise, use {@link #getFailure()}.
+     *
+     * @throws ClassCastException if called not when {@link #isSuccess()}.
      */
     @JsonIgnore
     @NonNull
-    Payload getSuccessfulPayload();
+    Payload getPayloadAsSuccessful();
 
     /**
-     * Whether request has failed.
-     * Use {@link #getCommonFailure()} to get more details if available.
-     * Do not use {@link #getSuccessfulPayload()}!
+     * Get the payload of failed request execution;
+     * the data is a “failure object”, either a common failure or specific one.
      * <p>
-     * Antonym: {@link #isSuccess()}.
+     * Works only if {@link #isFailure()}. Otherwise, use {@link #getPayloadAsSuccessful()}.
+     *
+     * @throws ClassCastException if called not when {@link #isFailure()}.
      */
     @JsonIgnore
     @NonNull
-    default boolean isFailure() {
-        return getType() == Type.FAILURE_COMMON || getType() == Type.FAILURE_SPECIFIC;
+    default FailurePayload getFailure() {
+        return (FailurePayload) getPayload();
     }
 
     /**
      * Whether request has failed, and failure is common (may happen with different requests).
      * Use {@link #getCommonFailure()} to get more details if available.
-     * Do not use {@link #getSuccessfulPayload()}!
+     * Do not use {@link #getPayloadAsSuccessful()}!
      */
     @JsonIgnore
-    @NonNull
     default boolean isCommonFailure() {
-        return getType() == Type.FAILURE_COMMON;
+        return getType() == ResponsePayload.Type.FAILURE_COMMON;
     }
 
     /**
      * Whether request has failed, and failure is specific to the request.
      * Use {@link #getSpecificFailure()} to get more details if available.
-     * Do not use {@link #getSuccessfulPayload()}!
+     * Do not use {@link #getPayloadAsSuccessful()}!
      */
     @JsonIgnore
-    @NonNull
     default boolean isSpecificFailure() {
-        return getType() == Type.FAILURE_SPECIFIC;
+        return getType() == ResponsePayload.Type.FAILURE_SPECIFIC;
     }
 
     /**
      * Get the data of request failure; the data is common to the requests.
      * <p>
-     * Available only if {@link #isFailure()}, and moreover, if not {@link #isSpecificFailure()}.
+     * Works only if {@link #isFailure()}, and moreover, if not {@link #isSpecificFailure()}.
+     *
+     * @throws ClassCastException if called not when {@link #isCommonFailure()}.
      */
     @JsonIgnore
     FailurePayload.@NonNull CommonFailurePayload getCommonFailure();
@@ -156,6 +173,8 @@ public interface ResponseResult<
      * Get the data of request failure; the data is specific to the request.
      * <p>
      * Available only if {@link #isFailure()} and moreover, if {@link #isSpecificFailure()}.
+     *
+     * @throws ClassCastException if called not when {@link #isSpecificFailure()} ()}.
      */
     @JsonIgnore
     @NonNull
