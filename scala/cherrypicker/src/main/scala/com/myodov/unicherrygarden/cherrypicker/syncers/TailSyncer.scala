@@ -174,7 +174,7 @@ private class TailSyncer(dbStorage: DBStorageAPI,
           }
         } else {
           logger.error(s"TailSyncing failure for $tailSyncingRange")
-          pauseThenReiterateOnError
+          pauseThenReiterateOnError()
         }
     }
   }

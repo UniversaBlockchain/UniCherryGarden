@@ -46,7 +46,7 @@ sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
 sonatypeCredentialHost := "s01.oss.sonatype.org"
 publishTo := sonatypePublishToBundle.value
 
-val projectVersion = "0.8.5"
+val projectVersion = "0.9.0"
 name := "unicherrygarden"
 version := projectVersion
 
@@ -58,7 +58,7 @@ val unicherryGardenBuildTimestamp = Instant.now
 inThisBuild(List(
   organization := "com.myodov.unicherrygarden",
   version := projectVersion,
-  scalaVersion := "2.13.0",
+  scalaVersion := "2.13.8",
   javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-parameters", "-Xlint:unchecked"),
   organizationName := "UniCherryGarden",
   organizationHomepage := Some(url("https://github.com/UniversaBlockchain/UniCherryGarden")),

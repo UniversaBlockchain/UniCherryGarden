@@ -180,11 +180,11 @@ You can choose a different HOCON configuration file instead of the regular appli
         cliConfig.mode match {
           case CLIMode.Init => init(wipe = false)
           case CLIMode.Wipe => init(wipe = true)
-          case CLIMode.LaunchGardenWatcher => launchWatcher
-          case CLIMode.LaunchGardener => launchGardener
+          case CLIMode.LaunchGardenWatcher => launchWatcher()
+          case CLIMode.LaunchGardener => launchGardener()
           case CLIMode.LaunchGardenerGardenWatcher => {
-            launchWatcher
-            launchGardener
+            launchWatcher()
+            launchGardener()
           }
           case unhandledMode => println(s"Unhandled mode $unhandledMode!")
         }

@@ -87,7 +87,7 @@ class PostgreSQLStorage(jdbcUrl: String,
           )
         )
       }).single
-        .apply
+        .apply()
     }
 
     override final def getFirstBlockResolvingSomeNeverStartedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
@@ -108,7 +108,7 @@ class PostgreSQLStorage(jdbcUrl: String,
       LIMIT 1;
       """.map(_.intOpt("least_sync_from_block_number")) // may be null if no such records
         .single
-        .apply
+        .apply()
         .flatten // Option[Option[Int]] to Option[Int]
     }
 
@@ -130,7 +130,7 @@ class PostgreSQLStorage(jdbcUrl: String,
       LIMIT 1;
       """.map(_.intOpt("least_sync_from_block_number")) // may be null
         .single
-        .apply
+        .apply()
         .flatten // Option[Option[Int]] to Option[Int]
     }
   }
@@ -139,13 +139,13 @@ class PostgreSQLStorage(jdbcUrl: String,
     def setRestartedAt(implicit session: DBSession = AutoSession) = {
       sql"""
       UPDATE ucg_state SET restarted_at=now()
-      """.execute.apply
+      """.execute.apply()
     }
 
     override final def setLastHeartbeatAt(implicit session: DBSession = AutoSession) = {
       sql"""
       UPDATE ucg_state SET last_heartbeat_at=now()
-      """.execute.apply
+      """.execute.apply()
     }
 
     override final def setSyncState(state: String)(implicit session: DBSession = AutoSession) = {
@@ -154,7 +154,7 @@ class PostgreSQLStorage(jdbcUrl: String,
       UPDATE ucg_state
       SET sync_state = $state
       WHERE sync_state != $state
-      """.execute.apply
+      """.execute.apply()
     }
 
     def setEthNodeData(blockNumber: Int, currentBlock: Int, highestBlock: Int)(implicit session: DBSession = AutoSession) = {
@@ -173,7 +173,7 @@ class PostgreSQLStorage(jdbcUrl: String,
         eth_node_blocknumber != $blockNumber OR
         eth_node_current_block != $currentBlock OR
         eth_node_highest_block != $highestBlock
-      """.execute.apply
+      """.execute.apply()
     }
 
     def setSyncedFromBlockNumber(blockNumber: Long)(implicit session: DBSession) = {
@@ -181,7 +181,7 @@ class PostgreSQLStorage(jdbcUrl: String,
       UPDATE ucg_state
       SET synced_from_block_number = $blockNumber
       WHERE synced_from_block_number != $blockNumber
-      """.execute.apply
+      """.execute.apply()
     }
 
     /** Move the progress to the next block:
@@ -263,7 +263,7 @@ class PostgreSQLStorage(jdbcUrl: String,
         )
         SELECT *
         FROM data_to_insert
-        """.execute.apply
+        """.execute.apply()
       }
 
       // 2. Update ucg_currency_tracked_address_progress records
@@ -330,7 +330,7 @@ class PostgreSQLStorage(jdbcUrl: String,
         WHERE
             upd_cta_progress.currency_id = data_to_update.currency_id AND
             upd_cta_progress.tracked_address_id = data_to_update.tracked_address_id;
-        """.execute.apply
+        """.execute.apply()
       }
     }
   }
@@ -357,7 +357,7 @@ class PostgreSQLStorage(jdbcUrl: String,
         SELECT *
         FROM ucg_currency
         WHERE verified IN ($verifiedValues);
-        """.map(DBCurrency.fromUcgCurrency(_)).list.apply
+        """.map(DBCurrency.fromUcgCurrency(_)).list.apply()
       } else {
         // Haven't asked for any currencies; so the result is definitely empty
         List.empty
@@ -384,13 +384,13 @@ class PostgreSQLStorage(jdbcUrl: String,
         rs.string("address"),
         rs.stringOpt("ucg_comment"),
         rs.intOpt("synced_from_block_number")
-      )).list.apply
+      )).list.apply()
     }
 
     override final def getJustAddresses(implicit session: DBSession = ReadOnlyAutoSession): Set[String] = {
       sql"""
       SELECT address FROM ucg_tracked_address;
-      """.map(_.string("address")).list.apply.toSet
+      """.map(_.string("address")).list.apply().toSet
     }
 
     override final def addTrackedAddress(
@@ -422,7 +422,7 @@ class PostgreSQLStorage(jdbcUrl: String,
             ELSE NULL -- should fail
           END
         );
-        """.execute.apply
+        """.execute.apply()
         true
       } catch {
         case ex: SQLException =>
@@ -444,7 +444,7 @@ class PostgreSQLStorage(jdbcUrl: String,
       sql"""
       INSERT INTO ucg_block(number, hash, parent_hash, timestamp)
       VALUES (${block.number}, ${block.hash}, ${block.parentHash}, ${block.timestamp})
-      """.execute.apply
+      """.execute.apply()
     }
 
     override final def getBlockByNumber(
@@ -463,7 +463,7 @@ class PostgreSQLStorage(jdbcUrl: String,
             timestamp = rs.timestamp("timestamp").toInstant
           ))
         .single
-        .apply
+        .apply()
     }
 
     override final def getLatestHashes(
@@ -486,7 +486,7 @@ class PostgreSQLStorage(jdbcUrl: String,
       """
           .map(rs => (rs.int("number") -> rs.string("hash")))
           .list
-          .apply
+          .apply()
           .to(SortedMap)
 
       // Validate output before returning
@@ -515,26 +515,26 @@ class PostgreSQLStorage(jdbcUrl: String,
         sql"""
         DELETE FROM ucg_tx_log
         WHERE block_number >= $startBlockNumber
-        """.execute.apply
+        """.execute.apply()
         logger.debug(s"Rewound ucg_tx_log")
 
         sql"""
         DELETE FROM ucg_transaction
         WHERE block_number >= $startBlockNumber
-        """.execute.apply
+        """.execute.apply()
         logger.debug(s"Rewound ucg_transaction")
 
         sql"""
         DELETE FROM ucg_block
         WHERE number >= $startBlockNumber
-        """.execute.apply
+        """.execute.apply()
         logger.debug(s"Rewound ucg_block")
 
         sql"""
         UPDATE ucg_currency_tracked_address_progress
         SET synced_to_block_number = $startBlockNumber - 1
         WHERE synced_to_block_number >= $startBlockNumber
-        """.execute.apply
+        """.execute.apply()
         logger.debug(s"Rewound ucg_currency_tracked_address_progress") // ucg_tracked_address.synced_to_block_number is not seriously used
 
         true
@@ -591,7 +591,7 @@ class PostgreSQLStorage(jdbcUrl: String,
         value = EXCLUDED.value,
         effective_gas_price = EXCLUDED.effective_gas_price,
         cumulative_gas_used = EXCLUDED.cumulative_gas_used
-      """.execute.apply
+      """.execute.apply()
     }
   }
 
@@ -744,7 +744,7 @@ class PostgreSQLStorage(jdbcUrl: String,
         DBCurrency.fromUcgCurrency(rs, "currency_").asCurrency,
         rs.bigDecimal("balance"),
         rs.int("block_number")
-      )).list.apply
+      )).list.apply()
   }
 
   object transfers extends DBStorageAPI.Transfers {
@@ -893,7 +893,7 @@ class PostgreSQLStorage(jdbcUrl: String,
           rs.bigDecimal("fees_total_human")
         ),
         rs.intOpt("log_index").map(Integer.valueOf).orNull
-      )).list.apply
+      )).list.apply()
   }
 
 }

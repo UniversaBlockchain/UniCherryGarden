@@ -117,7 +117,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
           None
         } else {
           // Reorg/rewind, phase 3/4: “reorg check” – did reorg happened?
-          reorgCheck match {
+          reorgCheck() match {
             case Left(None) =>
               logger.debug("No reorg needed")
               // outer Option is None, meaning we can proceed with syncing
