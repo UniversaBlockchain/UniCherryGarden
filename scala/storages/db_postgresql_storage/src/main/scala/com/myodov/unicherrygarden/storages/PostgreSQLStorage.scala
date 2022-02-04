@@ -311,12 +311,10 @@ class PostgreSQLStorage(jdbcUrl: String,
                     -- whether synced_to_block_number IS NULL or not.
                     (
                       -- We change the NULL to_block_number to non-NULL
-                      -- only if it the current block matches the smallest
-                      -- of (sync-currency-from-block) and (sync-address-first-block)
+                      -- only if it the current block matches the currently recorded sync_from_block_number
                       (
-                        synced_to_block_number IS NULL AND
-                        arg.block_number = LEAST(currency.sync_from_block_number,
-                                                 address.synced_from_block_number)
+                          synced_to_block_number IS NULL AND
+                          arg.block_number = cta_progress.synced_from_block_number
                       ) OR
                       -- When synced_to_block_number IS NOT NULL:
                       -- Non-NULL to_block_number can only be incremented.
