@@ -12,13 +12,16 @@ public class EthUtils {
     static final int TRANSACTION_HASH_LENGTH = 66;
     static final int ADDRESS_HASH_LENGTH = 42;
 
-    public static final int BYZANTIUM_FIRST_BLOCK = 4370000;
+    public static int BYZANTIUM_FIRST_BLOCK = 4_370_000;
+
+    public static int ETH_TRANSFER_GAS_LIMIT = 21_000;
+    public static BigInteger ETH_TRANSFER_GAS_LIMIT_BIGINTEGER = BigInteger.valueOf(ETH_TRANSFER_GAS_LIMIT);
 
 
     /**
      * Check if a string is a valid “hex string”, like ones used to store hashes.
      */
-    public static final boolean isValidHexString(@NonNull String str) {
+    public static boolean isValidHexString(@NonNull String str) {
         if (str == null) {
             throw new IllegalArgumentException("str is null!");
         }
@@ -28,7 +31,7 @@ public class EthUtils {
     /**
      * Check if a `str` value is valid for usage in Ethereum as a hex string.
      */
-    public static final boolean isValidHexString(@NonNull String str, int length) {
+    public static boolean isValidHexString(@NonNull String str, int length) {
         if (str == null) {
             throw new IllegalArgumentException("str is null!");
         }
@@ -46,7 +49,7 @@ public class EthUtils {
          * Whether the argument is a valid Ethereum address
          * (starts from 0x, then goes the hexadecimal number of proper length in any case).
          */
-        public static final boolean isValidAddress(@NonNull String address) {
+        public static boolean isValidAddress(@NonNull String address) {
             if (address == null) {
                 throw new IllegalArgumentException("address is null!");
             }
@@ -58,7 +61,7 @@ public class EthUtils {
          * (starts from 0x, then goes the hexadecimal number of proper length in any case),
          * and is force-lowercased.
          */
-        public static final boolean isValidLowercasedAddress(@NonNull String address) {
+        public static boolean isValidLowercasedAddress(@NonNull String address) {
             return isValidHexString(address, ADDRESS_HASH_LENGTH);
         }
 
@@ -66,7 +69,7 @@ public class EthUtils {
          * Whether the argument is a valid Ethereum transaction hash
          * (including EIP55 checksum).
          */
-        public static final boolean isValidEip55Address(@NonNull String address) {
+        public static boolean isValidEip55Address(@NonNull String address) {
             if (address == null) {
                 throw new IllegalArgumentException("address is null!");
             }
@@ -84,14 +87,14 @@ public class EthUtils {
         /**
          * Whether the argument is a valid Ethereum block hash.
          */
-        public static final boolean isValidBlockHash(@NonNull String hash) {
+        public static boolean isValidBlockHash(@NonNull String hash) {
             return isValidHexString(hash, BLOCK_HASH_LENGTH);
         }
 
         /**
          * Whether the argument is a valid Ethereum transaction hash.
          */
-        public static final boolean isValidTransactionHash(@NonNull String hash) {
+        public static boolean isValidTransactionHash(@NonNull String hash) {
             return isValidHexString(hash, TRANSACTION_HASH_LENGTH);
         }
     }
@@ -108,7 +111,7 @@ public class EthUtils {
          * @return A lowercased hex address string (like "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24").
          */
         @NonNull
-        public static final String toAddress(@NonNull String uint256Str) {
+        public static String toAddress(@NonNull String uint256Str) {
             if (!isValidHexString(uint256Str, 66)) {
                 throw new IllegalArgumentException(String.format("%s is not a valid uint256 string!", uint256Str));
             }
@@ -128,7 +131,7 @@ public class EthUtils {
          *             Must be lowercased and strictly 42 symbols long.
          */
         @NonNull
-        public static final String fromAddress(@NonNull String addr) {
+        public static String fromAddress(@NonNull String addr) {
             if (!Addresses.isValidLowercasedAddress(addr)) {
                 throw new IllegalArgumentException(String.format("%s is not a valid Ethereum address!", addr));
             }
@@ -141,7 +144,7 @@ public class EthUtils {
          * (assuming we know the `decimals` amount) to proper `BigDecimal`.
          */
         @NonNull
-        public static final BigInteger toBigInteger(@NonNull String uint256Str) {
+        public static BigInteger toBigInteger(@NonNull String uint256Str) {
             if (!isValidHexString(uint256Str, 66)) {
                 throw new IllegalArgumentException(String.format("%s is not a valid uint256 string!", uint256Str));
             }
@@ -158,7 +161,7 @@ public class EthUtils {
          * (assuming we know the `decimals` amount) to proper `BigDecimal`.
          */
         @NonNull
-        public static final BigDecimal valueFromUint256(@NonNull BigInteger uint256, int decimals) {
+        public static BigDecimal valueFromUint256(@NonNull BigInteger uint256, int decimals) {
             if (uint256 == null) {
                 throw new IllegalArgumentException("uint256 is null!");
             }
@@ -169,7 +172,7 @@ public class EthUtils {
          * Convert the value to Ethereum-style `Uint256`.
          */
         @NonNull
-        public static final BigInteger valueToUint256(@NonNull BigDecimal bd, int decimals) {
+        public static BigInteger valueToUint256(@NonNull BigDecimal bd, int decimals) {
             if (bd == null) {
                 throw new IllegalArgumentException("bd is null!");
             }
@@ -196,7 +199,7 @@ public class EthUtils {
          * Convert the amount (defined in Wei) to regular {@link BigDecimal} value of Ethers.
          */
         @NonNull
-        public static final BigDecimal valueFromWeis(@NonNull BigInteger weis) {
+        public static BigDecimal valueFromWeis(@NonNull BigInteger weis) {
             if (weis == null) {
                 throw new IllegalArgumentException("weis is null!");
             }
@@ -207,7 +210,7 @@ public class EthUtils {
          * Convert the amount of Ethers to Wei.
          */
         @NonNull
-        public static final BigInteger valueToWeis(@NonNull BigDecimal ethers) {
+        public static BigInteger valueToWeis(@NonNull BigDecimal ethers) {
             if (ethers == null) {
                 throw new IllegalArgumentException("ethers is null!");
             }
@@ -218,7 +221,7 @@ public class EthUtils {
          * Convert the amount (defined in Gwei) to regular {@link BigDecimal} value of Ethers.
          */
         @NonNull
-        public static final BigDecimal valueFromGweis(@NonNull BigDecimal gweis) {
+        public static BigDecimal valueFromGweis(@NonNull BigDecimal gweis) {
             if (gweis == null) {
                 throw new IllegalArgumentException("gweis is null!");
             }
@@ -229,7 +232,7 @@ public class EthUtils {
          * Convert the amount of Ethers to Gwei.
          */
         @NonNull
-        public static final BigDecimal valueToGweis(@NonNull BigDecimal ethers) {
+        public static BigDecimal valueToGweis(@NonNull BigDecimal ethers) {
             if (ethers == null) {
                 throw new IllegalArgumentException("ethers is null!");
             }

@@ -11,7 +11,6 @@ import com.myodov.unicherrygarden.connector.impl.actors.messages.AddTrackedAddre
 import com.myodov.unicherrygarden.connector.impl.actors.messages.GetBalancesCommand;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.GetTrackedAddressesCommand;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.GetTransfersCommand;
-import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
@@ -45,27 +44,6 @@ public class ObserverImpl implements Observer {
         this.actorSystem = actorSystem;
     }
 
-    /**
-     * @throws RuntimeException if <code>data</code> is not a valid lowercased Ethereum address;
-     */
-    private void requireValidEthereumAddress(@NonNull String argname, @NonNull String data) {
-        assert argname != null : argname;
-        assert data != null : data;
-        if (!EthUtils.Addresses.isValidLowercasedAddress(data)) {
-            throw new UniCherryGardenError.NotALowercasedEthereumAddressError(data);
-        }
-    }
-
-    /**
-     * @throws RuntimeException if <code>data</code> is not a valid block number;
-     */
-    private void requireValidBlockNumber(@NonNull String argname, int data) {
-        assert argname != null : argname;
-        if (data < 0) {
-            throw new UniCherryGardenError.NotAnBlockNumber(String.valueOf(data));
-        }
-    }
-
     @Override
     public AddTrackedAddresses.@NonNull Response startTrackingAddress(
             @NonNull String address,
@@ -73,7 +51,7 @@ public class ObserverImpl implements Observer {
             @Nullable Integer blockNumber,
             @Nullable String comment) {
         assert address != null : address;
-        requireValidEthereumAddress("address", address);
+        Validators.requireValidLowercasedEthereumAddress("address", address);
         if ((mode == AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK) != (blockNumber != null)) {
             throw new UniCherryGardenError.ArgumentError(String.format(
                     "Tracking mode (%s) should be FROM_BLOCK if and only if blockNumber (%s) is not null!",
@@ -128,8 +106,8 @@ public class ObserverImpl implements Observer {
             @Nullable Set<String> filterCurrencyKeys) {
         assert confirmations >= 0 : confirmations;
         assert address != null : address;
-        requireValidEthereumAddress("address", address);
-        requireValidBlockNumber("confirmations", confirmations);
+        Validators.requireValidLowercasedEthereumAddress("address", address);
+        Validators.requireValidBlockNumber("confirmations", confirmations);
 
         final CompletionStage<GetBalancesCommand.Result> stage =
                 AskPattern.ask(
@@ -160,16 +138,16 @@ public class ObserverImpl implements Observer {
             boolean includeBalances
     ) {
         // Validations
-        requireValidBlockNumber("confirmations", confirmations);
+        Validators.requireValidBlockNumber("confirmations", confirmations);
 
-        if (sender != null) requireValidEthereumAddress("sender", sender);
-        if (receiver != null) requireValidEthereumAddress("receiver", receiver);
+        if (sender != null) Validators.requireValidLowercasedEthereumAddress("sender", sender);
+        if (receiver != null) Validators.requireValidLowercasedEthereumAddress("receiver", receiver);
         if (sender == null && receiver == null) {
             throw new UniCherryGardenError.ArgumentError("At least sender or receiver must be specified!");
         }
 
-        if (startBlock != null) requireValidBlockNumber("startBlock", startBlock);
-        if (endBlock != null) requireValidBlockNumber("endBlock", endBlock);
+        if (startBlock != null) Validators.requireValidBlockNumber("startBlock", startBlock);
+        if (endBlock != null) Validators.requireValidBlockNumber("endBlock", endBlock);
         if (startBlock != null && endBlock != null && startBlock > endBlock) {
             throw new UniCherryGardenError.ArgumentError(String.format(
                     "If both are defined, startBlock (%d) must be <= endBlock (%d)!", startBlock, endBlock));

@@ -361,7 +361,7 @@ object CherryPicker extends LazyLogging {
         onError(s"{msg}: $e")
     }
 
-    logger.debug(s"Replying to $messageName with $response")
+    logger.debug(s"Replying to $messageName") // do not log $response here, it may be very large
     replyTo ! response
     Behaviors.stopped
   }

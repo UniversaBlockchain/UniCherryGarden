@@ -21,7 +21,7 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
                 null
         );
 
-        final ArrayList<Currency> currencies = new ArrayList() {{
+        final ArrayList<Currency> currencies = new ArrayList<Currency>() {{
             add(eth);
             add(erc20);
         }};

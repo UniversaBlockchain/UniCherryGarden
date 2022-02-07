@@ -115,6 +115,30 @@ public class CherryGardenerCLI {
                             "the --confirmations value permit);\n" +
                             "--with-balances (optional; default: omitted)."
             ));
+            addOption(new Option(
+                    "cot", "create-outgoing-transfer", true,
+                    "Build a transaction for outgoing transfer of some currency\n" +
+                            "from some address to some other address.\n" +
+                            "The transaction is just built (locally, in memory) but not sent out to the blockchain\n" +
+                            "and not stored anywhere.\n" +
+                            "See also:\n" +
+                            "--sender (mandatory),\n" +
+                            "--recipient (mandatory),\n" +
+                            "--currency-code (mandatory),\n" +
+                            "--amount (mandatory),\n" +
+                            "--comment (optional)."));
+            addOption(new Option(
+                    "st", "sign-transaction", true,
+                    "Build a transaction for outgoing transfer of some currency\n" +
+                            "from some address to some other address.\n" +
+                            "The transaction is just built (locally, in memory) but not sent out to the blockchain\n" +
+                            "and not stored anywhere.\n" +
+                            "See also:\n" +
+                            "--sender (mandatory),\n" +
+                            "--recipient (mandatory),\n" +
+                            "--currency-code (mandatory),\n" +
+                            "--amount (mandatory),\n" +
+                            "--comment (optional)."));
             setRequired(true);
         }};
         options.addOptionGroup(commandOptionGroup);

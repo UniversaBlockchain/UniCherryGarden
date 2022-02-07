@@ -2,6 +2,8 @@ package com.myodov.unicherrygarden.api.types;
 
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.web3j.crypto.Credentials;
+import org.web3j.crypto.ECKeyPair;
 
 /**
  * Any Ethereum-compatible private key.
@@ -38,7 +40,6 @@ public interface PrivateKey extends AutoCloseable {
      *
      * @apiNote always 32 bytes long.
      */
-    @NonNull
     byte[] getBytes();
 
     /**
@@ -51,14 +52,29 @@ public interface PrivateKey extends AutoCloseable {
     String getBytesHex();
 
     /**
+     * Get the private key as {@link ECKeyPair} Web3j structure.
+     */
+    @NonNull
+    default ECKeyPair getECKeyPair() {
+        return ECKeyPair.create(getBytes());
+    }
+
+    /**
+     * Get the private key as {@link Credentials} Web3j structure.
+     */
+    @NonNull
+    default Credentials getCredentials() {
+        return Credentials.create(getECKeyPair());
+    }
+
+    /**
      * Sign a text message (actually a byte array) in a manner compatible with MyEtherWallet/MyCrypto
      * “sign” operation.
      * <p>
      *
      * @return just the signature (as bytes), not a complete JSON-like response.
      */
-    @NonNull
-    byte[] signMessage(@NonNull byte[] msg);
+    byte[] signMessage(byte[] msg);
 
     /**
      * Sign a text message (a text string) in a manner compatible with MyEtherWallet/MyCrypto
@@ -67,7 +83,6 @@ public interface PrivateKey extends AutoCloseable {
      *
      * @return just the signature (as bytes), not a complete JSON-like response.
      */
-    @NonNull
     default byte[] signMessage(@NonNull String msg) {
         return signMessage(msg.getBytes());
     }

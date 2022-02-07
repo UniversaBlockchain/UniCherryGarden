@@ -2,6 +2,8 @@ package com.myodov.unicherrygarden.api.types;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.math.BigInteger;
+
 /**
  * Any Error that should not be handled by the caller, but probably change of code is required.
  */
@@ -23,14 +25,14 @@ public class UniCherryGardenError extends Error {
     /**
      * One of arguments that should contain a valid Ethereum address, contains wrong data.
      */
-    static class NotAnEthereumAddressError extends ArgumentError {
+    public static class NotAnEthereumAddressError extends ArgumentError {
         public NotAnEthereumAddressError(@NonNull String badValue) {
             super(String.format("%s is not a valid Ethereum address", badValue));
         }
     }
 
     /**
-     * One of arguments that should contain a valid Ethereum address (it is required it must be lowercased),
+     * One of arguments that should contain a valid Ethereum address (it is required to be lowercased),
      * contains wrong data.
      */
     public static class NotALowercasedEthereumAddressError extends NotAnEthereumAddressError {
@@ -40,12 +42,31 @@ public class UniCherryGardenError extends Error {
     }
 
     /**
+     * One of arguments that should contain a valid Currency Code (either a valid lowercased Ethereum address,
+     * or empty string), contains wrong data.
+     */
+    public static class NotACurrencyCode extends NotAnEthereumAddressError {
+        public NotACurrencyCode(@NonNull String badValue) {
+            super(String.format("%s is not a valid Currency Code", badValue));
+        }
+    }
+
+    /**
      * One of arguments that should contain a valid block number, contains wrong data.
      */
     public static class NotAnBlockNumber extends ArgumentError {
-        public NotAnBlockNumber(@NonNull String badValue) {
+        public NotAnBlockNumber(@NonNull BigInteger badValue) {
             super(String.format("%s is not a valid block number (should be >= 0)", badValue));
         }
     }
 
+    /**
+     * One of arguments that should contain a valid nonce, contains wrong data.
+     */
+    public static class NotAnValidNonce extends ArgumentError {
+        public NotAnValidNonce(@NonNull BigInteger badValue) {
+            super(String.format("%s is not a valid block number (should be 0 <= nonce <= 2^64-1 per EIP-2681)",
+                    badValue));
+        }
+    }
 }

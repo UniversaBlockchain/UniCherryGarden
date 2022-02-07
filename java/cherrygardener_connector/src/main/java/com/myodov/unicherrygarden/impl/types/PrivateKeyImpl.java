@@ -19,20 +19,25 @@ import static org.web3j.crypto.Sign.getEthereumMessageHash;
  * Default implementation of {@link PrivateKey} interface.
  */
 public class PrivateKeyImpl implements PrivateKey {
-    @NonNull
     private final byte[] bytes;
 
     @NonNull
     private final SecureRandom rng = new SecureRandom();
 
 
-    public PrivateKeyImpl(@NonNull byte[] bytes) {
+    /**
+     * Default constructor (from byte array).
+     */
+    public PrivateKeyImpl(byte[] bytes) {
         assert bytes != null;
         assert bytes.length == Ethereum.PRIVATE_KEY_SIZE_BYTES : bytes.length;
 
         this.bytes = Arrays.copyOf(bytes, bytes.length);
     }
 
+    /**
+     * Alternative constructor (from {@link ECKeyPair}).
+     */
     public PrivateKeyImpl(@NonNull ECKeyPair keyPair) {
         this(keyPairToBytes(keyPair));
         assert keyPair != null;
@@ -42,7 +47,7 @@ public class PrivateKeyImpl implements PrivateKey {
      * Create a Web3j-compatible {@link ECKeyPair} from <code>byte[]</code> of private key.
      */
     @NonNull
-    protected static final ECKeyPair bytesToKeyPair(@NonNull byte[] privateKeyBytes) {
+    public static ECKeyPair bytesToKeyPair(byte[] privateKeyBytes) {
         assert privateKeyBytes != null;
         return ECKeyPair.create(privateKeyBytes);
     }
@@ -50,8 +55,7 @@ public class PrivateKeyImpl implements PrivateKey {
     /**
      * Make a <code>byte[]</code> representation of private key stored inside a Web3j-compatible {@link ECKeyPair}.
      */
-    @NonNull
-    protected static final byte[] keyPairToBytes(@NonNull ECKeyPair keyPair) {
+    public static byte[] keyPairToBytes(@NonNull ECKeyPair keyPair) {
         assert keyPair != null;
 
         return Numeric.toBytesPadded(keyPair.getPrivateKey(), Ethereum.PRIVATE_KEY_SIZE_BYTES);
@@ -77,7 +81,6 @@ public class PrivateKeyImpl implements PrivateKey {
         return Keys.toChecksumAddress(getAddress());
     }
 
-    @NonNull
     @Override
     public byte[] getBytes() {
         return Arrays.copyOf(bytes, bytes.length);
@@ -91,7 +94,7 @@ public class PrivateKeyImpl implements PrivateKey {
     }
 
     @Override
-    public byte[] signMessage(@NonNull byte[] msg) {
+    public byte[] signMessage(byte[] msg) {
         assert msg != null;
 
         final ECKeyPair kp = PrivateKeyImpl.bytesToKeyPair(bytes);

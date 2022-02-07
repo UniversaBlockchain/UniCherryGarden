@@ -200,6 +200,8 @@ lazy val cherryGardenerConnector = (project in file("java/cherrygardener_connect
       "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonCoreVersion,
       "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % jacksonCoreVersion,
       "com.fasterxml.jackson.datatype" % "jackson-datatype-jdk8" % jacksonCoreVersion,
+      // Parse HOCON config files
+      "com.typesafe" % "config" % configLibVersion,
     ),
     Compile / resourceGenerators += versionFileTask("cherrygardener_connector.properties").taskValue,
   )
@@ -251,7 +253,7 @@ lazy val api = (project in file("scala/api"))
   .dependsOn(commonScala, cherryGardenerInterop, ethUtils)
 
 // Separate module to handle reading the HOCON conf files.
-// Used from CLI launcher, and from "test" targets of other modules.
+// Used from CLI launcher of CherryGarden components, and from "test" targets of other modules.
 lazy val confreader = (project in file("scala/confreader"))
   .settings(
     commonSettings,
