@@ -289,4 +289,47 @@ public class SenderImplTest {
                 rinkebyTx2To1Signed.getHash()
         );
     }
+
+    @Test
+    public void testSignTransaction() {
+        // Most of the tests for binary signing correctness are performed in
+        // testBuildTransactionMainnet and testBuildTransactionTestnets;
+        // Here we just double-check the other path to sign transactions
+        final SenderImpl senderMainnet = new SenderImpl(ChainIdLong.MAINNET);
+        final SenderImpl senderRinkeby = new SenderImpl(ChainIdLong.RINKEBY);
+
+        final Sender.UnsignedOutgoingTransaction mainnetTxTo1AUnsigned = senderMainnet.buildTransaction(
+                CRED1.addr,
+                "",
+                new BigDecimal("0.0000001")
+        );
+        final Sender.UnsignedOutgoingTransaction rinkebyTxTo1AUnsigned = senderRinkeby.buildTransaction(
+                CRED1.addr,
+                "",
+                new BigDecimal("0.0000001")
+        );
+
+        final Sender.SignedOutgoingTransaction mainnetTx2To1ASigned =
+                senderMainnet.signTransaction(mainnetTxTo1AUnsigned, CRED2.bytes);
+        final Sender.SignedOutgoingTransaction rinkebyTx2To1ASigned =
+                senderRinkeby.signTransaction(rinkebyTxTo1AUnsigned, CRED2.bytes);
+
+        assertEquals(
+                "0x02f86c0180823039830109328252089434e1e4f805fcdc936068a760b2c17bc62135b5ae85174876e80080c001a0d1d3033a3e9e1e61a1bffe4d9a1fb838bed0e00a375ff82ea8fa5726d4e34f39a075adeac52f3c9e78dffe4b2c309bd2b3c8235aaf3b639e6e2d59e1a789454c07",
+                mainnetTx2To1ASigned.getPublicRepresentation()
+        );
+        assertEquals(
+                "0x02f86c0480823039830109328252089434e1e4f805fcdc936068a760b2c17bc62135b5ae85174876e80080c080a0cb1bd2302e95c701eef292d4c3da3801576f8250290ba78392d617a5b2e4c0f9a013fabd2e5eb72e780093c78c311d83ad6e41aa949d0e68e0e943480d52b851ab",
+                rinkebyTx2To1ASigned.getPublicRepresentation()
+        );
+
+        assertEquals(
+                "0xa888f02c0ce638e67a19c42420c792e03ef508f17a86319fa68bacfae3a50436",
+                mainnetTx2To1ASigned.getHash()
+        );
+        assertEquals(
+                "0x17f9443a44e213a3f55ad2902fd64bb4f91c0e5417796833ac22282c063de013",
+                rinkebyTx2To1ASigned.getHash()
+        );
+    }
 }

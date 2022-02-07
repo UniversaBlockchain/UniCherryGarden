@@ -4,6 +4,7 @@ import com.myodov.unicherrygarden.api.types.PrivateKey;
 import com.myodov.unicherrygarden.api.types.UniCherryGardenError;
 import com.myodov.unicherrygarden.connector.api.Sender;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
+import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.bouncycastle.util.encoders.Hex;
@@ -264,7 +265,7 @@ public class SenderImpl implements Sender {
 
     @Override
     @NonNull
-    public UnsignedOutgoingTransaction buildTransaction(
+    public final UnsignedOutgoingTransaction buildTransaction(
             @NonNull String receiver,
             @NonNull String currencyCode,
             @NonNull BigDecimal amount) {
@@ -309,15 +310,15 @@ public class SenderImpl implements Sender {
 
     @Override
     @NonNull
-    public SignedOutgoingTransaction signTransaction(
+    public final SignedOutgoingTransaction signTransaction(
             @NonNull UnsignedOutgoingTransaction tx,
             byte[] privateKey) {
-        // TODO
-        return null;
+        return tx.sign(new PrivateKeyImpl(privateKey));
     }
 
     @Override
-    public @NonNull SentOutgoingTransaction sendTransaction(@NonNull SignedOutgoingTransaction tx) {
+    @NonNull
+    public SentOutgoingTransaction sendTransaction(@NonNull SignedOutgoingTransaction tx) {
         // TODO
         return null;
     }
