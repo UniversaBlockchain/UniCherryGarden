@@ -586,9 +586,10 @@ public class CherryGardenerCLI {
                     System.err.printf("Supported currencies (%s):\n", currencies.size());
                     for (final Currency c : currencies) {
                         final @Nullable String optComment = c.getComment();
-                        System.err.printf("  %s: \"%s\" - %s%s\n",
+                        System.err.printf("  %s: \"%s\" (transfer gas limit %s) - %s%s\n",
                                 c.getSymbol(),
                                 c.getName(),
+                                c.getTransferGasLimit(),
                                 (c.getCurrencyType() == Currency.CurrencyType.ETH) ?
                                         "Ether cryptocurrency" :
                                         String.format("ERC20 token at %s", c.getDAppAddress()),

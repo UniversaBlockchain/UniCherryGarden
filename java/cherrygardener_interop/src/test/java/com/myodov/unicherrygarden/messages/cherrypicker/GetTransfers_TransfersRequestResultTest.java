@@ -8,6 +8,7 @@ import com.myodov.unicherrygarden.api.types.dlt.MinedTx;
 import org.junit.Test;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,7 +26,8 @@ public class GetTransfers_TransfersRequestResultTest {
             "UTNP",
             "UTNP comment",
             false,
-            null
+            null,
+            BigInteger.valueOf(70_000)
     );
 
 

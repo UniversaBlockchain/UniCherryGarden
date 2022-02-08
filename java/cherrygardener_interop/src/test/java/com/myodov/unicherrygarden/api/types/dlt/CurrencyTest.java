@@ -2,6 +2,8 @@ package com.myodov.unicherrygarden.api.types.dlt;
 
 import org.junit.Test;
 
+import java.math.BigInteger;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -13,13 +15,14 @@ public class CurrencyTest {
             "UTNP",
             "UTNP comment",
             false,
-            null
+            null,
+            BigInteger.valueOf(70_000)
     );
 
     @Test
     public void testBasicEthBehavior() {
         assertEquals(
-                "CurrencyImpl(ETH, ETH, Ether, null, verified=true, decimals=null)",
+                "CurrencyImpl(ETH, ETH, Ether, null, verified=true, decimals=null, transferGasLimit=21000)",
                 CUR_ETH.toString()
         );
 
@@ -50,7 +53,7 @@ public class CurrencyTest {
     @Test
     public void testBasicErc20Behavior() {
         assertEquals(
-                "CurrencyImpl(ERC20, UTNP, Universa Token, 0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7, verified=false, decimals=null)",
+                "CurrencyImpl(ERC20, UTNP, Universa Token, 0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7, verified=false, decimals=null, transferGasLimit=70000)",
                 CUR_UTNP.toString()
         );
 

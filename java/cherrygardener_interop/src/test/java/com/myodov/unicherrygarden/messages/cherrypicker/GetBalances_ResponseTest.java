@@ -8,6 +8,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 
 import static org.junit.Assert.assertEquals;
@@ -22,7 +23,8 @@ public class GetBalances_ResponseTest extends AbstractJacksonSerializationTest {
                 "UTNP",
                 "UTNP comment",
                 false,
-                null
+                null,
+                BigInteger.valueOf(70_000)
         );
 
         final ArrayList<Currency> currencies = new ArrayList() {{
@@ -31,7 +33,7 @@ public class GetBalances_ResponseTest extends AbstractJacksonSerializationTest {
         }};
 
         assertEquals(
-                "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetBalances$BalanceRequestResultPayload\",\"syncStatus\":{\"blockchain\":{\"currentBlock\":20,\"highestBlock\":25},\"cherryPicker\":{\"latestKnownBlock\":17,\"latestPartiallySyncedBlock\":13,\"latestFullySyncedBlock\":11}},\"balances\":[{\"currency\":{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"key\":\"\",\"type\":\"ETH\",\"dAppAddress\":null},\"amount\":\"123.45\",\"blockNumber\":7328},{\"currency\":{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"key\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"},\"amount\":\"456.789\",\"blockNumber\":7932}]}}",
+                "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetBalances$BalanceRequestResultPayload\",\"syncStatus\":{\"blockchain\":{\"currentBlock\":20,\"highestBlock\":25},\"cherryPicker\":{\"latestKnownBlock\":17,\"latestPartiallySyncedBlock\":13,\"latestFullySyncedBlock\":11}},\"balances\":[{\"currency\":{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"type\":\"ETH\",\"dAppAddress\":null},\"amount\":\"123.45\",\"blockNumber\":7328},{\"currency\":{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"},\"amount\":\"456.789\",\"blockNumber\":7932}]}}",
                 makeJson(new GetBalances.Response(
                         new GetBalances.BalanceRequestResultPayload(
                                 new SystemSyncStatus(

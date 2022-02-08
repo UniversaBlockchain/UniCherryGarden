@@ -1,5 +1,7 @@
 package com.myodov.unicherrygarden.storages.api
 
+import java.math.BigInteger
+
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.types.MinedTransfer
 import com.myodov.unicherrygarden.api.types.dlt.Currency
@@ -332,7 +334,8 @@ object DBStorage {
                                  symbol: Option[String],
                                  ucgComment: Option[String],
                                  verified: Boolean,
-                                 decimals: Option[Int]
+                                 decimals: Option[Int],
+                                 transferGasLimit: Option[BigInt]
                                 ) {
       require((currencyType == CurrencyTypes.Eth) == dAppAddress.isEmpty, (currencyType, dAppAddress))
       require(dAppAddress.isEmpty || EthUtils.Addresses.isValidLowercasedAddress(dAppAddress.get), dAppAddress)
@@ -354,7 +357,8 @@ object DBStorage {
         symbol.orNull,
         ucgComment.orNull,
         verified,
-        decimals.map(Integer.valueOf).orNull
+        decimals.map(Integer.valueOf).orNull,
+        transferGasLimit.map(_.bigInteger).orNull
       )
     }
 
@@ -367,10 +371,10 @@ object DBStorage {
           rs.stringOpt(s"${prefix}symbol"),
           rs.stringOpt(s"${prefix}ucg_comment"),
           rs.boolean(s"${prefix}verified"),
-          rs.intOpt(s"${prefix}decimals")
+          rs.intOpt(s"${prefix}decimals"),
+          rs.bigIntOpt(s"${prefix}transfer_gas_limit").map(BigInt(_)),
         )
     }
-
   }
 
   object TrackedAddresses {

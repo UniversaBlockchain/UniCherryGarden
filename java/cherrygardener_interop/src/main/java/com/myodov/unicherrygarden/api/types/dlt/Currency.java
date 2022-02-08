@@ -2,13 +2,16 @@ package com.myodov.unicherrygarden.api.types.dlt;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonGetter;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.Serializable;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.math.BigInteger;
 import java.util.Objects;
+
+import static com.myodov.unicherrygarden.ethereum.EthUtils.ETH_TRANSFER_GAS_LIMIT_BIGINTEGER;
 
 /**
  * Any asset tracked by UniCherryGarden (cryptocurrency, token, etc).
@@ -44,6 +47,10 @@ public class Currency implements Serializable {
     @Nullable
     protected final Integer decimals;
 
+    @Nullable
+    protected final BigInteger transferGasLimit;
+
+
     /**
      * Standard constructor.
      *
@@ -57,7 +64,8 @@ public class Currency implements Serializable {
             @Nullable String symbol,
             @Nullable String comment,
             boolean verified,
-            @Nullable Integer decimals
+            @Nullable Integer decimals,
+            @Nullable BigInteger transferGasLimit
     ) {
         // Validate dAppAddress
         switch (type) {
@@ -79,7 +87,7 @@ public class Currency implements Serializable {
             assert symbol.equals("ETH") : symbol;
         }
 
-        // Validate `verified` and `decimals`.
+        // Validate `verified` and `decimals`/`transferGasLimit`.
         switch (type) {
             // For Ether, decimals is undefined
             case ETH:
@@ -89,6 +97,23 @@ public class Currency implements Serializable {
             // if the token is verified
             case ERC20:
                 assert !(verified && decimals == null) : String.format("%s/%s", verified, decimals);
+                assert !(verified && transferGasLimit == null) : String.format("%s/%s", verified, transferGasLimit);
+                break;
+            default:
+                assert false : type;
+        }
+
+        // Validate `transferGasLimit`
+        switch (type) {
+            // For Ether, transferGasLimit is 21 000
+            case ETH:
+                assert transferGasLimit != null && transferGasLimit.equals(ETH_TRANSFER_GAS_LIMIT_BIGINTEGER) : transferGasLimit;
+                break;
+            // For ERC20 tokens, transferGasLimit should be > 21000
+            // if the token is verified
+            case ERC20:
+                // transferGasLimit > ETH_TRANSFER_GAS_LIMIT_BIGINTEGER
+                assert transferGasLimit == null || transferGasLimit.compareTo(ETH_TRANSFER_GAS_LIMIT_BIGINTEGER) > 0 : transferGasLimit;
                 break;
             default:
                 assert false : type;
@@ -101,6 +126,7 @@ public class Currency implements Serializable {
         this.comment = comment;
         this.verified = verified;
         this.decimals = decimals;
+        this.transferGasLimit = transferGasLimit;
     }
 
     /**
@@ -114,7 +140,8 @@ public class Currency implements Serializable {
                 "ETH",
                 null,
                 true,
-                null);
+                null,
+                ETH_TRANSFER_GAS_LIMIT_BIGINTEGER);
     }
 
     /**
@@ -126,17 +153,27 @@ public class Currency implements Serializable {
             @Nullable String symbol,
             @Nullable String comment,
             boolean verified,
-            @Nullable Integer decimals
+            @Nullable Integer decimals,
+            @NonNull BigInteger transferGasLimit
     ) {
         assert dAppAddress != null && EthUtils.Addresses.isValidLowercasedAddress(dAppAddress) : dAppAddress;
 
-        return new Currency(CurrencyType.ERC20, dAppAddress, name, symbol, comment, verified, decimals);
+        return new Currency(
+                CurrencyType.ERC20,
+                dAppAddress,
+                name,
+                symbol,
+                comment,
+                verified,
+                decimals,
+                transferGasLimit
+        );
     }
 
     @Override
     public String toString() {
-        return String.format("CurrencyImpl(%s, %s, %s, %s, verified=%s, decimals=%s)",
-                type, symbol, name, dAppAddress, verified, decimals);
+        return String.format("CurrencyImpl(%s, %s, %s, %s, verified=%s, decimals=%s, transferGasLimit=%s)",
+                type, symbol, name, dAppAddress, verified, decimals, transferGasLimit);
     }
 
     @Override
@@ -148,7 +185,11 @@ public class Currency implements Serializable {
         } else {
             final Currency other = (Currency) o;
             return this.type == other.type &&
-                    Objects.equals(this.dAppAddress, other.dAppAddress);
+                    Objects.equals(this.symbol, other.symbol) &&
+                    Objects.equals(this.dAppAddress, other.dAppAddress) &&
+                    this.verified == other.verified &&
+                    Objects.equals(this.decimals, other.decimals) &&
+                    Objects.equals(this.transferGasLimit, other.transferGasLimit);
         }
     }
 
@@ -166,6 +207,7 @@ public class Currency implements Serializable {
      * which is the address of underlying dApp.
      */
     @NonNull
+    @JsonIgnore
     public String getKey() {
         switch (type) {
             case ETH:
@@ -237,5 +279,14 @@ public class Currency implements Serializable {
     @Nullable
     public String getComment() {
         return comment;
+    }
+
+    /**
+     * Get a gas limit for transfer operation.
+     * Optional, may return <code>null</code> (but only if the currency is not verified).
+     */
+    @Nullable
+    public BigInteger getTransferGasLimit() {
+        return transferGasLimit;
     }
 }

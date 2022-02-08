@@ -6,6 +6,7 @@ import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.ArrayList;
 
 public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest {
@@ -18,7 +19,8 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
                 "UTNP",
                 "UTNP comment",
                 false,
-                null
+                null,
+                BigInteger.valueOf(70_000)
         );
 
         final ArrayList<Currency> currencies = new ArrayList<Currency>() {{
@@ -28,25 +30,25 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
 
         assertJsonDeserialization(
                 eth,
-                "{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"key\":\"\",\"type\":\"ETH\",\"dAppAddress\":null}",
+                "{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"type\":\"ETH\",\"dAppAddress\":null}",
                 Currency.class
         );
 
         assertJsonDeserialization(
                 erc20,
-                "{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"key\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}",
+                "{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}",
                 Currency.class
         );
 
         assertJsonDeserialization(
                 new GetCurrencies.CurrenciesRequestResultPayload(currencies),
-                "{\"@class\":\"com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies$CurrenciesRequestResultPayload\",\"currencies\":[{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"key\":\"\",\"type\":\"ETH\",\"dAppAddress\":null},{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"key\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}]}",
+                "{\"@class\":\"com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies$CurrenciesRequestResultPayload\",\"currencies\":[{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"type\":\"ETH\",\"dAppAddress\":null},{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}]}",
                 GetCurrencies.CurrenciesRequestResultPayload.class
         );
 
         assertJsonDeserialization(
                 new GetCurrencies.Response(new GetCurrencies.CurrenciesRequestResultPayload(currencies)),
-                "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies$CurrenciesRequestResultPayload\",\"currencies\":[{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"key\":\"\",\"type\":\"ETH\",\"dAppAddress\":null},{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"key\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}]}}",
+                "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies$CurrenciesRequestResultPayload\",\"currencies\":[{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"type\":\"ETH\",\"dAppAddress\":null},{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}]}}",
                 GetCurrencies.Response.class
         );
 
