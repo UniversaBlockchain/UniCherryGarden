@@ -2,6 +2,7 @@ package com.myodov.unicherrygarden.api.types.responseresult;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.myodov.unicherrygarden.api.types.UniCherryGardenError;
+import com.myodov.unicherrygarden.api.types.UniCherryGardenFailure;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -109,7 +110,10 @@ public interface ResponseWithPayload<
     }
 
     /**
-     * Get the payload of request execution; response may be successful or not.
+     * Get the payload of request execution.
+     * <p>
+     * LBYL-way: response may be successful or not, it is your duty to check results of
+     * {@link #isSuccess()} / {@link #isFailure()} or the class of payload object.
      */
     @NonNull
     ResponsePayload getPayload();
@@ -119,11 +123,25 @@ public interface ResponseWithPayload<
      * <p>
      * Works only if {@link #isSuccess()}. Otherwise, use {@link #getFailure()}.
      *
-     * @throws ClassCastException if called not when {@link #isSuccess()}.
+     * @throws UniCherryGardenFailure (typed with the details of failure, common or specific)
+     *                                if called not when {@link #isSuccess()}, so you can use it in EAFP way.
      */
     @JsonIgnore
     @NonNull
-    Payload getPayloadAsSuccessful();
+    Payload getPayloadAsSuccessful() throws UniCherryGardenFailure;
+
+    /**
+     * Shortcut to {@link #getPayloadAsSuccessful} – use it if you prefer to get the results in EAFP way,
+     * and handle the exception if any failure occured.
+     *
+     * @throws UniCherryGardenFailure (typed with the details of failure, common or specific)
+     *                                if called not when {@link #isSuccess()}.
+     */
+    @JsonIgnore
+    @NonNull
+    default Payload get() throws UniCherryGardenFailure {
+        return getPayloadAsSuccessful();
+    }
 
     /**
      * Get the payload of failed request execution;
