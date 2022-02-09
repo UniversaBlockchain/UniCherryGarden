@@ -115,30 +115,30 @@ public class CherryGardenerCLI {
                             "the --confirmations value permit);\n" +
                             "--with-balances (optional; default: omitted)."
             ));
-            addOption(new Option(
-                    "cot", "create-outgoing-transfer", true,
-                    "Build a transaction for outgoing transfer of some currency\n" +
-                            "from some address to some other address.\n" +
-                            "The transaction is just built (locally, in memory) but not sent out to the blockchain\n" +
-                            "and not stored anywhere.\n" +
-                            "See also:\n" +
-                            "--sender (mandatory),\n" +
-                            "--recipient (mandatory),\n" +
-                            "--currency-code (mandatory),\n" +
-                            "--amount (mandatory),\n" +
-                            "--comment (optional)."));
-            addOption(new Option(
-                    "st", "sign-transaction", true,
-                    "Build a transaction for outgoing transfer of some currency\n" +
-                            "from some address to some other address.\n" +
-                            "The transaction is just built (locally, in memory) but not sent out to the blockchain\n" +
-                            "and not stored anywhere.\n" +
-                            "See also:\n" +
-                            "--sender (mandatory),\n" +
-                            "--recipient (mandatory),\n" +
-                            "--currency-code (mandatory),\n" +
-                            "--amount (mandatory),\n" +
-                            "--comment (optional)."));
+//            addOption(new Option(
+//                    "cot", "create-outgoing-transfer", true,
+//                    "Build a transaction for outgoing transfer of some currency\n" +
+//                            "from some address to some other address.\n" +
+//                            "The transaction is just built (locally, in memory) but not sent out to the blockchain\n" +
+//                            "and not stored anywhere.\n" +
+//                            "See also:\n" +
+//                            "--sender (mandatory),\n" +
+//                            "--recipient (mandatory),\n" +
+//                            "--currency-code (mandatory),\n" +
+//                            "--amount (mandatory),\n" +
+//                            "--comment (optional)."));
+//            addOption(new Option(
+//                    "st", "sign-transaction", true,
+//                    "Build a transaction for outgoing transfer of some currency\n" +
+//                            "from some address to some other address.\n" +
+//                            "The transaction is just built (locally, in memory) but not sent out to the blockchain\n" +
+//                            "and not stored anywhere.\n" +
+//                            "See also:\n" +
+//                            "--sender (mandatory),\n" +
+//                            "--recipient (mandatory),\n" +
+//                            "--currency-code (mandatory),\n" +
+//                            "--amount (mandatory),\n" +
+//                            "--comment (optional)."));
             setRequired(true);
         }};
         options.addOptionGroup(commandOptionGroup);
@@ -578,7 +578,7 @@ public class CherryGardenerCLI {
 
                 if (response.isFailure()) {
                     System.err.printf("ERROR: Could not get the currencies! Problem: %s\n",
-                            response.getCommonFailure());
+                            response.getFailure());
                 } else {
                     final GetCurrencies.CurrenciesRequestResultPayload payload = response.getPayloadAsSuccessful();
                     final List<Currency> currencies = payload.currencies;
@@ -624,7 +624,7 @@ public class CherryGardenerCLI {
                 final GetTrackedAddresses.Response response = observer.getTrackedAddresses();
                 if (response.isFailure()) {
                     System.err.printf("ERROR: Could not get the tracked addresses! Problem: %s\n",
-                            response.getCommonFailure());
+                            response.getFailure());
                 } else {
                     final GetTrackedAddresses.TrackedAddressesRequestResultPayload payload = response.getPayloadAsSuccessful();
                     final List<GetTrackedAddresses.TrackedAddressesRequestResultPayload.TrackedAddressInformation> trackedAddresses = payload.addresses;
@@ -683,7 +683,7 @@ public class CherryGardenerCLI {
                         commentOpt.orElse(null));
                 if (response.isFailure()) {
                     System.err.printf("ERROR: Could not add the tracked address %s! Problem: %s\n",
-                            address, response.getCommonFailure());
+                            address, response.getFailure());
                 } else {
                     final AddTrackedAddresses.AddTrackedAddressesRequestResultPayload payload = response.getPayloadAsSuccessful();
                     final Set<String> addedAddresses = payload.addresses;
@@ -865,7 +865,7 @@ public class CherryGardenerCLI {
                     );
                     if (response.isFailure()) {
                         System.err.printf("ERROR: Could not add the transfers! Problem: %s\n",
-                                response.getCommonFailure());
+                                response.getFailure());
                     } else {
                         final GetTransfers.TransfersRequestResultPayload payload = response.getPayloadAsSuccessful();
 
