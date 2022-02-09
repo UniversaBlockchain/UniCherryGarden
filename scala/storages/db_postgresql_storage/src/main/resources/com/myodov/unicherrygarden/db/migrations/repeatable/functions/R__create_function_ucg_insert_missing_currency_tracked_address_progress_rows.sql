@@ -8,8 +8,8 @@ WITH
         SELECT
             ucg_currency.id AS currency_id,
             ucg_tracked_address.id AS tracked_address_id,
-            LEAST(ucg_currency.sync_from_block_number,
-                  ucg_tracked_address.synced_from_block_number) AS synced_from_block_number
+            GREATEST(ucg_currency.sync_from_block_number,
+                     ucg_tracked_address.synced_from_block_number) AS synced_from_block_number
         FROM
             ucg_currency
             CROSS JOIN ucg_tracked_address

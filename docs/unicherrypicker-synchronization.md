@@ -243,7 +243,7 @@ Inner FSM states related to the iterations:
 `syncStartBlock`: among all the (currency, tracked_address) M2M records (`ucg_currency_tracked_address_progress` table), find the least value of the following two:
 
 * for all the `ucg_currency_tracked_address_progress` records where the record exist already for (currency, tracked_address) pair: `min(ucg_currency_tracked_address_progress.synced_to_block_number) + 1`. I.e. this is the lowest number that any m2m record has been synced to (it may be lower than others).
-* for all the `ucg_currency_tracked_address_progress` records where the record doesn’t exist yet for (currency, tracked_address) pair: `min(currency.sync_from_block_number, tracked_address.synced_from_block_number)`. I.e. for each record this is the block from which we should start syncing it; and get `min()` of all such blocks.
+* for all the `ucg_currency_tracked_address_progress` records where the record doesn’t exist yet for (currency, tracked_address) pair: `greatest(currency.sync_from_block_number, tracked_address.synced_from_block_number)`. I.e. for each record this is the block from which we should start syncing it; and get `min()` of all such blocks.
 
 `syncEndBlock`: `eth.syncing.currentBlock`, but with a batch no larger than `tail_syncer.batch_size`.
 

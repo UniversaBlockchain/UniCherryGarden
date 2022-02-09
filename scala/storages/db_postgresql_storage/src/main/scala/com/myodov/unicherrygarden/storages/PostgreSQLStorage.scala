@@ -93,7 +93,7 @@ class PostgreSQLStorage(jdbcUrl: String,
     override final def getFirstBlockResolvingSomeNeverStartedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
       sql"""
       SELECT
-          LEAST(currency.sync_from_block_number, address.synced_from_block_number)
+          GREATEST(currency.sync_from_block_number, address.synced_from_block_number)
             AS least_sync_from_block_number
       FROM
           ucg_currency currency
@@ -115,7 +115,7 @@ class PostgreSQLStorage(jdbcUrl: String,
     override final def getFirstBlockResolvingSomeNeverSyncedCTAddress(implicit session: DBSession = ReadOnlyAutoSession): Option[Int] = {
       sql"""
       SELECT
-          LEAST(currency.sync_from_block_number, address.synced_from_block_number)
+          GREATEST(currency.sync_from_block_number, address.synced_from_block_number)
             AS least_sync_from_block_number
       FROM
           ucg_currency currency
@@ -206,7 +206,7 @@ class PostgreSQLStorage(jdbcUrl: String,
       // 1. Insert ucg_currency_tracked_address_progress records
       //    where they didn’t exist before;
       //    and where the syncedBlockNumber matches the start block number of either a currency or a tracked address
-      //    (whichever is lower).
+      //    (whichever is higher - so we can start at later block and sync less blocks overall).
       {
         sql"""
         WITH
@@ -233,8 +233,8 @@ class PostgreSQLStorage(jdbcUrl: String,
                 SELECT
                     currency.id AS currency_id,
                     address.id AS tracked_address_id,
-                    LEAST(currency.sync_from_block_number,
-                          address.synced_from_block_number) AS synced_from_block_number,
+                    GREATEST(currency.sync_from_block_number,
+                             address.synced_from_block_number) AS synced_from_block_number,
                     arg.block_number AS synced_to_block_number
                 FROM
                     arg,
@@ -251,9 +251,10 @@ class PostgreSQLStorage(jdbcUrl: String,
                     -- This pair is not added yet
                     cta_progress.id IS NULL AND
                     -- We add a new record ONLY if the just-synced block number is equal
-                    -- to the cta.synced_from (which is the smaller of currency.from and address.from).
-                    arg.block_number = LEAST(currency.sync_from_block_number,
-                                             address.synced_from_block_number)
+                    -- to the desired cta.synced_from
+                    -- (which is the larger of currency.from and address.from).
+                    arg.block_number = GREATEST(currency.sync_from_block_number,
+                                                address.synced_from_block_number)
             )
         INSERT INTO ucg_currency_tracked_address_progress(
           currency_id,
