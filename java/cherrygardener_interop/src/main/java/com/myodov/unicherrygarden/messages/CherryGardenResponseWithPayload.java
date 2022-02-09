@@ -1,8 +1,6 @@
 package com.myodov.unicherrygarden.messages;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.myodov.unicherrygarden.api.types.UniCherryGardenFailure;
-import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.ResponsePayload;
@@ -58,12 +56,8 @@ public class CherryGardenResponseWithPayload<
     @Override
     @NonNull
     @SuppressWarnings("unchecked") // it is your duty to ensure it is castable
-    public Data getPayloadAsSuccessful() throws UniCherryGardenFailure {
-        if (isSuccess()) {
-            return (Data) payload;
-        } else {
-            throw new UniCherryGardenFailure((FailurePayload) payload);
-        }
+    public Data getPayloadAsSuccessful() {
+        return (Data) payload;
     }
 
     @Override

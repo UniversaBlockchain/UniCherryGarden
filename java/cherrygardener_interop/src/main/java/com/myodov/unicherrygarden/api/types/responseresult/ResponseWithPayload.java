@@ -122,17 +122,20 @@ public interface ResponseWithPayload<
      * Get the payload of successful request execution; the payload contents is specific to the request.
      * <p>
      * Works only if {@link #isSuccess()}. Otherwise, use {@link #getFailure()}.
+     * <p>
+     * If you want an EAFP-way (“Easier to Ask for Forgiveness than Permission”) of getting the payload,
+     * assuming that most of the times there would be a error – use {@link #get} shortcut method.
      *
-     * @throws UniCherryGardenFailure (typed with the details of failure, common or specific)
-     *                                if called not when {@link #isSuccess()}, so you can use it in EAFP way.
+     * @throws ClassCastException if called not when {@link #isSuccess()}.
      */
     @JsonIgnore
     @NonNull
-    Payload getPayloadAsSuccessful() throws UniCherryGardenFailure;
+    Payload getPayloadAsSuccessful();
 
     /**
-     * Shortcut to {@link #getPayloadAsSuccessful} – use it if you prefer to get the results in EAFP way,
-     * and handle the exception if any failure occured.
+     * EAFP-way (“Easier to Ask for Forgiveness than Permission”) of getting the payload:
+     * get the successful payload (if the query was successful),
+     * or have the {@link UniCherryGardenFailure} exception raised.
      *
      * @throws UniCherryGardenFailure (typed with the details of failure, common or specific)
      *                                if called not when {@link #isSuccess()}.
@@ -140,7 +143,11 @@ public interface ResponseWithPayload<
     @JsonIgnore
     @NonNull
     default Payload get() throws UniCherryGardenFailure {
-        return getPayloadAsSuccessful();
+        if (isSuccess()) {
+            return getPayloadAsSuccessful();
+        } else {
+            throw new UniCherryGardenFailure(getFailure());
+        }
     }
 
     /**
