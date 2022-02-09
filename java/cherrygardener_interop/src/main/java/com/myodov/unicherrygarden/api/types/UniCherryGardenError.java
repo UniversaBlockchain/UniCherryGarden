@@ -45,8 +45,8 @@ public class UniCherryGardenError extends Error {
      * One of arguments that should contain a valid Currency Code (either a valid lowercased Ethereum address,
      * or empty string), contains wrong data.
      */
-    public static class NotACurrencyCode extends NotAnEthereumAddressError {
-        public NotACurrencyCode(@NonNull String badValue) {
+    public static class NotACurrencyKey extends NotAnEthereumAddressError {
+        public NotACurrencyKey(@NonNull String badValue) {
             super(String.format("%s is not a valid Currency Code", badValue));
         }
     }

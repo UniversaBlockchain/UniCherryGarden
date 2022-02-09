@@ -42,11 +42,11 @@ public class Validators {
      *
      * @throws RuntimeException if <code>data</code> is not a valid Currency Code.
      */
-    public static void requireValidCurrencyCode(@NonNull String argname, @NonNull String currencyCode) {
+    public static void requireValidCurrencyKey(@NonNull String argname, @NonNull String currencyKey) {
         assert argname != null : argname;
-        assert currencyCode != null : currencyCode;
-        if (!currencyCode.isEmpty() && !EthUtils.Addresses.isValidLowercasedAddress(currencyCode)) {
-            throw new UniCherryGardenError.NotACurrencyCode(currencyCode);
+        assert currencyKey != null : currencyKey;
+        if (!currencyKey.isEmpty() && !EthUtils.Addresses.isValidLowercasedAddress(currencyKey)) {
+            throw new UniCherryGardenError.NotACurrencyKey(currencyKey);
         }
     }
 

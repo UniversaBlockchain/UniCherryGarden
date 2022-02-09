@@ -27,7 +27,7 @@ public class GetBalances_ResponseTest extends AbstractJacksonSerializationTest {
                 BigInteger.valueOf(70_000)
         );
 
-        final ArrayList<Currency> currencies = new ArrayList() {{
+        final ArrayList<Currency> currencies = new ArrayList<Currency>() {{
             add(eth);
             add(utnp);
         }};

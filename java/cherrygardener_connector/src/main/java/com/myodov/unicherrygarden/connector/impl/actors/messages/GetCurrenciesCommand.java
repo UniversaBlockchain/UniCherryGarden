@@ -9,6 +9,9 @@ import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommandImp
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+
+import java.util.Set;
 
 
 /**
@@ -80,13 +83,14 @@ public class GetCurrenciesCommand
      * containing the incoming arguments.
      */
     public static Function<ActorRef<Result>, ConnectorActorMessage> createReplier(
+            @Nullable Set<String> filterCurrencyKeys,
             boolean getVerified,
             boolean getUnverified) {
-        assert (getVerified || getUnverified) : String.format("%s/%s", getVerified, getUnverified);
+        assert (getVerified || getUnverified) : String.format("%s/%s/%s", filterCurrencyKeys, getVerified, getUnverified);
 
         return (replyTo) -> new GetCurrenciesCommand(
                 replyTo,
-                new GetCurrencies.GCRequestPayload(getVerified, getUnverified));
+                new GetCurrencies.GCRequestPayload(filterCurrencyKeys, getVerified, getUnverified));
     }
 
     @NonNull

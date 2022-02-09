@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -235,15 +236,24 @@ public class ClientConnectorImpl implements ClientConnector {
     // Methods that return the actual business logic data.
     //
 
+    //    IllegalArgumentException
     @Override
-    public GetCurrencies.@NonNull Response getCurrencies(boolean getVerified, boolean getUnverified) {
+    public GetCurrencies.@NonNull Response getCurrencies(
+            @Nullable Set<String> filterCurrencyKeys,
+            boolean getVerified,
+            boolean getUnverified
+    ) {
+        if (filterCurrencyKeys != null) {
+            filterCurrencyKeys.forEach(ck -> Validators.requireValidCurrencyKey("filterCurrencyKeys item", ck));
+        }
+
         if (offlineMode) {
             return GetCurrencies.Response.fromCommonFailure(FailurePayload.NOT_AVAILABLE_IN_OFFLINE_MODE);
         } else {
             final CompletionStage<GetCurrenciesCommand.Result> stage =
                     AskPattern.ask(
                             actorSystem,
-                            GetCurrenciesCommand.createReplier(getVerified, getUnverified),
+                            GetCurrenciesCommand.createReplier(filterCurrencyKeys, getVerified, getUnverified),
                             ConnectorActor.DEFAULT_CALL_TIMEOUT,
                             actorSystem.scheduler());
 

@@ -75,9 +75,19 @@ public class CherryGardenerCLI {
             addOption(new Option(
                     "h", "help", false,
                     "Display help."));
-            addOption(new Option(
-                    "gc", "get-currencies", false,
-                    "Print the list of currencies supported by CherryGardener and all other components."));
+            addOption(Option.builder("gc")
+                    .longOpt("get-currencies")
+                    .hasArgs()
+                    .optionalArg(true)
+                    .valueSeparator(',')
+                    .desc("Print the list of currencies supported by CherryGardener and all other components.\n" +
+                            "Pass comma-separated currency keys, i.e. lowercased Ethereum addresses of token contracts,\n" +
+                            "or empty string for base blockchain currency (ETH in case of Ethereum Mainnet).\n" +
+                            "E.g.:\n" +
+                            "  --get-currencies    for all currencies;\n" +
+                            "  --get-currencies=   for just a single ETH to select;\n" +
+                            "  --get-currencies=,0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7   for ETH and UTNP tokens.")
+                    .build());
             addOption(new Option(
                     "gta", "get-tracked-addresses", false,
                     "Print the list of addresses tracked by CherryPicker."));
@@ -99,8 +109,7 @@ public class CherryGardenerCLI {
                             "See also:\n" +
                             "--confirmations (optional; default: 0).\n" +
                             "--parallel (optional; default: omitted, run sequentially).")
-                    .build()
-            );
+                    .build());
             addOption(new Option(
                     "gt", "get-transfers", false,
                     "Get the transfers balances (of currencies/tokens).\n" +
@@ -124,7 +133,7 @@ public class CherryGardenerCLI {
 //                            "See also:\n" +
 //                            "--sender (mandatory),\n" +
 //                            "--recipient (mandatory),\n" +
-//                            "--currency-code (mandatory),\n" +
+//                            "--currency-key (mandatory),\n" +
 //                            "--amount (mandatory),\n" +
 //                            "--comment (optional)."));
 //            addOption(new Option(
@@ -136,7 +145,7 @@ public class CherryGardenerCLI {
 //                            "See also:\n" +
 //                            "--sender (mandatory),\n" +
 //                            "--recipient (mandatory),\n" +
-//                            "--currency-code (mandatory),\n" +
+//                            "--currency-key (mandatory),\n" +
 //                            "--amount (mandatory),\n" +
 //                            "--comment (optional)."));
             setRequired(true);
@@ -295,7 +304,7 @@ public class CherryGardenerCLI {
      * that should contain an Ethereum address,
      * printing all necessary warnings in the process.
      *
-     * @param optionName The name of the option to parse.
+     * @param optionName the name of the option to parse.
      * @return non-empty {@link Optional<>} with the parsed (lowercased) Ethereum address
      * if it has been properly parsed;
      * “empty” optional if parsing failed (and all required warnings were printed).
@@ -322,7 +331,7 @@ public class CherryGardenerCLI {
      * that should contain a list of comma-separated Ethereum addresses,
      * printing all necessary warnings in the process.
      *
-     * @param optionName The name of the option to parse.
+     * @param optionName the name of the option to parse.
      * @return non-empty {@link Optional<>} with the list of parsed (lowercased) Ethereum addresses
      * if it has been properly parsed;
      * “empty” optional if parsing failed (and all required warnings were printed).
@@ -363,7 +372,7 @@ public class CherryGardenerCLI {
      * that should contain a valid block number,
      * printing all necessary warnings in the process.
      *
-     * @param optionName The name of the option to parse.
+     * @param optionName the name of the option to parse.
      * @return non-empty {@link Optional<>} with the parsed Ethereum block number,
      * if it has been properly parsed;
      * “empty” optional if parsing failed (and all required warnings were printed).
@@ -532,6 +541,43 @@ public class CherryGardenerCLI {
     }
 
     /**
+     * Parse an option (with the name of the option passed as the "optionName" argument)
+     * that should contain a list of currency keys,
+     * printing all necessary warnings in the process.
+     *
+     * @param optionName the name of the option to parse.
+     * @return non-empty {@link Optional<List<String>>} with the parsed currency keys
+     * if it has been properly parsed;
+     * “empty” optional if parsing failed (and all required warnings were printed).
+     */
+    private static Optional<List<String>> parseCurrencyKeysOption(@NonNull CommandLine line,
+                                                                  @NonNull String optionName,
+                                                                  boolean mandatory) {
+
+        final String[] optionValues = line.getOptionValues(optionName);
+        if (optionValues == null) {
+            if (mandatory) {
+                System.err.printf("WARNING: --%s option should be present!\n", optionName);
+            }
+            return Optional.empty();
+        } else {
+            final List<String> ckCandidates = Arrays.asList(optionValues);
+            boolean anyBad = false;
+            for (final String ckCandidate : ckCandidates) {
+                if (!ckCandidate.isEmpty() && !EthUtils.Addresses.isValidLowercasedAddress(ckCandidate)) {
+                    anyBad = true;
+                    System.err.printf("WARNING: --%s is not a valid currency key!\n", ckCandidate);
+                }
+            }
+            if (anyBad) {
+                return Optional.empty();
+            } else {
+                return Optional.of(Collections.unmodifiableList(ckCandidates));
+            }
+        }
+    }
+
+    /**
      * Constructor: analyze the CLI arguments and act accordingly.
      */
     public CherryGardenerCLI(@NonNull String[] args) {
@@ -565,16 +611,26 @@ public class CherryGardenerCLI {
         printTitle(System.err);
 
         final @NonNull Optional<ConnectionSettings> connectionSettingsOpt = parseConnectionSettings(line);
+        final @NonNull Optional<List<String>> filterCurrencyKeys = parseCurrencyKeysOption(line, "get-currencies", false);
 
         if (connectionSettingsOpt.isPresent()) {
             System.err.println("Getting supported currencies...");
+            if (filterCurrencyKeys.isPresent()) {
+                System.err.printf("Using filter: %s\n", filterCurrencyKeys.get());
+            }
             final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
 
             try {
                 final ClientConnector connector =
                         new ClientConnectorImpl(connectionSettings.connectUrls, connectionSettings.listenPort);
 
-                final GetCurrencies.Response response = connector.getCurrencies();
+                final GetCurrencies.Response response = connector.getCurrencies(
+                        filterCurrencyKeys
+                                // Convert to set for network transmission
+                                .map(list -> new HashSet<>(list))
+                                .orElse(null),
+                        true,
+                        false);
 
                 if (response.isFailure()) {
                     System.err.printf("ERROR: Could not get the currencies! Problem: %s\n",

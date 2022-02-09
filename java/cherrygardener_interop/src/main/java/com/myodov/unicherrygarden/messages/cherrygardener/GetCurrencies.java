@@ -14,8 +14,10 @@ import com.myodov.unicherrygarden.messages.CherryGardenerRequest;
 import com.myodov.unicherrygarden.messages.RequestPayload;
 import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.List;
+import java.util.Set;
 
 
 public class GetCurrencies {
@@ -33,6 +35,12 @@ public class GetCurrencies {
             implements RequestPayload {
 
         /**
+         * What currency keys (only) do we want to select?
+         */
+        @Nullable
+        public final Set<String> filterCurrencyKeys;
+
+        /**
          * Do we want the verified currencies?
          */
         public final boolean getVerified;
@@ -43,18 +51,20 @@ public class GetCurrencies {
         public final boolean getUnverified;
 
         @JsonCreator
-        public GCRequestPayload(boolean getVerified,
+        public GCRequestPayload(@Nullable Set<String> filterCurrencyKeys,
+                                boolean getVerified,
                                 boolean getUnverified) {
             // At least one of the two should be defined
-            assert getVerified || getUnverified : String.format("%s/%s", getVerified, getUnverified);
+            assert getVerified || getUnverified : String.format("%s/%s/%s", filterCurrencyKeys, getVerified, getUnverified);
+            this.filterCurrencyKeys = filterCurrencyKeys;
             this.getVerified = getVerified;
             this.getUnverified = getUnverified;
         }
 
         @Override
         public String toString() {
-            return String.format("GetCurrencies.GCRequestPayload(%s, %s)",
-                    getVerified, getUnverified);
+            return String.format("GetCurrencies.GCRequestPayload(%s, %s, %s)",
+                    filterCurrencyKeys, getVerified, getUnverified);
         }
     }
 
@@ -99,15 +109,15 @@ public class GetCurrencies {
         }
 
         public Response(@NonNull CurrenciesRequestResultPayload payload) {
-            this((ResponsePayload)payload);
+            this((ResponsePayload) payload);
         }
 
         public Response(@NonNull CommonFailurePayload commonFailure) {
-            this((ResponsePayload)commonFailure);
+            this((ResponsePayload) commonFailure);
         }
 
         public Response(@NonNull CurrenciesRequestResultFailure specificFailure) {
-            this((ResponsePayload)specificFailure);
+            this((ResponsePayload) specificFailure);
         }
 
         @NonNull

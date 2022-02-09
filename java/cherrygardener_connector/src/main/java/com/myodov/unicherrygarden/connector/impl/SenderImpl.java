@@ -267,9 +267,9 @@ public class SenderImpl implements Sender {
     @NonNull
     public final UnsignedOutgoingTransaction buildTransaction(
             @NonNull String receiver,
-            @NonNull String currencyCode,
+            @NonNull String currencyKey,
             @NonNull BigDecimal amount) {
-        assert currencyCode != null : currencyCode;
+        assert currencyKey != null : currencyKey;
         assert amount != null : amount;
         assert receiver != null : receiver;
 
@@ -278,7 +278,7 @@ public class SenderImpl implements Sender {
         // 2. Gas limit (hardcoded for ETH; database-stored for ERC20).
         // 3. Gas price estimator
 
-        Validators.requireValidCurrencyCode("currencyCode", currencyCode);
+        Validators.requireValidCurrencyKey("currencyKey", currencyKey);
         // `if amount < 0`
         if (amount.compareTo(BigDecimal.ZERO) < 0) {
             throw new UniCherryGardenError.ArgumentError(String.format("%s is not a valid amount", amount));
@@ -286,7 +286,7 @@ public class SenderImpl implements Sender {
         Validators.requireValidEthereumAddress("receiver", receiver);
 
         final UnsignedOutgoingTransaction result;
-        if (currencyCode.isEmpty()) {
+        if (currencyKey.isEmpty()) {
             // ETH or other base currency
             final BigInteger nonce = BigInteger.ZERO;
             final BigDecimal maxPriorityFee = new BigDecimal("1.2345E-14");

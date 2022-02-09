@@ -4,7 +4,6 @@ import com.myodov.unicherrygarden.api.types.PrivateKey;
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.web3j.crypto.Hash;
 import org.web3j.crypto.RawTransaction;
 import org.web3j.crypto.TransactionDecoder;
 import org.web3j.utils.Numeric;
@@ -112,11 +111,11 @@ public interface Sender {
      * The signing could be performed either with connector's provided signature function locally or by
      * remote part using some other signing software/backend we'll develop later.
      *
-     * @param currencyCode the code of the currency to send. Should be an empty string,
-     *                     if sending the primary currency of the blockchain
-     *                     (ETH for Ethereum Mainnet, or maybe ETC in case if the backend is used
-     *                     for other Ethereum-compatible forks).
-     * @param amount       amount to transfer.
+     * @param currencyKey the key of the currency to send. Should be an empty string,
+     *                    if sending the primary currency of the blockchain
+     *                    (ETH for Ethereum Mainnet, or maybe ETC in case if the backend is used
+     *                    for other Ethereum-compatible forks).
+     * @param amount      amount to transfer.
      * @return the binary serialized transaction that user can sign on their side,
      * even using the external software (like MyCrypto/MyEtherWallet).
      * @apiNote happens directly in the memory space of the process, without ever leaving it.
@@ -125,7 +124,7 @@ public interface Sender {
     @NonNull
     UnsignedOutgoingTransaction buildTransaction(
             @NonNull String receiver,
-            @NonNull String currencyCode,
+            @NonNull String currencyKey,
             @NonNull BigDecimal amount
     );
 
