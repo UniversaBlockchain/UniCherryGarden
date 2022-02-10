@@ -128,7 +128,7 @@ public interface AddressOwnershipConfirmator {
     }
 
     /**
-     * Check if the <code>signatureMessage</code> is signed by the owner of <code>isSignedByAddress</code>.`
+     * Check if the <code>signatureMessage</code> is signed by the owner of <code>address</code>.`
      * <code>signatureMessage</code> should have the contents like MyEtherWallet/MyCrypto generates,
      * a JSON-like structure like this:
      * <pre>

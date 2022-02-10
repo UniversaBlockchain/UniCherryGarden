@@ -72,12 +72,14 @@ public class PrivateKeyImpl implements PrivateKey {
     }
 
     @Override
-    public @NonNull String getAddress() {
+    @NonNull
+    public String getAddress() {
         return "0x" + Keys.getAddress(Sign.publicKeyFromPrivate(Numeric.toBigInt(bytes)));
     }
 
     @Override
-    public @NonNull String getAddressEip55() {
+    @NonNull
+    public String getAddressEip55() {
         return Keys.toChecksumAddress(getAddress());
     }
 
@@ -87,7 +89,8 @@ public class PrivateKeyImpl implements PrivateKey {
     }
 
     @Override
-    public @NonNull String getBytesHex() {
+    @NonNull
+    public String getBytesHex() {
         final String result = Hex.toHexString(getBytes());
         assert result.length() == Ethereum.PRIVATE_KEY_SIZE_BYTES * 2;
         return result;

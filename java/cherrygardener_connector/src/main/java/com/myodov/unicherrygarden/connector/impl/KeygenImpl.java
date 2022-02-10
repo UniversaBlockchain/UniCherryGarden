@@ -23,7 +23,7 @@ public class KeygenImpl implements Keygen {
     }
 
     /**
-     * A statically-avaiable version of private key generation method.
+     * A statically-available version of private key generation method.
      */
     @NonNull
     public static PrivateKey _generatePrivateKey() {
@@ -33,5 +33,11 @@ public class KeygenImpl implements Keygen {
         } catch (NoSuchAlgorithmException|NoSuchProviderException|InvalidAlgorithmParameterException e) {
             throw new UniCherryGardenError(e.toString());
         }
+    }
+
+    @Override
+    @NonNull
+    public PrivateKey loadPrivateKey(byte[] bytes) {
+        return new PrivateKeyImpl(bytes);
     }
 }

@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
+import static com.myodov.unicherrygarden.SampleCredentials.CRED1;
 import static org.junit.Assert.*;
 
 public class KeygenImplTest {
@@ -131,6 +132,65 @@ public class KeygenImplTest {
 
             assertFalse("Private key contents is wiped on exiting: getBytes",
                     Arrays.equals(bytesCopy, pkCopy.getBytes())
+            );
+
+            assertNotEquals("Private key contents is wiped on exiting: getBytesHex",
+                    bytesHexCopy,
+                    pkCopy.getBytesHex()
+            );
+        }
+    }
+
+    @Test
+    public void testLoadPrivateKeyInTryWithResources() {
+        // Very basic testing just to be sure that the loading from string
+        // (and transitively from bytes) works well; and the bytes are wiped after leaving the try-with-resources zone.
+        final Keygen keygen = new KeygenImpl();
+
+        {  // private key generation
+            final PrivateKey pkCopy;
+            final String addressCopy;
+            final String bytesHexCopy;
+
+            // Using via try-with-resources
+            try (final PrivateKey pk = keygen.loadPrivateKey(CRED1.pk)) {
+
+                assertEquals(
+                        CRED1.addr.toLowerCase(),
+                        pk.getAddress()
+                );
+
+                // the object leaks outside of try-with-resources zone;
+                // for now it still has the private key inside. Will the private key survive leaving
+                // the try-with-resources zone?
+                pkCopy = pk;
+                addressCopy = pk.getAddress();
+                bytesHexCopy = pk.getBytesHex();
+
+                assertEquals("Still equal: getAddress",
+                        pk.getAddress(),
+                        pkCopy.getAddress()
+                );
+                assertEquals("Still equal: getAddress",
+                        addressCopy,
+                        pkCopy.getAddress()
+                );
+
+                assertEquals("Still equal: getBytesHex",
+                        pk.getBytesHex(),
+                        pkCopy.getBytesHex()
+                );
+                assertEquals("Still equal: getBytesHex",
+                        bytesHexCopy,
+                        pkCopy.getBytesHex()
+                );
+            }
+
+            // We are leaving the try-with-resources zone so all the private key contents is no more valid
+
+            assertNotEquals("Private key contents is wiped on exiting: getAddress",
+                    addressCopy,
+                    pkCopy.getAddress()
             );
 
             assertNotEquals("Private key contents is wiped on exiting: getBytesHex",
