@@ -19,7 +19,7 @@ import static com.myodov.unicherrygarden.ethereum.EthUtils.ETH_TRANSFER_GAS_LIMI
  * @implNote Concrete class instead of some Java interface,
  * so it can be directly used in Akka serialized messages.
  */
-public class Currency implements Serializable {
+public final class Currency implements Serializable {
 
     public enum CurrencyType implements Serializable {
         ETH,
@@ -199,7 +199,7 @@ public class Currency implements Serializable {
     }
 
     /**
-     * The only primary key to uniquely identify this currency.
+     * The only primary key (also called “currency key”) to uniquely identify this currency.
      *
      * @implNote For Ethereum cryptocurrency, returns <code>""</code> (empty string).
      * For ERC20 tokens (or any other tokens), returns a string like
@@ -208,7 +208,7 @@ public class Currency implements Serializable {
      */
     @NonNull
     @JsonIgnore
-    public String getKey() {
+    public final String getKey() {
         switch (type) {
             case ETH:
                 return "";
@@ -225,7 +225,7 @@ public class Currency implements Serializable {
      */
     @JsonGetter("type")
     @NonNull
-    public CurrencyType getCurrencyType() {
+    public final CurrencyType getCurrencyType() {
         return type;
     }
 
@@ -236,7 +236,7 @@ public class Currency implements Serializable {
      * It can even be missing (and is <code>null</code> in this case).
      */
     @Nullable
-    public String getName() {
+    public final String getName() {
         return name;
     }
 
@@ -247,9 +247,15 @@ public class Currency implements Serializable {
      * It can even be missing (and is <code>null</code> in this case).
      */
     @Nullable
-    public String getSymbol() {
+    public final String getSymbol() {
         return symbol;
     }
+
+
+    /**
+     * Whether this currency is “verified”, i.e. has been confirmed by the system administrator to be properly set up.
+     */
+    public final boolean getVerified() { return verified; }
 
     /**
      * Get the Ethereum address for the underlying dApp of this currency.
@@ -260,7 +266,7 @@ public class Currency implements Serializable {
      */
     @JsonGetter("dAppAddress")
     @Nullable
-    public String getDAppAddress() {
+    public final String getDAppAddress() {
         switch (type) {
             case ETH:
                 return null;
@@ -277,7 +283,7 @@ public class Currency implements Serializable {
      * Optional, may return <code>null</code>.
      */
     @Nullable
-    public String getComment() {
+    public final String getComment() {
         return comment;
     }
 
@@ -286,7 +292,7 @@ public class Currency implements Serializable {
      * Optional, may return <code>null</code> (but only if the currency is not verified).
      */
     @Nullable
-    public BigInteger getTransferGasLimit() {
+    public final BigInteger getTransferGasLimit() {
         return transferGasLimit;
     }
 }

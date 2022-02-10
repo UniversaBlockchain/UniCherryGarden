@@ -37,8 +37,8 @@ public class GetBalances_ResponseTest extends AbstractJacksonSerializationTest {
                         "\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetBalances$BalanceRequestResultPayload\"," +
                         "\"syncStatus\":{\"blockchain\":{\"currentBlock\":20,\"highestBlock\":25},\"cherryPicker\":{\"latestKnownBlock\":17,\"latestPartiallySyncedBlock\":13,\"latestFullySyncedBlock\":11}}," +
                         "\"balances\":[" +
-                        "{\"currency\":{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"transferGasLimit\":21000,\"type\":\"ETH\",\"dAppAddress\":null},\"amount\":\"123.45\",\"blockNumber\":7328}," +
-                        "{\"currency\":{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"transferGasLimit\":70000,\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"},\"amount\":\"456.789\",\"blockNumber\":7932}]}}",
+                        "{\"currency\":{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"transferGasLimit\":21000,\"type\":\"ETH\",\"dAppAddress\":null},\"amount\":\"123.45\",\"blockNumber\":7328}," +
+                        "{\"currency\":{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"transferGasLimit\":70000,\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"},\"amount\":\"456.789\",\"blockNumber\":7932}]}}",
                 makeJson(new GetBalances.Response(
                         new GetBalances.BalanceRequestResultPayload(
                                 new SystemSyncStatus(
