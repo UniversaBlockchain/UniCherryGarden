@@ -46,7 +46,7 @@ sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
 sonatypeCredentialHost := "s01.oss.sonatype.org"
 publishTo := sonatypePublishToBundle.value
 
-val projectVersion = "0.9.2"
+val projectVersion = "0.9.3"
 name := "unicherrygarden"
 version := projectVersion
 
