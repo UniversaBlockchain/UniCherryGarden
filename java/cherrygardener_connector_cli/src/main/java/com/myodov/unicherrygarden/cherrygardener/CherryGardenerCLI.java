@@ -153,6 +153,12 @@ public class CherryGardenerCLI {
         options.addOptionGroup(commandOptionGroup);
 
         options.addOption(
+                null, "loop", false,
+                "(For those commands that support it) start infinite loop,\n" +
+                        "repeating the operation over and over.\n" +
+                        "Can be used for benchmark/performance purposes."
+        );
+        options.addOption(
                 null, "comment", true,
                 "Text comment."
         );
@@ -613,6 +619,8 @@ public class CherryGardenerCLI {
         final @NonNull Optional<ConnectionSettings> connectionSettingsOpt = parseConnectionSettings(line);
         final @NonNull Optional<List<String>> filterCurrencyKeys = parseCurrencyKeysOption(line, "get-currencies", false);
 
+        final boolean loopEnabled = line.hasOption("loop");
+
         if (connectionSettingsOpt.isPresent()) {
             System.err.println("Getting supported currencies...");
             if (filterCurrencyKeys.isPresent()) {
@@ -624,36 +632,39 @@ public class CherryGardenerCLI {
                 final ClientConnector connector =
                         new ClientConnectorImpl(connectionSettings.connectUrls, connectionSettings.listenPort);
 
-                final GetCurrencies.Response response = connector.getCurrencies(
-                        filterCurrencyKeys
-                                // Convert to set for network transmission
-                                .map(list -> new HashSet<>(list))
-                                .orElse(null),
-                        true,
-                        false);
+                do {
+                    final Instant startTime = Instant.now();
+                    final GetCurrencies.Response response = connector.getCurrencies(
+                            filterCurrencyKeys
+                                    // Convert to set for network transmission
+                                    .map(list -> new HashSet<>(list))
+                                    .orElse(null),
+                            true,
+                            false);
 
-                if (response.isFailure()) {
-                    System.err.printf("ERROR: Could not get the currencies! Problem: %s\n",
-                            response.getFailure());
-                } else {
-                    final GetCurrencies.CurrenciesRequestResultPayload payload = response.getPayloadAsSuccessful();
-                    final List<Currency> currencies = payload.currencies;
+                    if (response.isFailure()) {
+                        System.err.printf("ERROR: Could not get the currencies! Problem: %s\n",
+                                response.getFailure());
+                    } else {
+                        final GetCurrencies.CurrenciesRequestResultPayload payload = response.getPayloadAsSuccessful();
+                        final List<Currency> currencies = payload.currencies;
 
-                    System.err.printf("Supported currencies (%s):\n", currencies.size());
-                    for (final Currency c : currencies) {
-                        final @Nullable String optComment = c.getComment();
-                        System.err.printf("  %s: \"%s\" (transfer gas limit %s) - %s%s\n",
-                                c.getSymbol(),
-                                c.getName(),
-                                c.getTransferGasLimit(),
-                                (c.getCurrencyType() == Currency.CurrencyType.ETH) ?
-                                        "Ether cryptocurrency" :
-                                        String.format("ERC20 token at %s", c.getDAppAddress()),
-                                (optComment == null) ? "" : String.format(" (%s)", optComment)
-                        );
+                        System.err.printf("Supported currencies (%s):\n", currencies.size());
+                        for (final Currency c : currencies) {
+                            final @Nullable String optComment = c.getComment();
+                            System.err.printf("  %s: \"%s\" (transfer gas limit %s) - %s%s\n",
+                                    c.getSymbol(),
+                                    c.getName(),
+                                    c.getTransferGasLimit(),
+                                    (c.getCurrencyType() == Currency.CurrencyType.ETH) ?
+                                            "Ether cryptocurrency" :
+                                            String.format("ERC20 token at %s", c.getDAppAddress()),
+                                    (optComment == null) ? "" : String.format(" (%s)", optComment)
+                            );
+                        }
                     }
-                    System.err.println("---");
-                }
+                    System.err.printf("--- Done in %s --\n", Duration.between(startTime, Instant.now()));
+                } while (loopEnabled);
                 connector.shutdown();
             } catch (CompletionException exc) {
                 System.err.println("ERROR: Could not connect to UniCherryGarden!");
@@ -668,6 +679,8 @@ public class CherryGardenerCLI {
 
         final @NonNull Optional<ConnectionSettings> connectionSettingsOpt = parseConnectionSettings(line);
 
+        final boolean loopEnabled = line.hasOption("loop");
+
         if (connectionSettingsOpt.isPresent()) {
             System.err.println("Getting tracked addresses...");
             final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
@@ -677,22 +690,26 @@ public class CherryGardenerCLI {
                         new ClientConnectorImpl(connectionSettings.connectUrls, connectionSettings.listenPort);
                 final Observer observer = connector.getObserver();
 
-                final GetTrackedAddresses.Response response = observer.getTrackedAddresses();
-                if (response.isFailure()) {
-                    System.err.printf("ERROR: Could not get the tracked addresses! Problem: %s\n",
-                            response.getFailure());
-                } else {
-                    final GetTrackedAddresses.TrackedAddressesRequestResultPayload payload = response.getPayloadAsSuccessful();
-                    final List<GetTrackedAddresses.TrackedAddressesRequestResultPayload.TrackedAddressInformation> trackedAddresses = payload.addresses;
+                do {
+                    final Instant startTime = Instant.now();
 
-                    System.err.printf("Tracked addresses (%s):\n", trackedAddresses.size());
-                    for (GetTrackedAddresses.TrackedAddressesRequestResultPayload.TrackedAddressInformation addr : trackedAddresses) {
-                        System.err.printf("  %s%s\n",
-                                addr.address,
-                                (addr.comment != null) ? "" : String.format("(%s)", addr.comment));
+                    final GetTrackedAddresses.Response response = observer.getTrackedAddresses();
+                    if (response.isFailure()) {
+                        System.err.printf("ERROR: Could not get the tracked addresses! Problem: %s\n",
+                                response.getFailure());
+                    } else {
+                        final GetTrackedAddresses.TrackedAddressesRequestResultPayload payload = response.getPayloadAsSuccessful();
+                        final List<GetTrackedAddresses.TrackedAddressesRequestResultPayload.TrackedAddressInformation> trackedAddresses = payload.addresses;
+
+                        System.err.printf("Tracked addresses (%s):\n", trackedAddresses.size());
+                        for (GetTrackedAddresses.TrackedAddressesRequestResultPayload.TrackedAddressInformation addr : trackedAddresses) {
+                            System.err.printf("  %s%s\n",
+                                    addr.address,
+                                    (addr.comment != null) ? "" : String.format("(%s)", addr.comment));
+                        }
                     }
-                    System.err.println("---");
-                }
+                    System.err.printf("--- Done in %s --\n", Duration.between(startTime, Instant.now()));
+                } while (loopEnabled);
                 connector.shutdown();
             } catch (CompletionException exc) {
                 System.err.println("ERROR: Could not connect to UniCherryGarden!");
