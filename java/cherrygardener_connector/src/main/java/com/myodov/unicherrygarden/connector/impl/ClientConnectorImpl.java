@@ -156,7 +156,7 @@ public class ClientConnectorImpl implements ClientConnector {
             this.observer = null;
             logger.warn("Creating Connector in offline mode!");
         } else {
-            this.observer = new ObserverImpl(actorSystem);
+            this.observer = new ObserverImpl(actorSystem, mandatoryConfirmations);
 
             final List<Address> seedNodes = gardenerUrls.stream()
                     .map(url -> AddressFromURIString.parse(String.format("akka://CherryGarden@%s", url)))

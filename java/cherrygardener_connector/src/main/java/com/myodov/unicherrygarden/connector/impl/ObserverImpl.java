@@ -35,13 +35,18 @@ public class ObserverImpl implements Observer {
     @NonNull
     private final ActorSystem<ConnectorActorMessage> actorSystem;
 
+    protected final int mandatoryConfirmations;
+
 
     /**
      * Constructor.
      */
-    public ObserverImpl(@NonNull ActorSystem<ConnectorActorMessage> actorSystem) {
+    public ObserverImpl(@NonNull ActorSystem<ConnectorActorMessage> actorSystem,
+                        int mandatoryConfirmations) {
         assert actorSystem != null;
+        assert mandatoryConfirmations >= 0 : mandatoryConfirmations;
         this.actorSystem = actorSystem;
+        this.mandatoryConfirmations = mandatoryConfirmations;
     }
 
     @Override
@@ -104,7 +109,8 @@ public class ObserverImpl implements Observer {
             int confirmations,
             @NonNull String address,
             @Nullable Set<String> filterCurrencyKeys) {
-        assert confirmations >= 0 : confirmations;
+        assert confirmations >= 0 && confirmations + mandatoryConfirmations >= 0:
+                String.format("%s/%s", confirmations, mandatoryConfirmations);
         assert address != null : address;
         Validators.requireValidLowercasedEthereumAddress("address", address);
         Validators.requireValidBlockNumber("confirmations", confirmations);
@@ -113,7 +119,7 @@ public class ObserverImpl implements Observer {
                 AskPattern.ask(
                         actorSystem,
                         GetBalancesCommand.createReplier(
-                                confirmations,
+                                confirmations + mandatoryConfirmations,
                                 address,
                                 filterCurrencyKeys),
                         ConnectorActor.DEFAULT_CALL_TIMEOUT,
@@ -138,7 +144,8 @@ public class ObserverImpl implements Observer {
             boolean includeBalances
     ) {
         // Validations
-        Validators.requireValidBlockNumber("confirmations", confirmations);
+        assert confirmations >= 0 && confirmations + mandatoryConfirmations >= 0:
+                String.format("%s/%s", confirmations, mandatoryConfirmations);
 
         if (sender != null) Validators.requireValidLowercasedEthereumAddress("sender", sender);
         if (receiver != null) Validators.requireValidLowercasedEthereumAddress("receiver", receiver);
@@ -157,7 +164,7 @@ public class ObserverImpl implements Observer {
                 AskPattern.ask(
                         actorSystem,
                         GetTransfersCommand.createReplier(
-                                confirmations,
+                                confirmations + mandatoryConfirmations,
                                 sender,
                                 receiver,
                                 startBlock,
