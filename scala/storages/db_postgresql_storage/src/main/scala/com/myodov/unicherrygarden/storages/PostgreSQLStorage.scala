@@ -339,6 +339,7 @@ class PostgreSQLStorage(jdbcUrl: String,
     import com.myodov.unicherrygarden.storages.api.DBStorage.Currencies._
 
     override final def getCurrencies(
+                                      currencyKeys: Option[Set[String]],
                                       getVerified: Boolean,
                                       getUnverified: Boolean
                                     )
@@ -352,10 +353,29 @@ class PostgreSQLStorage(jdbcUrl: String,
             ++
             (if (getUnverified) Seq(false) else Seq())
           )
+
         sql"""
+        WITH
+          _vars AS (
+              SELECT
+                  ARRAY [${currencyKeys.map(_.toSeq).orNull}]::TEXT[] AS filter_currency_keys
+          ),
+          vars AS (
+              SELECT
+                  _vars.*,
+                  filter_currency_keys != ARRAY[NULL]::TEXT[] AS has_filter_currency_keys
+              FROM _vars
+          )
         SELECT *
-        FROM ucg_currency
-        WHERE verified IN ($verifiedValues);
+        FROM
+            vars,
+            ucg_currency AS currency
+        WHERE
+            currency.verified IN ($verifiedValues) AND
+            (
+                NOT has_filter_currency_keys OR
+                ucg_get_currency_code(currency.type, currency.dapp_address) = ANY (filter_currency_keys)
+            );
         """.map(DBCurrency.fromUcgCurrency(_)).list.apply()
       } else {
         // Haven't asked for any currencies; so the result is definitely empty

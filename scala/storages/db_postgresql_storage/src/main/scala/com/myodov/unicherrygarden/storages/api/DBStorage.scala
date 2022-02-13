@@ -83,6 +83,7 @@ object DBStorageAPI {
   trait Currencies {
     /** Get all the currencies (filtered for verified/unverified) in the system. */
     def getCurrencies(
+                       currencyKeys: Option[Set[String]],
                        getVerified: Boolean,
                        getUnverified: Boolean
                      )

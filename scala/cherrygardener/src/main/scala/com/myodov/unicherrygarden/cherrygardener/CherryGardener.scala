@@ -5,7 +5,6 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.UnicherrygardenVersion
 import com.myodov.unicherrygarden.api.types.dlt.Currency
-import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector
 import com.myodov.unicherrygarden.messages.cherrygardener.{GetCurrencies, PingCherryGardener}
 import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryPickerRequest, CherryPlanterRequest}
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
@@ -18,8 +17,12 @@ import scala.language.postfixOps
 class CherryGardener(private val dbStorage: DBStorageAPI) extends LazyLogging {
 
   /** Reply to [[GetCurrencies]] request. */
-  def getCurrencies(getVerified: Boolean, getUnverified: Boolean): GetCurrencies.Response = {
-    val result: List[Currency] = dbStorage.currencies.getCurrencies(getVerified, getUnverified).map(_.asCurrency)
+  def getCurrencies(
+                     filterCurrencyKeys: Option[Set[String]],
+                     getVerified: Boolean,
+                     getUnverified: Boolean
+                   ): GetCurrencies.Response = {
+    val result: List[Currency] = dbStorage.currencies.getCurrencies(filterCurrencyKeys, getVerified, getUnverified).map(_.asCurrency)
     new GetCurrencies.Response(new GetCurrencies.CurrenciesRequestResultPayload(result.asJava))
   }
 }
@@ -50,7 +53,10 @@ object CherryGardener extends LazyLogging {
         case message: GetCurrencies.Request => {
           logger.debug(s"Received GetCurrencies($message) command")
 
-          val response = gardener.getCurrencies(message.payload.getVerified, message.payload.getUnverified)
+          val response = gardener.getCurrencies(
+            Option(message.payload.filterCurrencyKeys).map(_.asScala.toSet),
+            message.payload.getVerified,
+            message.payload.getUnverified)
           logger.debug(s"Replying with $response")
           message.replyTo ! response
           Behaviors.same
