@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -13,6 +14,7 @@ public abstract class AbstractJacksonSerializationTest {
     protected static String makeJson(Object obj) throws JsonProcessingException {
         final ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.configOverride(BigDecimal.class).setFormat(JsonFormat.Value.forShape(JsonFormat.Shape.STRING));
+        objectMapper.configOverride(BigInteger.class).setFormat(JsonFormat.Value.forShape(JsonFormat.Shape.STRING));
         return objectMapper.writeValueAsString(obj);
     }
 

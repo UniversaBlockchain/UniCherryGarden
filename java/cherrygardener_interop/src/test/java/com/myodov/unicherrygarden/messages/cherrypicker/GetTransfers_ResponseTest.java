@@ -44,7 +44,7 @@ public class GetTransfers_ResponseTest extends AbstractJacksonSerializationTest 
         assertEquals(
                 "{\"payload\":{" +
                         "\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers$TransfersRequestResultPayload\"," +
-                        "\"syncStatus\":{\"actualAt\":{\"epochSecond\":1644848996,\"nano\":0},\"blockchain\":{\"currentBlock\":20,\"highestBlock\":25},\"cherryPicker\":{\"latestKnownBlock\":17,\"latestPartiallySyncedBlock\":13,\"latestFullySyncedBlock\":11},\"gasPriceData\":{\"baseFeePerGas\":26227529244}" +
+                        "\"syncStatus\":{\"actualAt\":{\"epochSecond\":1644848996,\"nano\":0},\"blockchain\":{\"currentBlock\":20,\"highestBlock\":25},\"cherryPicker\":{\"latestKnownBlock\":17,\"latestPartiallySyncedBlock\":13,\"latestFullySyncedBlock\":11},\"gasPriceData\":{\"baseFeePerGas\":\"26227529244\"}" +
                         "}," +
                         "\"transfers\":[" +
                         "{\"from\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24\",\"to\":\"0xaa9f5344e0a207b4d5d59cb00ea939a97e81c688\",\"currencyKey\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\",\"amount\":\"200000\",\"tx\":{\"txhash\":\"0xb0b3d18c67857c30829e348987899026ee08232c989d60e47ccd78dca375d79a\",\"from\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24\",\"to\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\",\"block\":{\"blockNumber\":13550555,\"hash\":\"0x4246574f55f6bb00326e17fa5ed6724df0b821babd3bf456cee2fd6a7b4dd25a\",\"ts\":{\"epochSecond\":1636033366,\"nano\":0}},\"transactionIndex\":220,\"fees\":\"0.00455845\"},\"logIndex\":258}," +
@@ -52,11 +52,11 @@ public class GetTransfers_ResponseTest extends AbstractJacksonSerializationTest 
                         "]," +
                         "\"balances\":{" +
                         "\"\":[" +
-                        "{\"currency\":{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"transferGasLimit\":21000,\"type\":\"ETH\",\"dAppAddress\":null},\"amount\":\"123.45\",\"blockNumber\":7328}," +
-                        "{\"currency\":{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"transferGasLimit\":21000,\"type\":\"ETH\",\"dAppAddress\":null},\"amount\":\"67.89\",\"blockNumber\":7751}]," +
+                        "{\"currency\":{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null},\"amount\":\"123.45\",\"blockNumber\":7328}," +
+                        "{\"currency\":{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null},\"amount\":\"67.89\",\"blockNumber\":7751}]," +
                         "\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\":[" +
-                        "{\"currency\":{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"transferGasLimit\":70000,\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"},\"amount\":\"1.23E-12\",\"blockNumber\":123}," +
-                        "{\"currency\":{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"transferGasLimit\":70000,\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"},\"amount\":\"238954723985723982932342342342335.23\",\"blockNumber\":458392932}" +
+                        "{\"currency\":{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"transferGasLimit\":\"70000\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"},\"amount\":\"1.23E-12\",\"blockNumber\":123}," +
+                        "{\"currency\":{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"transferGasLimit\":\"70000\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"},\"amount\":\"238954723985723982932342342342335.23\",\"blockNumber\":458392932}" +
                         "]}}}",
                 makeJson(new GetTransfers.Response(
                         new GetTransfers.TransfersRequestResultPayload(
