@@ -190,7 +190,7 @@ public class EthUtils {
         private static final int DECIMALS = 18;
 
         static final BigInteger WEI_IN_ETHER = BigInteger.TEN.pow(DECIMALS);
-        static final BigInteger GWEI_IN_ETHER = WEI_IN_ETHER.divide(BigInteger.valueOf(1_000_000_000l));
+        static final BigInteger GWEI_IN_ETHER = WEI_IN_ETHER.divide(BigInteger.valueOf(1_000_000_000L));
 
         private static final BigDecimal WEI_IN_ETHER_BD = new BigDecimal(WEI_IN_ETHER);
         private static final BigDecimal GWEI_IN_ETHER_BD = new BigDecimal(GWEI_IN_ETHER);

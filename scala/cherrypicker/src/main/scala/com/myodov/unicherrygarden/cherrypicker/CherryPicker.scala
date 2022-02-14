@@ -1,5 +1,6 @@
 package com.myodov.unicherrygarden
 
+import java.time.Instant
 import java.util.UUID
 
 import akka.actor.typed.receptionist.Receptionist
@@ -207,14 +208,14 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
     DB readOnly { implicit session =>
       new GetBalances.Response(
         // Read and remember the sync progress for the whole operation
-        (state.ethereumNodeStatus, dbStorage.progress.getProgress) match {
-          case (None, _) | (_, None) =>
-            logger.warn(s"Received GetBalances request while not ready; respond with error")
+        (state.ethereumNodeStatus, dbStorage.progress.getProgress, state.gasPriceData) match {
+          case (None, _, _) | (_, None, _) | (_, _, None) =>
+            logger.warn(s"Received GetBalances request while not fully ready; respond with error")
             null
-          case (Some(ethereumNodeStatus), Some(progress)) if progress.blocks.to.isEmpty =>
+          case (Some(ethereumNodeStatus), Some(progress), Some(gasPriceData)) if progress.blocks.to.isEmpty =>
             logger.warn(s"Received GetBalances request but blocks are not ready; respond with error")
             null
-          case (ethereumNodeStatusOpt@Some(ethereumNodeStatus), progressOpt@Some(progress)) =>
+          case (ethereumNodeStatusOpt@Some(ethereumNodeStatus), progressOpt@Some(progress), gasPriceDataOpt@Some(gasPriceData)) =>
             // Real use-case handling
             val blocksTo = progress.blocks.to.get // non-empty, due to previous `case` check
             val maxBlock = blocksTo - payload.confirmations
@@ -226,7 +227,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
               Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
             )
             new BalanceRequestResultPayload(
-              buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
+              buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt, gasPriceDataOpt),
               results.asJava
             )
         }
@@ -238,14 +239,14 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
     DB readOnly { implicit session =>
       new GetTransfers.Response(
         // Read and remember the sync progress for the whole operation
-        (state.ethereumNodeStatus, dbStorage.progress.getProgress) match {
-          case (None, _) | (_, None) =>
+        (state.ethereumNodeStatus, dbStorage.progress.getProgress, state.gasPriceData) match {
+          case (None, _, _) | (_, None, _) | (_, _, None)=>
             logger.warn(s"Received GetTransfers request while not ready; respond with error")
             null
-          case (Some(ethereumNodeStatus), Some(progress)) if progress.blocks.to.isEmpty =>
+          case (Some(ethereumNodeStatus), Some(progress), Some(gasPriceData)) if progress.blocks.to.isEmpty =>
             logger.warn(s"Received GetTransfers request but blocks are not ready; respond with error")
             null
-          case (ethereumNodeStatusOpt@Some(ethereumNodeStatus), progressOpt@Some(progress)) =>
+          case (ethereumNodeStatusOpt@Some(ethereumNodeStatus), progressOpt@Some(progress), gasPriceDataOpt@Some(gasPriceData)) =>
             // Real use-case handling
             val blocksTo = progress.blocks.to.get // non-empty, due to previous `case` check
             val maxBlock = blocksTo - payload.confirmations
@@ -284,7 +285,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
                 Map.empty
 
             new TransfersRequestResultPayload(
-              buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
+              buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt, gasPriceDataOpt),
               transfers.asJava,
               balances.map { case (k, v) => k -> v.asJava }.asJava
             )
@@ -302,7 +303,10 @@ object CherryPicker extends LazyLogging {
 
   val BLOCK_ITERATION_PERIOD = 10 seconds // Each block is generated about once per 13 seconds, let’s be safe
 
-  protected final case class State(@volatile var ethereumNodeStatus: Option[SystemSyncStatus.Blockchain] = None)
+  protected final case class State(
+                                    @volatile var ethereumNodeStatus: Option[SystemSyncStatus.Blockchain] = None,
+                                    @volatile var gasPriceData: Option[SystemSyncStatus.GasPriceData] = None
+                                  )
 
 
   /** Main constructor. */
@@ -324,8 +328,11 @@ object CherryPicker extends LazyLogging {
 
   @inline
   private[CherryPicker] final def buildSystemSyncStatus(ethereumNodeStatusOpt: Option[SystemSyncStatus.Blockchain],
-                                                        progressOpt: Option[Progress.ProgressData]): SystemSyncStatus =
+                                                        progressOpt: Option[Progress.ProgressData],
+                                                        gasPriceDataOpt: Option[SystemSyncStatus.GasPriceData]
+                                                       ): SystemSyncStatus =
     new SystemSyncStatus(
+      Instant.now,
       ethereumNodeStatusOpt.orNull,
       progressOpt
         .flatMap(pr => (pr.blocks.to, pr.perCurrencyTrackedAddresses.maxTo, pr.perCurrencyTrackedAddresses.minTo) match {
@@ -334,7 +341,8 @@ object CherryPicker extends LazyLogging {
           case other =>
             None
         })
-        .orNull
+        .orNull,
+      gasPriceDataOpt.orNull
     )
 
   /** For a message incoming to CherryPicker, launch a new handler as a child Actor.

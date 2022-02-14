@@ -40,8 +40,10 @@ public class GetTransfers_TransfersRequestResultTest {
     // 3. Transfer-in of ETH (several).
     static final GetTransfers.TransfersRequestResultPayload SAMPLE1 = new GetTransfers.TransfersRequestResultPayload(
             new SystemSyncStatus(
+                    Instant.ofEpochSecond(1644848846l),
                     SystemSyncStatus.Blockchain.create(15631007, 14631007),
-                    SystemSyncStatus.CherryPicker.create(13631007, 13631007, 13631007)
+                    SystemSyncStatus.CherryPicker.create(13631007, 13631007, 13631007),
+                    SystemSyncStatus.GasPriceData.create(BigInteger.valueOf(34112709686L))
             ),
             new ArrayList<MinedTransfer>() {{
                 // UTNP in #1

@@ -12,12 +12,12 @@ public class EthUtilsUint256Test {
     public void testUint256ConvertableToBigDecimals() {
         assertEquals(
                 BigDecimal.ONE,
-                EthUtils.Uint256.valueFromUint256(BigInteger.valueOf(1_000_000_000_000_000_000l), 18)
+                EthUtils.Uint256.valueFromUint256(BigInteger.valueOf(1_000_000_000_000_000_000L), 18)
         );
         assertEquals(
                 "Example for USDT which has decimals=6",
                 new BigDecimal(250),
-                EthUtils.Uint256.valueFromUint256(BigInteger.valueOf(250_000_000l), 6)
+                EthUtils.Uint256.valueFromUint256(BigInteger.valueOf(250_000_000L), 6)
         );
         assertEquals(
                 BigDecimal.ZERO,
@@ -32,12 +32,12 @@ public class EthUtilsUint256Test {
     @Test
     public void testUint256ConvertableFromBigDecimals() {
         assertEquals(
-                BigInteger.valueOf(1_000_000_000_000_000_000l),
+                BigInteger.valueOf(1_000_000_000_000_000_000L),
                 EthUtils.Uint256.valueToUint256(BigDecimal.ONE, 18)
         );
         assertEquals(
                 "Example for USDT which has decimals=6",
-                BigInteger.valueOf(250_000_000l),
+                BigInteger.valueOf(250_000_000L),
                 EthUtils.Uint256.valueToUint256(new BigDecimal(250), 6)
         );
         assertEquals(

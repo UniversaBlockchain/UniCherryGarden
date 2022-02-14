@@ -1,7 +1,11 @@
 package com.myodov.unicherrygarden.api.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
+
+import java.math.BigInteger;
+import java.time.Instant;
 
 /**
  * Total information about overall available sync status (for Ethereum blockchain, node, and Unicherrygarden.)
@@ -116,6 +120,42 @@ public class SystemSyncStatus {
         }
     }
 
+    /**
+     * Various details useful to estimate the gas price for the future transactions.
+     */
+    public static class GasPriceData {
+
+        @NonNull
+        public final BigInteger baseFeePerGas;
+
+        @JsonCreator
+        public GasPriceData(@NonNull BigInteger baseFeePerGas) {
+            assert baseFeePerGas != null : baseFeePerGas;
+            assert baseFeePerGas.compareTo(BigInteger.ZERO) >= 0 : baseFeePerGas; // baseFeePerGas >= 0
+
+            this.baseFeePerGas = baseFeePerGas;
+        }
+
+        public static GasPriceData create(@NonNull BigInteger baseFeePerGas) {
+            return new GasPriceData(baseFeePerGas);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s(%s)",
+                    getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
+                    baseFeePerGas);
+        }
+    }
+
+    /**
+     * At what moment of time this data is actual.
+     * <p>
+     * Note that the time is provided by UniCherryGarden, not the local.
+     */
+    @NonNull
+    public final Instant actualAt;
+
 
     /**
      * Details about the blockchain sync status. <code>null</code> if unavailable.
@@ -130,19 +170,31 @@ public class SystemSyncStatus {
     public final CherryPicker cherryPicker;
 
     /**
+     * Details about gas price estimations. <code>null</code> if unavailable.
+     */
+    @Nullable
+    public final GasPriceData gasPriceData;
+
+    /**
      * Constructor.
      */
     @JsonCreator
-    public SystemSyncStatus(@Nullable Blockchain blockchain,
-                            @Nullable CherryPicker cherryPicker) {
+    public SystemSyncStatus(@NonNull Instant actualAt,
+                            @Nullable Blockchain blockchain,
+                            @Nullable CherryPicker cherryPicker,
+                            @Nullable GasPriceData gasPriceData) {
+        assert actualAt != null: actualAt;
+
+        this.actualAt = actualAt;
         this.blockchain = blockchain;
         this.cherryPicker = cherryPicker;
+        this.gasPriceData = gasPriceData;
     }
 
     @Override
     public String toString() {
-        return String.format("%s(%s, %s)",
+        return String.format("%s(%s, %s, %s)",
                 this.getClass().getSimpleName(),
-                blockchain, cherryPicker);
+                actualAt, blockchain, cherryPicker, gasPriceData);
     }
 }

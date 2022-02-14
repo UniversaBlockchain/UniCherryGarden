@@ -11,11 +11,11 @@ public class EthUtilsWeiTest {
     @Test
     public void testWeiConstants() {
         assertEquals(
-                BigInteger.valueOf(1_000_000_000_000_000_000l),
+                BigInteger.valueOf(1_000_000_000_000_000_000L),
                 EthUtils.Wei.WEI_IN_ETHER
         );
         assertEquals(
-                BigInteger.valueOf(1_000_000_000l),
+                BigInteger.valueOf(1_000_000_000L),
                 EthUtils.Wei.GWEI_IN_ETHER
         );
     }
@@ -24,7 +24,7 @@ public class EthUtilsWeiTest {
     public void testValueFromWeis() {
         assertEquals(
                 BigDecimal.ONE,
-                EthUtils.Wei.valueFromWeis(BigInteger.valueOf(1_000_000_000_000_000_000l))
+                EthUtils.Wei.valueFromWeis(BigInteger.valueOf(1_000_000_000_000_000_000L))
         );
         assertEquals(
                 BigDecimal.ZERO,
@@ -32,14 +32,14 @@ public class EthUtilsWeiTest {
         );
         assertEquals(
                 new BigDecimal("0.000000079"),
-                EthUtils.Wei.valueFromWeis(BigInteger.valueOf(79_000_000_000l))
+                EthUtils.Wei.valueFromWeis(BigInteger.valueOf(79_000_000_000L))
         );
     }
 
     @Test
     public void testValueToWeis() {
         assertEquals(
-                BigInteger.valueOf(1_000_000_000_000_000_000l),
+                BigInteger.valueOf(1_000_000_000_000_000_000L),
                 EthUtils.Wei.valueToWeis(BigDecimal.ONE)
         );
         assertEquals(
@@ -47,7 +47,7 @@ public class EthUtilsWeiTest {
                 EthUtils.Wei.valueToWeis(BigDecimal.ZERO)
         );
         assertEquals(
-                BigInteger.valueOf(79_000_000_000l),
+                BigInteger.valueOf(79_000_000_000L),
                 EthUtils.Wei.valueToWeis(new BigDecimal("0.000000079"))
         );
     }
@@ -56,7 +56,7 @@ public class EthUtilsWeiTest {
     public void testValueFromGweis() {
         assertEquals(
                 BigDecimal.ONE,
-                EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(1_000_000_000l))
+                EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(1_000_000_000L))
         );
         assertEquals(
                 BigDecimal.ZERO,
@@ -72,7 +72,7 @@ public class EthUtilsWeiTest {
     public void testValueToGweis() {
         assertEquals("Trailing zeros may be skipped, so need to use compareTo",
                 0,
-                BigDecimal.valueOf(1_000_000_000l).compareTo(
+                BigDecimal.valueOf(1_000_000_000L).compareTo(
                     EthUtils.Wei.valueToGweis(BigDecimal.ONE)
                 )
         );
