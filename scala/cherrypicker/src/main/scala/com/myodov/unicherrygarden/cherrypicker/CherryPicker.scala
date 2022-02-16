@@ -205,29 +205,26 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
   // Construct all the response DB in a single atomic readonly DB transaction.
     DB readOnly { implicit session =>
       new GetBalances.Response(
-        // Read and remember the system progress for the whole operation
-        (state.ethereumStatus, dbStorage.progress.getProgress) match {
-          case (None, _) | (_, None) =>
-            logger.warn(s"Received GetBalances request while not fully ready; respond with error")
-            null
-          case (Some(ethereumNodeStatus), Some(progress)) if progress.blocks.to.isEmpty =>
-            logger.warn(s"Received GetBalances request but blocks are not ready; respond with error")
-            null
-          case (ethereumNodeStatusOpt@Some(ethereumNodeStatus), progressOpt@Some(progress)) =>
-            // Real use-case handling
-            val blocksTo = progress.blocks.to.get // non-empty, due to previous `case` check
-            val maxBlock = blocksTo - payload.confirmations
-            logger.debug(s"Get balances for $payload at $maxBlock")
+        whenStateAndProgressAllow[BalanceRequestResultPayload](
+          state.ethereumStatus,
+          dbStorage.progress.getProgress,
+          "GetBalances",
+          null
+        ) { (ethereumNodeStatus, progress) =>
+          // Real use-case handling
+          val blocksTo = progress.blocks.to.get // non-empty, due to previous `case` check
+          val maxBlock = blocksTo - payload.confirmations
+          logger.debug(s"Get balances for $payload at $maxBlock")
 
-            val results = dbStorage.balances.getBalances(
-              payload.address,
-              maxBlock,
-              Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
-            )
-            new BalanceRequestResultPayload(
-              buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
-              results.asJava
-            )
+          val results = dbStorage.balances.getBalances(
+            payload.address,
+            maxBlock,
+            Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
+          )
+          new BalanceRequestResultPayload(
+            buildSystemSyncStatus(ethereumNodeStatus, progress),
+            results.asJava
+          )
         }
       )
     }
@@ -236,57 +233,54 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
   // Construct all the response in a single atomic readonly DB transaction
     DB readOnly { implicit session =>
       new GetTransfers.Response(
-        // Read and remember the system progress for the whole operation
-        (state.ethereumStatus, dbStorage.progress.getProgress) match {
-          case (None, _) | (_, None) =>
-            logger.warn(s"Received GetTransfers request while not ready; respond with error")
-            null
-          case (Some(ethereumNodeStatus), Some(progress)) if progress.blocks.to.isEmpty =>
-            logger.warn(s"Received GetTransfers request but blocks are not ready; respond with error")
-            null
-          case (ethereumNodeStatusOpt@Some(ethereumNodeStatus), progressOpt@Some(progress)) =>
-            // Real use-case handling
-            val blocksTo = progress.blocks.to.get // non-empty, due to previous `case` check
-            val maxBlock = blocksTo - payload.confirmations
+        whenStateAndProgressAllow[TransfersRequestResultPayload](
+          state.ethereumStatus,
+          dbStorage.progress.getProgress,
+          "GetTransfers",
+          null
+        ) { (ethereumNodeStatus, progress) =>
+          // Real use-case handling
+          val blocksTo = progress.blocks.to.get // non-empty, due to previous `case` check
+          val maxBlock = blocksTo - payload.confirmations
 
-            val optEndBlock = Option(payload.endBlock).map(_.toInt) // of nullable; safe conversion to Option[Int]
+          val optEndBlock = Option(payload.endBlock).map(_.toInt) // of nullable; safe conversion to Option[Int]
 
-            val endBlock = optEndBlock match {
-              case None => maxBlock
-              case Some(endBlockCandidate) =>
-                Math.min(endBlockCandidate, maxBlock)
-            }
+          val endBlock = optEndBlock match {
+            case None => maxBlock
+            case Some(endBlockCandidate) =>
+              Math.min(endBlockCandidate, maxBlock)
+          }
 
-            logger.debug(s"Get transfers for $payload at $maxBlock ($endBlock)")
+          logger.debug(s"Get transfers for $payload at $maxBlock ($endBlock)")
 
-            val optSender = Option(payload.sender) // of nullable
-            val optReceiver = Option(payload.receiver) // of nullable
-            val optStartBlock = Option(payload.startBlock).map(_.toInt) // of nullable; safe conversion to Option[Int]
-            val optCurrencyKeys = Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
+          val optSender = Option(payload.sender) // of nullable
+          val optReceiver = Option(payload.receiver) // of nullable
+          val optStartBlock = Option(payload.startBlock).map(_.toInt) // of nullable; safe conversion to Option[Int]
+          val optCurrencyKeys = Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
 
-            val transfers = dbStorage.transfers.getTransfers(
-              optSender,
-              optReceiver,
-              optStartBlock,
-              endBlock,
-              optCurrencyKeys
-            )
-            // We already have the transfers. But the query payload contained optional filters for sender and receiver;
-            // so let's try to get balances for both.
+          val transfers = dbStorage.transfers.getTransfers(
+            optSender,
+            optReceiver,
+            optStartBlock,
+            endBlock,
+            optCurrencyKeys
+          )
+          // We already have the transfers. But the query payload contained optional filters for sender and receiver;
+          // so let's try to get balances for both.
 
-            // Either sender; or receiver; or both; – can be optional. Make a sequence of those who are non-None.
-            val balanceKeys: Seq[String] = Seq(Option(payload.sender), Option(payload.receiver)).flatten
-            val balances: Map[String, List[BalanceRequestResultPayload.CurrencyBalanceFact]] =
-              if (payload.includeBalances)
-                balanceKeys.map(addr => addr -> dbStorage.balances.getBalances(addr, endBlock, optCurrencyKeys)).toMap
-              else
-                Map.empty
+          // Either sender; or receiver; or both; – can be optional. Make a sequence of those who are non-None.
+          val balanceKeys: Seq[String] = Seq(Option(payload.sender), Option(payload.receiver)).flatten
+          val balances: Map[String, List[BalanceRequestResultPayload.CurrencyBalanceFact]] =
+            if (payload.includeBalances)
+              balanceKeys.map(addr => addr -> dbStorage.balances.getBalances(addr, endBlock, optCurrencyKeys)).toMap
+            else
+              Map.empty
 
-            new TransfersRequestResultPayload(
-              buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
-              transfers.asJava,
-              balances.map { case (k, v) => k -> v.asJava }.asJava
-            )
+          new TransfersRequestResultPayload(
+            buildSystemSyncStatus(ethereumNodeStatus, progress),
+            transfers.asJava,
+            balances.map { case (k, v) => k -> v.asJava }.asJava
+          )
         }
       )
     }

@@ -6,6 +6,7 @@ import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.api.GardenMessages.EthereumNodeStatus
 import com.myodov.unicherrygarden.api.types.SystemStatus
 import com.myodov.unicherrygarden.api.types.dlt.Currency
+import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies.CurrenciesRequestResultPayload
 import com.myodov.unicherrygarden.messages.cherrygardener.{GetCurrencies, PingCherryGardener}
 import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryPickerRequest, CherryPlanterRequest}
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
@@ -63,19 +64,18 @@ class CherryGardener(private val dbStorage: DBStorageAPI,
   // Construct all the response in a single atomic readonly DB transaction
     DB readOnly { implicit session =>
       new GetCurrencies.Response(
-        (state.ethereumStatus, dbStorage.progress.getProgress) match {
-          case (None, _) | (_, None) =>
-            logger.warn(s"Received getCurrencies request while not ready; respond with error")
-            null
-          case (Some(ethereumNodeStatus), Some(progress)) if progress.blocks.to.isEmpty =>
-            logger.warn(s"Received getCurrencies request but blocks are not ready; respond with error")
-            null
-          case (ethereumNodeStatusOpt@Some(ethereumNodeStatus), progressOpt@Some(progress)) =>
-            // Real use-case handling
-            val result: List[Currency] = dbStorage.currencies.getCurrencies(filterCurrencyKeys, getVerified, getUnverified).map(_.asCurrency)
-            new GetCurrencies.CurrenciesRequestResultPayload(
-              buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
-              result.asJava)
+        whenStateAndProgressAllow[CurrenciesRequestResultPayload](
+          state.ethereumStatus,
+          dbStorage.progress.getProgress,
+          "GetCurrencies",
+          null
+        ) { (ethereumNodeStatus, progress) =>
+          // Real use-case handling
+          val result: List[Currency] = dbStorage.currencies.getCurrencies(filterCurrencyKeys, getVerified, getUnverified).map(_.asCurrency)
+          new CurrenciesRequestResultPayload(
+            buildSystemSyncStatus(ethereumNodeStatus, progress),
+            result.asJava
+          )
         }
       )
     }
