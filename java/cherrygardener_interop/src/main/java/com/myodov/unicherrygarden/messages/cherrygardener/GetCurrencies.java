@@ -4,6 +4,7 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.myodov.unicherrygarden.api.types.SystemStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
@@ -82,17 +83,29 @@ public class GetCurrencies {
 
 
     public static class CurrenciesRequestResultPayload extends SuccessPayload {
+        /**
+         * The total status of blockchain synchronization/blockchain/Ethereum node/UniCherryGarden node.
+         */
+        @NonNull
+        public final SystemStatus systemStatus;
+
         @NonNull
         public final List<Currency> currencies;
 
         @JsonCreator
-        public CurrenciesRequestResultPayload(@NonNull List<Currency> currencies) {
+        public CurrenciesRequestResultPayload(@NonNull SystemStatus systemStatus,
+                                              @NonNull List<Currency> currencies) {
+            assert systemStatus != null;
+            assert currencies != null;
+
+            this.systemStatus = systemStatus;
             this.currencies = currencies;
         }
 
         @Override
         public String toString() {
-            return String.format("CurrenciesRequestResultPayload(currencies=%s)", currencies);
+            return String.format("CurrenciesRequestResultPayload(%s, %s)",
+                    systemStatus, currencies);
         }
     }
 

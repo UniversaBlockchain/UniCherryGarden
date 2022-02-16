@@ -1,7 +1,7 @@
 package com.myodov.unicherrygarden.messages.cherrypicker;
 
 import com.myodov.unicherrygarden.AbstractJacksonSerializationTest;
-import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
+import com.myodov.unicherrygarden.api.types.SystemStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload;
 import org.junit.Test;
@@ -36,7 +36,7 @@ public class GetBalances_ResponseTest extends AbstractJacksonSerializationTest {
         assertEquals(
                 "{\"payload\":{" +
                         "\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetBalances$BalanceRequestResultPayload\"," +
-                        "\"syncStatus\":{\"actualAt\":{\"epochSecond\":1644850591,\"nano\":0},\"blockchain\":{\"currentBlock\":20,\"highestBlock\":25},\"cherryPicker\":{\"latestKnownBlock\":17,\"latestPartiallySyncedBlock\":13,\"latestFullySyncedBlock\":11}," +
+                        "\"systemStatus\":{\"actualAt\":{\"epochSecond\":1644850591,\"nano\":0},\"blockchain\":{\"currentBlock\":20,\"highestBlock\":25},\"cherryPicker\":{\"latestKnownBlock\":17,\"latestPartiallySyncedBlock\":13,\"latestFullySyncedBlock\":11}," +
                         "\"gasPriceData\":{\"baseFeePerGas\":\"49758027985\"}" +
                         "}," +
                         "\"balances\":[" +
@@ -45,11 +45,19 @@ public class GetBalances_ResponseTest extends AbstractJacksonSerializationTest {
                         "]}}",
                 makeJson(new GetBalances.Response(
                         new GetBalances.BalanceRequestResultPayload(
-                                new SystemSyncStatus(
-                                        Instant.ofEpochSecond(1644850591),
-                                        SystemSyncStatus.Blockchain.create(20, 25),
-                                        SystemSyncStatus.CherryPicker.create(17, 13, 11),
-                                        SystemSyncStatus.GasPriceData.create(BigInteger.valueOf(49758027985L))
+                                new SystemStatus(
+                                        Instant.ofEpochSecond(1644850591L),
+                                        SystemStatus.Blockchain.create(
+                                                SystemStatus.Blockchain.SyncingData.create(14205560, 14205570),
+                                                SystemStatus.Blockchain.LatestBlock.create(
+                                                        14205550,
+                                                        30135653L,
+                                                        16327740L,
+                                                        BigInteger.valueOf(0x10a3f64e65L),
+                                                        Instant.ofEpochSecond(0x620a8e10L)
+                                                )
+                                        ),
+                                        SystemStatus.CherryPicker.create(17, 13, 11)
                                 ),
                                 new ArrayList<GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact>() {{
                                     add(new GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact(eth, new BigDecimal("123.45"), 7328));

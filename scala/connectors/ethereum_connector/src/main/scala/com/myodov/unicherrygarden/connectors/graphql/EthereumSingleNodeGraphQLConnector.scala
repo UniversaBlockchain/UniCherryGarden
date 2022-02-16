@@ -7,10 +7,11 @@ import akka.actor.typed.{ActorSystem => TypedActorSystem}
 import akka.actor.{ActorSystem => ClassicActorSystem}
 import caliban.client.Operations.RootQuery
 import caliban.client.{CalibanClientError, SelectionBuilder}
+import com.myodov.unicherrygarden.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.api.dlt
-import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.{SingleBlockData, SyncingStatus}
-import com.myodov.unicherrygarden.connectors.graphql.types.{BlockBasic, BlockMinimal, TransactionFullView}
-import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
+import com.myodov.unicherrygarden.api.types.SystemStatus
+import com.myodov.unicherrygarden.AbstractEthereumNodeConnector.SingleBlockData
+import com.myodov.unicherrygarden.connectors.graphql.types.{BlockBasic, BlockLatest, BlockMinimal, TransactionFullView}
 import com.typesafe.scalalogging.LazyLogging
 import sttp.capabilities
 import sttp.capabilities.akka.AkkaStreams
@@ -71,7 +72,7 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
     }
   }
 
-  override def ethSyncingBlockNumber: Option[SyncingStatus] = {
+  override def ethBlockchainStatus: Option[SystemStatus.Blockchain] = {
     import caliban.Geth._
 
     // Either we have some data in `syncing`; or we must get the most recent block as just `block {number hash}`
@@ -79,29 +80,38 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
       Query.syncing {
         SyncState.view
       } ~ Query.block() {
-        BlockMinimal.view
+        BlockLatest.view
       }
 
     // Received a valid response; do something with both paths:
-    queryGraphQL(query, argHint = "ethSyncingBlockNumber").flatMap(_ match {
-      case (Some(syncing), _) =>
+    queryGraphQL(query, argHint = "ethBlockchainStatus").flatMap(_ match {
+      case (Some(syncState), Some(nonlatestBlock)) =>
         // The node is still syncing
-        logger.debug(s"The node is still syncing: $syncing")
-        Some(SyncingStatus(
-          currentBlock = Math.toIntExact(syncing.currentBlock),
-          highestBlock = Math.toIntExact(syncing.highestBlock)
+        logger.debug(s"The node is still syncing: $syncState")
+        Some(SystemStatus.Blockchain.create(
+          SystemStatus.Blockchain.SyncingData.create(
+            Math.toIntExact(syncState.currentBlock),
+            Math.toIntExact(syncState.highestBlock)
+          ),
+          // This is really not a latest block; but we use what we've received
+          nonlatestBlock.asLatestBlock
         ))
       case (None, Some(latestBlock)) =>
+        // Not syncing already.
         logger.debug(s"The node is fully synced, most recent block is $latestBlock")
-        // Not syncing already; but does the block number really makes sense?
-        if (latestBlock.number > 0) // This is a sensible block
-          Some(SyncingStatus(
-            currentBlock = Math.toIntExact(latestBlock.number),
-            highestBlock = Math.toIntExact(latestBlock.number)
+        // But does the block number really makes sense?
+        val latestBlockNumber = Math.toIntExact(latestBlock.number)
+        if (latestBlockNumber > 0) // This is a sensible block
+          Some(SystemStatus.Blockchain.create(
+            SystemStatus.Blockchain.SyncingData.create(
+              latestBlockNumber,
+              latestBlockNumber
+            ),
+            latestBlock.asLatestBlock
           ))
         else None // not really synced
       case other =>
-        logger.debug(s"The node is in incomprehensible state of syncing: $other")
+        logger.error(s"The node is in incomprehensible and unexpected state of syncing: $other")
         None
     })
   }

@@ -1,7 +1,7 @@
 package com.myodov.unicherrygarden.cherrygardener;
 
 import com.myodov.unicherrygarden.api.types.MinedTransfer;
-import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
+import com.myodov.unicherrygarden.api.types.SystemStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.api.types.responseresult.ResponseWithPayload;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
@@ -736,6 +736,7 @@ public class CherryGardenerCLI {
                                     (optComment == null) ? "" : String.format(" (%s)", optComment)
                             );
                         }
+                        printOverallStatus(payload.systemStatus);
                     }
                     System.err.printf("--- Done in %s --\n", Duration.between(startTime, Instant.now()));
                 } while (loopEnabled);
@@ -883,6 +884,7 @@ public class CherryGardenerCLI {
 
                 final Instant startTime = Instant.now();
 
+                // Multiple queries – probably executed in parallel – lead to multiple responses.
                 final List<GetBalances.@NonNull Response> responses = executor.submit(() ->
                         addressStream
                                 .map((final String address) -> connector.getObserver().getAddressBalances(
@@ -906,18 +908,18 @@ public class CherryGardenerCLI {
 
                     IntStream.range(0, results.size()).forEach((int i) -> {
                         final String address = addresses.get(i);
-                        final GetBalances.BalanceRequestResultPayload result = results.get(i);
+                        final GetBalances.BalanceRequestResultPayload payload = results.get(i);
 
                         System.err.printf("--- %d of %d: %s\n",
                                 i + 1, results.size(), address);
-                        for (final GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact balanceFact : result.balances) {
+                        for (final GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact balanceFact : payload.balances) {
                             System.err.printf("  %s: %s (at block %s)\n",
                                     balanceFact.currency,
                                     balanceFact.amount,
                                     balanceFact.blockNumber
                             );
                         }
-                        printOverallStatus(result.syncStatus);
+                        printOverallStatus(payload.systemStatus);
                     });
                     System.err.println("--- done.");
                 }
@@ -1046,18 +1048,47 @@ public class CherryGardenerCLI {
         );
     }
 
-    private static void printOverallStatus(@NonNull SystemSyncStatus syncStatus) {
+    private static void printOverallStatus(@NonNull SystemStatus syncStatus) {
         System.err.printf("" +
-                        "Overall status:\n" +
+                        "Overall status, as of %s:\n" +
                         "  Blockchain:\n" +
-                        "    block %10s: latest known,\n" +
-                        "    block %10s: latest synced by node,\n" +
+                        "    Sync status:\n" +
+                        "      block %10s: latest known (highestBlock),\n" +
+                        "      block %10s: latest synced by node (currentBlock),\n" +
+                        "    Latest block:\n" +
+                        "      number: %s,\n" +
+                        "      gas limit: %s,\n" +
+                        "      gas used: %s%s,\n" +
+                        "      base fee per gas: %s%s,\n" +
+                        "      timestamp: %s,\n" +
                         "  UniCherryPicker:\n" +
                         "    block %10s: latest known,\n" +
                         "    block %10s: latest partially synced,\n" +
                         "    block %10s: latest fully synced.\n",
-                syncStatus.blockchain.highestBlock,
-                syncStatus.blockchain.currentBlock,
+                syncStatus.actualAt,
+                // Blockchain: sync status
+                syncStatus.blockchain.syncingData.highestBlock,
+                syncStatus.blockchain.syncingData.currentBlock,
+                // Blockchain: latest block
+                syncStatus.blockchain.latestBlock.number,
+                syncStatus.blockchain.latestBlock.gasLimit,
+                syncStatus.blockchain.latestBlock.gasUsed,
+                (syncStatus.blockchain.latestBlock.gasLimit > 0) ?
+                        String.format(" (%.01s%%)", 100.0 * syncStatus.blockchain.latestBlock.gasUsed / syncStatus.blockchain.latestBlock.gasLimit)
+                        :
+                        "",
+                (syncStatus.blockchain.latestBlock.baseFeePerGas != null) ?
+                        syncStatus.blockchain.latestBlock.baseFeePerGas
+                        :
+                        "N/A (pre-London)",
+                (syncStatus.blockchain.latestBlock.baseFeePerGas != null) ?
+                        String.format(" (%s Gwei)",
+                                EthUtils.Wei.valueToGweis(EthUtils.Wei.valueFromWeis(syncStatus.blockchain.latestBlock.baseFeePerGas))
+                        )
+                        :
+                        "",
+                syncStatus.blockchain.latestBlock.timestamp,
+                // UniCherryPicker
                 syncStatus.cherryPicker.latestKnownBlock,
                 syncStatus.cherryPicker.latestPartiallySyncedBlock,
                 syncStatus.cherryPicker.latestFullySyncedBlock

@@ -1,12 +1,14 @@
 package com.myodov.unicherrygarden.messages.cherrygardener;
 
 import com.myodov.unicherrygarden.AbstractJacksonSerializationTest;
+import com.myodov.unicherrygarden.api.types.SystemStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.time.Instant;
 import java.util.ArrayList;
 
 public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest {
@@ -21,6 +23,20 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
                 false,
                 null,
                 BigInteger.valueOf(70_000)
+        );
+        final SystemStatus systemStatus = new SystemStatus(
+                Instant.ofEpochSecond(1644936903L),
+                SystemStatus.Blockchain.create(
+                        SystemStatus.Blockchain.SyncingData.create(14205560, 14205570),
+                        SystemStatus.Blockchain.LatestBlock.create(
+                                14205590,
+                                30029295L,
+                                3063440L,
+                                BigInteger.valueOf(0x15d3c1b812L),
+                                Instant.ofEpochSecond(0x620a9050L)
+                        )
+                ),
+                SystemStatus.CherryPicker.create(19, 15, 13)
         );
 
         final ArrayList<Currency> currencies = new ArrayList<Currency>() {{
@@ -41,7 +57,7 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
         );
 
         assertJsonDeserialization(
-                new GetCurrencies.CurrenciesRequestResultPayload(currencies),
+                new GetCurrencies.CurrenciesRequestResultPayload(systemStatus, currencies),
                 "{\"@class\":\"com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies$CurrenciesRequestResultPayload\"," +
                         "\"currencies\":[" +
                         "{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null}," +
@@ -50,7 +66,7 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
         );
 
         assertJsonDeserialization(
-                new GetCurrencies.Response(new GetCurrencies.CurrenciesRequestResultPayload(currencies)),
+                new GetCurrencies.Response(new GetCurrencies.CurrenciesRequestResultPayload(systemStatus, currencies)),
                 "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies$CurrenciesRequestResultPayload\"," +
                         "\"currencies\":[" +
                         "{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null}," +

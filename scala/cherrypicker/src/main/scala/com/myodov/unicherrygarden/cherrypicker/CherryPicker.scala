@@ -1,29 +1,25 @@
 package com.myodov.unicherrygarden
 
-import java.time.Instant
 import java.util.UUID
 
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.myodov.unicherrygarden.api.types.SystemSyncStatus
+import com.myodov.unicherrygarden.api.GardenMessages
+import com.myodov.unicherrygarden.api.GardenMessages.EthereumNodeStatus
+import com.myodov.unicherrygarden.api.types.SystemStatus
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload
-import com.myodov.unicherrygarden.cherrypicker.EthereumStatePoller
-import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.EthereumNodeStatus
-import com.myodov.unicherrygarden.cherrypicker.syncers.{HeadSyncer, SyncerMessages, TailSyncer}
-import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
+import com.myodov.unicherrygarden.cherrypicker.syncers.{HeadSyncer, TailSyncer}
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.AddTrackedAddressesRequestResultPayload
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResultPayload
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.TrackedAddressesRequestResultPayload
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers.TransfersRequestResultPayload
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses, GetTransfers}
-import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging
 import scalikejdbc.DB
 
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 import scala.util.control.NonFatal
@@ -59,16 +55,13 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
       logger.info(s"Launching CherryPicker: v. $propVersionStr, built at $propBuildTimestampStr")
 
       logger.debug("CherryPicker: Launching HeadSyncer...")
-      val headSyncer: ActorRef[SyncerMessages.HeadSyncerMessage] = context.spawn(
+      val headSyncer: ActorRef[GardenMessages.HeadSyncerMessage] = context.spawn(
         HeadSyncer(dbStorage, ethereumConnector, maxReorg)(headSyncerBatchSize, catchUpBrakeMaxLeadSetting),
         "HeadSyncer")
       logger.debug("CherryPicker: Launching TailSyncer...")
-      val tailSyncer: ActorRef[SyncerMessages.TailSyncerMessage] = context.spawn(
+      val tailSyncer: ActorRef[GardenMessages.TailSyncerMessage] = context.spawn(
         TailSyncer(dbStorage, ethereumConnector, maxReorg)(tailSyncerBatchSize, headSyncer),
         "TailSyncer")
-      val ethereumStatePoller = context.spawn(
-        EthereumStatePoller(ethereumConnector, Seq(headSyncer, tailSyncer, context.self)),
-        "EthereumStatePoller")
       logger.debug("CherryPicker: launched sub-syncers!")
 
       // Register all service keys
@@ -84,7 +77,12 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
       Behaviors.receiveMessage {
         case message@EthereumNodeStatus(status) =>
           logger.debug(s"CherryPicker received Ethereum node syncing status: $message")
-          state.ethereumNodeStatus = Some(status)
+          // 1. Store the status message for our own usage,..
+          state.ethereumStatus = Some(status)
+          // 2. ... and forward it to sub-actors (syncers)
+          for (listener <- List(headSyncer, tailSyncer)) {
+            listener ! message
+          }
           Behaviors.same
         case message: GetTrackedAddresses.Request => {
           val msgName = "GetTrackedAddresses"
@@ -207,15 +205,15 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
   // Construct all the response DB in a single atomic readonly DB transaction.
     DB readOnly { implicit session =>
       new GetBalances.Response(
-        // Read and remember the sync progress for the whole operation
-        (state.ethereumNodeStatus, dbStorage.progress.getProgress, state.gasPriceData) match {
-          case (None, _, _) | (_, None, _) | (_, _, None) =>
+        // Read and remember the system progress for the whole operation
+        (state.ethereumStatus, dbStorage.progress.getProgress) match {
+          case (None, _) | (_, None) =>
             logger.warn(s"Received GetBalances request while not fully ready; respond with error")
             null
-          case (Some(ethereumNodeStatus), Some(progress), Some(gasPriceData)) if progress.blocks.to.isEmpty =>
+          case (Some(ethereumNodeStatus), Some(progress)) if progress.blocks.to.isEmpty =>
             logger.warn(s"Received GetBalances request but blocks are not ready; respond with error")
             null
-          case (ethereumNodeStatusOpt@Some(ethereumNodeStatus), progressOpt@Some(progress), gasPriceDataOpt@Some(gasPriceData)) =>
+          case (ethereumNodeStatusOpt@Some(ethereumNodeStatus), progressOpt@Some(progress)) =>
             // Real use-case handling
             val blocksTo = progress.blocks.to.get // non-empty, due to previous `case` check
             val maxBlock = blocksTo - payload.confirmations
@@ -227,7 +225,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
               Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
             )
             new BalanceRequestResultPayload(
-              buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt, gasPriceDataOpt),
+              buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
               results.asJava
             )
         }
@@ -238,15 +236,15 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
   // Construct all the response in a single atomic readonly DB transaction
     DB readOnly { implicit session =>
       new GetTransfers.Response(
-        // Read and remember the sync progress for the whole operation
-        (state.ethereumNodeStatus, dbStorage.progress.getProgress, state.gasPriceData) match {
-          case (None, _, _) | (_, None, _) | (_, _, None)=>
+        // Read and remember the system progress for the whole operation
+        (state.ethereumStatus, dbStorage.progress.getProgress) match {
+          case (None, _) | (_, None) =>
             logger.warn(s"Received GetTransfers request while not ready; respond with error")
             null
-          case (Some(ethereumNodeStatus), Some(progress), Some(gasPriceData)) if progress.blocks.to.isEmpty =>
+          case (Some(ethereumNodeStatus), Some(progress)) if progress.blocks.to.isEmpty =>
             logger.warn(s"Received GetTransfers request but blocks are not ready; respond with error")
             null
-          case (ethereumNodeStatusOpt@Some(ethereumNodeStatus), progressOpt@Some(progress), gasPriceDataOpt@Some(gasPriceData)) =>
+          case (ethereumNodeStatusOpt@Some(ethereumNodeStatus), progressOpt@Some(progress)) =>
             // Real use-case handling
             val blocksTo = progress.blocks.to.get // non-empty, due to previous `case` check
             val maxBlock = blocksTo - payload.confirmations
@@ -285,7 +283,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
                 Map.empty
 
             new TransfersRequestResultPayload(
-              buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt, gasPriceDataOpt),
+              buildSystemSyncStatus(ethereumNodeStatusOpt, progressOpt),
               transfers.asJava,
               balances.map { case (k, v) => k -> v.asJava }.asJava
             )
@@ -296,17 +294,12 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
 
 
 /** Akka actor to run CherryPicker operations. */
-object CherryPicker extends LazyLogging {
+object CherryPicker extends CherryGardenComponent with LazyLogging {
   lazy val props = UnicherrygardenVersion.loadPropsFromNamedResource("unicherrygarden_cherrypicker.properties")
   lazy val propVersionStr = props.getProperty("version", "N/A");
   lazy val propBuildTimestampStr = props.getProperty("build_timestamp", "");
 
-  val BLOCK_ITERATION_PERIOD = 10 seconds // Each block is generated about once per 13 seconds, let’s be safe
-
-  protected final case class State(
-                                    @volatile var ethereumNodeStatus: Option[SystemSyncStatus.Blockchain] = None,
-                                    @volatile var gasPriceData: Option[SystemSyncStatus.GasPriceData] = None
-                                  )
+  protected final case class State(@volatile var ethereumStatus: Option[SystemStatus.Blockchain] = None)
 
 
   /** Main constructor. */
@@ -326,25 +319,6 @@ object CherryPicker extends LazyLogging {
       catchUpBrakeMaxLeadSetting
     ).launch()
 
-  @inline
-  private[CherryPicker] final def buildSystemSyncStatus(ethereumNodeStatusOpt: Option[SystemSyncStatus.Blockchain],
-                                                        progressOpt: Option[Progress.ProgressData],
-                                                        gasPriceDataOpt: Option[SystemSyncStatus.GasPriceData]
-                                                       ): SystemSyncStatus =
-    new SystemSyncStatus(
-      Instant.now,
-      ethereumNodeStatusOpt.orNull,
-      progressOpt
-        .flatMap(pr => (pr.blocks.to, pr.perCurrencyTrackedAddresses.maxTo, pr.perCurrencyTrackedAddresses.minTo) match {
-          case (Some(blocksTo), Some(partiallySynced), Some(fullySynced)) =>
-            Some(SystemSyncStatus.CherryPicker.create(blocksTo, partiallySynced, fullySynced))
-          case other =>
-            None
-        })
-        .orNull,
-      gasPriceDataOpt.orNull
-    )
-
   /** For a message incoming to CherryPicker, launch a new handler as a child Actor.
    *
    * @param messageName the name of the message (to use in logs and as the name for the Actor).
@@ -356,7 +330,7 @@ object CherryPicker extends LazyLogging {
   @inline
   private[CherryPicker] final def requestHandlerActor[RESP](messageName: String,
                                                             replyTo: ActorRef[RESP],
-                                                            onError: (String) => RESP)
+                                                            onError: String => RESP)
                                                            (handler: () => RESP): Behavior[Any] = Behaviors.setup { context =>
     logger.debug(s"Handling $messageName message in child actor")
 

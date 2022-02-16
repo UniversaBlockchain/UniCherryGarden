@@ -1,10 +1,11 @@
-package com.myodov.unicherrygarden.connectors
+package com.myodov.unicherrygarden
 
+import com.myodov.unicherrygarden.AbstractEthereumNodeConnector.SingleBlockData
 import com.myodov.unicherrygarden.Tools.{reduceOptionSeq, seqIsIncrementing}
+import com.myodov.unicherrygarden.Web3ReadOperations.validateBlockHashes
 import com.myodov.unicherrygarden.api.dlt
-import com.myodov.unicherrygarden.api.dlt.{EthereumBlock, EthereumTxLog}
-import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.{SingleBlockData, SyncingStatus}
-import com.myodov.unicherrygarden.connectors.Web3ReadOperations.validateBlockHashes
+import com.myodov.unicherrygarden.api.dlt.EthereumBlock
+import com.myodov.unicherrygarden.api.types.SystemStatus
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.typesafe.scalalogging.LazyLogging
 
@@ -22,23 +23,21 @@ trait Web3ReadOperations extends LazyLogging {
 
   import Web3ReadOperations.filterSingleBlock
 
-  /** Get the status of the syncing process for this Ethereum node (`eth.syncing`)
-   * and the number of the last block synced by this Ethereum node (`eth.blockNumber`),
-   * simultaneously in a single call.
+  /** Get the status of the Ethereum node and the blockchain:
+   * the object that contains the syncing progress (`eth.syncing`, and the number of the last block synced
+   * by this Ethereum node: `eth.blockNumber`),
+   * as well as the useful information about the most recent/latest block
+   * (such as the information useful for gas limit calculation).
    *
    * @note using Int for block number should be fine up to 2B blocks;
    *       it must be fixed in about 1657 years.
-   * @return The option of the [[SyncingStatus]] with two elements:
-   *         <ol>
-   *         <li>`currentBlock` (equivalent to `eth.syncing.currentBlock`);</li>
-   *         <li>`highestBlock` (equivalent to `eth.syncing.highestBlock`).</li>
-   *         </ol>
-   *         When the data is not available from `eth.syncing`, it is derived from `eth.blockNumber`
-   *         (if possible).
+   * @return The information about the blockchain syncing/most recent status.
+   *         When the data about syncing is not available from `eth.syncing`,
+   *         it is derived from `eth.blockNumber` (if possible).
    *         The Option is empty if the data could not be received
    *         (probably due to some network error, or the node still being synced).
    */
-  def ethSyncingBlockNumber: Option[SyncingStatus]
+  def ethBlockchainStatus: Option[SystemStatus.Blockchain]
 
   /** Read the block from Ethereum node (by the block number), returning all parseable data.
    *
@@ -148,11 +147,6 @@ object AbstractEthereumNodeConnector extends LazyLogging {
   /** The blockchain details from a single block. */
   type SingleBlockData = (dlt.EthereumBlock, Seq[dlt.EthereumMinedTransaction])
 
-  case class SyncingStatus(currentBlock: Int = 0, highestBlock: Int = 0) {
-    assert(currentBlock >= 0)
-    assert(highestBlock >= 0)
-  }
-
   val NETWORK_TIMEOUT: FiniteDuration = 30 seconds
 }
 
@@ -165,7 +159,6 @@ private object Web3ReadOperations extends LazyLogging {
     val (block, transactionsUnfiltered) = blockData
     // Convert the addresses (which should be used to filter) to their Uint256 representations
     val addressesOfInterestUint256: Set[String] = addressesOfInterest.map(EthUtils.Uint256Str.fromAddress)
-    import org.web3j.utils.Numeric.hexStringToByteArray
 
     val transactionsFiltered =
       for (tr: dlt.EthereumMinedTransaction <- transactionsUnfiltered

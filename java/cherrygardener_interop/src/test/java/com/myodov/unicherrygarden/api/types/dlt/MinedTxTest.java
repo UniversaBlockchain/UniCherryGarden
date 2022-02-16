@@ -16,7 +16,7 @@ public class MinedTxTest extends TxTest {
             new Block(
                     13550555,
                     "0x4246574f55f6bb00326e17fa5ed6724df0b821babd3bf456cee2fd6a7b4dd25a",
-                    Instant.ofEpochSecond(1636033366)),
+                    Instant.ofEpochSecond(1636033366L)),
             220,
             new BigDecimal("0.00455845"));
     final MinedTx MTX1_COPY = new MinedTx(
@@ -26,7 +26,7 @@ public class MinedTxTest extends TxTest {
             new Block(
                     13550555,
                     "0x4246574f55f6bb00326e17fa5ed6724df0b821babd3bf456cee2fd6a7b4dd25a",
-                    Instant.ofEpochSecond(1636033366)),
+                    Instant.ofEpochSecond(1636033366L)),
             220,
             new BigDecimal("0.00455845"));
 
@@ -37,7 +37,7 @@ public class MinedTxTest extends TxTest {
             new Block(
                     13550555,
                     "0x4246574f55f6bb00326e17fa5ed6724df0b821babd3bf456cee2fd6a7b4dd25a",
-                    Instant.ofEpochSecond(1636033366)),
+                    Instant.ofEpochSecond(1636033366L)),
             220,
             new BigDecimal("0.00455845"));
 
@@ -48,7 +48,7 @@ public class MinedTxTest extends TxTest {
             new Block(
                     13550616,
                     "0xdc73aa4e8b3109e5215d541d4604b1fb700f4dcdb65efe3ac68b49568ddb1da7",
-                    Instant.ofEpochSecond(1636034174)),
+                    Instant.ofEpochSecond(1636034174L)),
             204,
             new BigDecimal("0.00456157"));
     final Tx MTX2A = new MinedTx(
@@ -58,7 +58,7 @@ public class MinedTxTest extends TxTest {
             new Block(
                     13550616,
                     "0xdc73aa4e8b3109e5215d541d4604b1fb700f4dcdb65efe3ac68b49568ddb1da7",
-                    Instant.ofEpochSecond(1636034174)),
+                    Instant.ofEpochSecond(1636034174L)),
             204,
             new BigDecimal("0.00456157"));
 

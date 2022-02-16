@@ -1,8 +1,11 @@
 package com.myodov.unicherrygarden.connectors.graphql.types
 
+import java.time.Instant
+
 import caliban.Geth.Block
 import caliban.client.SelectionBuilder
 import com.myodov.unicherrygarden.Tools.Implicits._
+import com.myodov.unicherrygarden.api.types.SystemStatus
 import com.typesafe.scalalogging.LazyLogging
 
 /** For a Block, get just its number and hash.
@@ -19,6 +22,36 @@ object BlockMinimal {
       Block.hash
   }.mapN(BlockMinimalView)
 }
+
+/** Get the useful information about the most recent Block.
+ */
+case class BlockLatestView(number: Long,
+                           gasLimit: Long,
+                           gasUsed: Long,
+                           baseFeePerGas: Option[BigInt],
+                           timestamp: Long) {
+  lazy val asLatestBlock: SystemStatus.Blockchain.LatestBlock =
+    SystemStatus.Blockchain.LatestBlock.create(
+      Math.toIntExact(number),
+      gasLimit,
+      gasUsed,
+      baseFeePerGas.map(_.bigInteger).orNull,
+      Instant.ofEpochSecond(timestamp)
+    )
+}
+
+object BlockLatest {
+  /** A shorthand method to select the most-recent block data to query. */
+
+  lazy val view: SelectionBuilder[Block, BlockLatestView] = {
+    Block.number ~
+      Block.gasLimit ~
+      Block.gasUsed ~
+      Block.baseFeePerGas ~
+      Block.timestamp
+  }.mapN(BlockLatestView)
+}
+
 
 /** For a Block, select most of the information needed for our processing. */
 case class BlockBasicView(number: Long,

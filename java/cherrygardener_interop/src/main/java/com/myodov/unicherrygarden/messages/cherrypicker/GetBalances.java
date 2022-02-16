@@ -3,7 +3,7 @@ package com.myodov.unicherrygarden.messages.cherrypicker;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
+import com.myodov.unicherrygarden.api.types.SystemStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
@@ -126,10 +126,10 @@ public class GetBalances {
         }
 
         /**
-         * The total status of blockchain synchronization.
+         * The total status of blockchain synchronization/blockchain/Ethereum node/UniCherryGarden node.
          */
         @NonNull
-        public final SystemSyncStatus syncStatus;
+        public final SystemStatus systemStatus;
 
         @NonNull
         public final List<CurrencyBalanceFact> balances;
@@ -138,19 +138,19 @@ public class GetBalances {
          * Constructor.
          */
         @JsonCreator
-        public BalanceRequestResultPayload(@NonNull SystemSyncStatus syncStatus,
+        public BalanceRequestResultPayload(@NonNull SystemStatus systemStatus,
                                            @NonNull List<CurrencyBalanceFact> balances) {
-            assert syncStatus != null;
+            assert systemStatus != null;
             assert balances != null;
 
-            this.syncStatus = syncStatus;
+            this.systemStatus = systemStatus;
             this.balances = Collections.unmodifiableList(balances);
         }
 
         @Override
         public String toString() {
             return String.format("BalanceRequestResult.BalanceRequestResult(%s, %s)",
-                    syncStatus, balances);
+                    systemStatus, balances);
         }
     }
 

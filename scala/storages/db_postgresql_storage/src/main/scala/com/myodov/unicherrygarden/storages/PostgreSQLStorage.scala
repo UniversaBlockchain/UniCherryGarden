@@ -9,7 +9,7 @@ import com.myodov.unicherrygarden.api.types.dlt.{Block, MinedTx}
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact
-import com.myodov.unicherrygarden.storages.api.DBStorage.Currencies.DBCurrency
+import com.myodov.unicherrygarden.api.DBStorage.Currencies.DBCurrency
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging
 import org.flywaydb.core.Flyway
@@ -56,7 +56,7 @@ class PostgreSQLStorage(jdbcUrl: String,
 
   object progress extends DBStorageAPI.Progress {
 
-    import com.myodov.unicherrygarden.storages.api.DBStorage.Progress._
+    import com.myodov.unicherrygarden.api.DBStorage.Progress._
 
     override final def getProgress(implicit session: DBSession = ReadOnlyAutoSession): Option[ProgressData] = {
       sql"""
@@ -336,7 +336,7 @@ class PostgreSQLStorage(jdbcUrl: String,
 
   object currencies extends DBStorageAPI.Currencies {
 
-    import com.myodov.unicherrygarden.storages.api.DBStorage.Currencies._
+    import com.myodov.unicherrygarden.api.DBStorage.Currencies._
 
     override final def getCurrencies(
                                       currencyKeys: Option[Set[String]],
@@ -385,7 +385,7 @@ class PostgreSQLStorage(jdbcUrl: String,
 
   object trackedAddresses extends DBStorageAPI.TrackedAddresses {
 
-    import com.myodov.unicherrygarden.storages.api.DBStorage.TrackedAddresses._
+    import com.myodov.unicherrygarden.api.DBStorage.TrackedAddresses._
 
     override final def getTrackedAddresses(
                                             includeComment: Boolean,

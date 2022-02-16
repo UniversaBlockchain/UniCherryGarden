@@ -2,7 +2,6 @@ package com.myodov.unicherrygarden
 
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
-import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector
 import com.myodov.unicherrygarden.messages.CherryPlanterRequest
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging

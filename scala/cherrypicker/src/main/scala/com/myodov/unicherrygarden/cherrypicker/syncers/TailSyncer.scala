@@ -4,12 +4,12 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
+import com.myodov.unicherrygarden.api.DBStorage.Progress
+import com.myodov.unicherrygarden.api.GardenMessages.{IterateTailSyncer, TailSyncerMessage, TailSyncing}
 import com.myodov.unicherrygarden.api.dlt.EthereumBlock
-import com.myodov.unicherrygarden.api.types.SystemSyncStatus
-import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{IterateTailSyncer, TailSyncerMessage, TailSyncing}
-import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
-import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
+import com.myodov.unicherrygarden.api.types.SystemStatus
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
+import com.myodov.unicherrygarden.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import scalikejdbc.{DB, DBSession}
 
 import scala.concurrent.duration.Duration
@@ -33,7 +33,7 @@ private class TailSyncer(dbStorage: DBStorageAPI,
     state = TailSyncer.State()
   ) {
 
-  import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages._
+  import com.myodov.unicherrygarden.api.GardenMessages._
 
   final def launch(): Behavior[TailSyncerMessage] = {
     logger.debug(s"FSM: launch - ${this.getClass.getSimpleName}")
@@ -90,7 +90,7 @@ private class TailSyncer(dbStorage: DBStorageAPI,
    */
   private[this] final def tailSync(
                                     progress: Progress.ProgressData,
-                                    nodeSyncingStatus: SystemSyncStatus.Blockchain,
+                                    nodeSyncingStatus: SystemStatus.Blockchain,
                                     iterationStartNanotime: Long
                                   )(implicit session: DBSession): Behavior[TailSyncerMessage] = {
     val overallFrom = progress.overall.from.get // `progress.overall.from` safely assumed non-None
@@ -134,7 +134,7 @@ private class TailSyncer(dbStorage: DBStorageAPI,
     logger.debug(s"Progress is $progress: choosing between $blocksToCompare; headsyncer will start from ${progress.headSyncerStartBlock}")
 
     val syncStartBlock = blocksToCompare.flatten.minOption.getOrElse(overallFrom)
-    val syncEndBlock = Math.min(syncStartBlock + batchSize - 1, nodeSyncingStatus.currentBlock)
+    val syncEndBlock = Math.min(syncStartBlock + batchSize - 1, nodeSyncingStatus.syncingData.currentBlock)
 
     (syncStartBlock, syncEndBlock) match {
       case (start, endSmallerThanStart) if endSmallerThanStart < start =>
@@ -163,7 +163,7 @@ private class TailSyncer(dbStorage: DBStorageAPI,
           val iterationDuration = Duration(System.nanoTime - iterationStartNanotime, TimeUnit.NANOSECONDS)
           val durationStr = s"${iterationDuration.toMillis} ms"
 
-          if (validEnd == nodeSyncingStatus.currentBlock) {
+          if (validEnd == nodeSyncingStatus.syncingData.currentBlock) {
             logger.info(s"TailSyncer reached eth.syncing.currentBlock! Let HeadSyncer go on.")
             headSyncer ! TailSyncing(None)
             pauseThenReiterate()
@@ -183,7 +183,7 @@ private class TailSyncer(dbStorage: DBStorageAPI,
 /** TailSyncer companion object. */
 object TailSyncer {
 
-  protected final case class State(@volatile override var ethereumNodeStatus: Option[SystemSyncStatus.Blockchain] = None)
+  protected final case class State(@volatile override var ethereumNodeStatus: Option[SystemStatus.Blockchain] = None)
     extends AbstractSyncer.SyncerState
 
   /** Main constructor.

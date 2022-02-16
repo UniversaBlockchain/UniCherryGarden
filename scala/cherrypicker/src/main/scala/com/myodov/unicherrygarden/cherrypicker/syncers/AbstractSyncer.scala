@@ -2,14 +2,13 @@ package com.myodov.unicherrygarden.cherrypicker.syncers
 
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
-import com.myodov.unicherrygarden.CherryPicker
-import com.myodov.unicherrygarden.api.dlt
-import com.myodov.unicherrygarden.api.types.SystemSyncStatus
-import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{HeadSyncerMessage, TailSyncerMessage}
-import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.SingleBlockData
-import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
-import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
-import com.myodov.unicherrygarden.storages.api.{DBStorage, DBStorageAPI}
+import com.myodov.unicherrygarden.AbstractEthereumNodeConnector.SingleBlockData
+import com.myodov.unicherrygarden.api.DBStorage.Progress
+import com.myodov.unicherrygarden.api.GardenMessages.{HeadSyncerMessage, TailSyncerMessage}
+import com.myodov.unicherrygarden.api.types.SystemStatus
+import com.myodov.unicherrygarden.api.{DBStorage, GardenMessages, dlt}
+import com.myodov.unicherrygarden.storages.api.DBStorageAPI
+import com.myodov.unicherrygarden.{AbstractEthereumNodeConnector, CherryGardenComponent, Web3ReadOperations}
 import com.typesafe.scalalogging.LazyLogging
 import scalikejdbc.DBSession
 
@@ -33,9 +32,9 @@ import scala.util.control.NonFatal
  * with the previous state will be posted by the timer. So alas, `state` has to be variable.
  */
 abstract private class AbstractSyncer[
-  M <: SyncerMessages.Message,
+  M <: GardenMessages.SyncerMessage,
   S <: AbstractSyncer.SyncerState,
-  IS <: SyncerMessages.IterateSyncer[M] with M
+  IS <: GardenMessages.IterateSyncer[M] with M
 ]
 (protected[this] val dbStorage: DBStorageAPI,
  protected[this] val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
@@ -52,7 +51,7 @@ abstract private class AbstractSyncer[
    * fails if we cannot even go further and must wait for the node to continue syncing.
    */
   protected[this] def isNodeReachable(dbProgressData: DBStorage.Progress.ProgressData,
-                                      nodeSyncingStatus: SystemSyncStatus.Blockchain): Boolean =
+                                      nodeSyncingStatus: SystemStatus.Blockchain): Boolean =
     dbProgressData.blocks.to match {
       case None =>
         // All data is available; but there is no blocks in the DB. This actually is fully okay
@@ -61,7 +60,7 @@ abstract private class AbstractSyncer[
         // Everything is fine if our latest stored block is not newer than the latest block available
         // to Ethereum node;
         // false/bad otherwise
-        maxBlocksNum <= nodeSyncingStatus.currentBlock
+        maxBlocksNum <= nodeSyncingStatus.syncingData.currentBlock
     }
 
   /** Validate the syncing progress data/Ethereum node syncing state;
@@ -76,11 +75,11 @@ abstract private class AbstractSyncer[
    */
   protected[this] def withValidatedProgressAndSyncingState[RES](
                                                                  optProgress: Option[Progress.ProgressData],
-                                                                 optNodeSyncingStatus: Option[SystemSyncStatus.Blockchain],
+                                                                 optNodeSyncingStatus: Option[SystemStatus.Blockchain],
                                                                  onError: () => RES
                                                                )
                                                                (
-                                                                 code: (Progress.ProgressData, SystemSyncStatus.Blockchain) => RES
+                                                                 code: (Progress.ProgressData, SystemStatus.Blockchain) => RES
                                                                )
                                                                (implicit session: DBSession): RES = {
     (optProgress, optNodeSyncingStatus) match {
@@ -92,14 +91,14 @@ abstract private class AbstractSyncer[
         // we haven’t received the syncing state from the node
         logger.debug("No syncing status from Ethereum node is available yet, waiting")
         onError()
-      case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncStatus: SystemSyncStatus.Blockchain))
+      case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncStatus: SystemStatus.Blockchain))
         if !isNodeReachable(overallProgress, nodeSyncStatus) =>
         // Sanity test. Does the overall data sanity allows us to proceed?
         // In HeadSyncer, this is Reorg/rewind, phase 1/4: “is node reachable”.
         // In TailSyncer, this is just a sanity test.
         logger.error(s"Ethereum node is probably unavailable: $overallProgress, $nodeSyncStatus")
         onError()
-      case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncStatus: SystemSyncStatus.Blockchain)) =>
+      case (Some(overallProgress: Progress.ProgressData), Some(nodeSyncStatus: SystemStatus.Blockchain)) =>
         // Both CherryPicker syncing progress and Ethereum node status are at least available;
         // but let’s validate them, and only then launch the code.
         if (!overallProgress.isConfigurationValid) {
@@ -124,7 +123,7 @@ abstract private class AbstractSyncer[
     Behaviors.withTimers[M] { timers =>
       timers.startSingleTimer(
         iterateMessage,
-        CherryPicker.BLOCK_ITERATION_PERIOD)
+        CherryGardenComponent.BLOCK_ITERATION_PERIOD)
       Behaviors.same
     }
   }
@@ -221,7 +220,7 @@ abstract private class AbstractSyncer[
 object AbstractSyncer {
 
   trait SyncerState {
-    @volatile var ethereumNodeStatus: Option[SystemSyncStatus.Blockchain]
+    @volatile var ethereumNodeStatus: Option[SystemStatus.Blockchain]
   }
 
 }

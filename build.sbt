@@ -249,6 +249,11 @@ lazy val api = (project in file("scala/api"))
     commonScalaSettings,
     name := "api",
     description := "UniCherryGarden: internal Scala API commons",
+    libraryDependencies ++= Seq(
+      // Convenient Scala-like interface to SQL queries
+      "org.scalikejdbc" %% "scalikejdbc" % scalikeJdbcVersion,
+      "org.scalikejdbc" %% "scalikejdbc-test" % scalikeJdbcVersion % "test",
+    ),
   )
   .dependsOn(commonScala, cherryGardenerInterop, ethUtils)
 
@@ -292,9 +297,6 @@ lazy val db_postgresql_storage = (project in file("scala/storages/db_postgresql_
     libraryDependencies ++= Seq(
       "org.postgresql" % "postgresql" % postgresqlVersion,
       "org.flywaydb" % "flyway-core" % flywayDbVersion,
-      // Convenient Scala-like interface to SQL queries
-      "org.scalikejdbc" %% "scalikejdbc" % scalikeJdbcVersion,
-      "org.scalikejdbc" %% "scalikejdbc-test" % scalikeJdbcVersion % "test",
     ),
   )
   .dependsOn(commonScala, api)

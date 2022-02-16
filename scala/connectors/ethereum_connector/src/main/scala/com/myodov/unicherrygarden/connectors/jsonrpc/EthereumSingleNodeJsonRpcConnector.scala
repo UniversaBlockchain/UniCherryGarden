@@ -3,14 +3,15 @@ package com.myodov.unicherrygarden.connectors.jsonrpc
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
+import com.myodov.unicherrygarden.AbstractEthereumNodeConnector.SingleBlockData
 import com.myodov.unicherrygarden.api.dlt
-import com.myodov.unicherrygarden.connectors.AbstractEthereumNodeConnector.{SingleBlockData, SyncingStatus}
-import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
+import com.myodov.unicherrygarden.api.types.SystemStatus
+import com.myodov.unicherrygarden.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.typesafe.scalalogging.LazyLogging
 import org.web3j.protocol.Web3j
-import org.web3j.protocol.core.DefaultBlockParameterNumber
 import org.web3j.protocol.core.methods.response.EthBlock.TransactionObject
 import org.web3j.protocol.core.methods.response._
+import org.web3j.protocol.core.{DefaultBlockParameterName, DefaultBlockParameterNumber}
 import org.web3j.protocol.http.HttpService
 import org.web3j.utils.Numeric.decodeQuantity
 
@@ -41,24 +42,62 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
     Web3j.build(new HttpService(nodeUrl))
   }
 
-  override def ethSyncingBlockNumber: Option[SyncingStatus] = {
+  override def ethBlockchainStatus: Option[SystemStatus.Blockchain] = {
     try {
+      // First JSON-RPC request: `eth.syncing`
       val syncingResult: EthSyncing.Result = web3j.ethSyncing.send.getResult
 
-      if (!syncingResult.isSyncing) {
-        logger.debug("eth.syncing = not syncing")
-        val blockNumber: Int = web3j.ethBlockNumber.send.getBlockNumber.intValueExact
-        Some(SyncingStatus(blockNumber, blockNumber))
-      } else {
+      if (syncingResult.isSyncing) {
+        // The node is still syncing
         val syncingExt: EthSyncing.Syncing = syncingResult.asInstanceOf[EthSyncing.Syncing]
 
         val currentBlockStr = syncingExt.getCurrentBlock
         val highestBlockStr = syncingExt.getHighestBlock
         logger.debug(s"eth.syncing = current $currentBlockStr, highest $highestBlockStr")
 
-        Some(SyncingStatus(
-          decodeQuantity(currentBlockStr).intValueExact(),
-          decodeQuantity(highestBlockStr).intValueExact()))
+        // Get the latest block (which is actually non-latest), at least try to:
+        // `eth.getBlock('latest')`
+        val nonLatestBlock: EthBlock.Block = web3j.ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false).send().getBlock
+
+
+        Some(SystemStatus.Blockchain.create(
+          SystemStatus.Blockchain.SyncingData.create(
+            decodeQuantity(currentBlockStr).intValueExact(),
+            decodeQuantity(highestBlockStr).intValueExact()
+          ),
+          SystemStatus.Blockchain.LatestBlock.create(
+            nonLatestBlock.getNumber.intValueExact,
+            nonLatestBlock.getGasLimit.longValueExact,
+            nonLatestBlock.getGasUsed.longValueExact,
+            Option(nonLatestBlock.getBaseFeePerGas)
+              .map(org.web3j.utils.Numeric.decodeQuantity)
+              .orNull,
+            Instant.ofEpochSecond(nonLatestBlock.getTimestamp.longValueExact)
+          )
+        ))
+      } else {
+        // Not syncing already
+        logger.debug("eth.syncing = not syncing")
+        // Second and third JSON-RPC requests: `eth.blockNumber`...
+        val blockNumber: Int = web3j.ethBlockNumber.send.getBlockNumber.intValueExact
+        // ... and `eth.getBlock('latest')`
+        val latestBlock: EthBlock.Block = web3j.ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false).send().getBlock
+
+        Some(SystemStatus.Blockchain.create(
+          SystemStatus.Blockchain.SyncingData.create(
+            blockNumber,
+            blockNumber
+          ),
+          SystemStatus.Blockchain.LatestBlock.create(
+            latestBlock.getNumber.intValueExact,
+            latestBlock.getGasLimit.longValueExact,
+            latestBlock.getGasUsed.longValueExact,
+            Option(latestBlock.getBaseFeePerGas)
+              .map(org.web3j.utils.Numeric.decodeQuantity)
+              .orNull,
+            Instant.ofEpochSecond(latestBlock.getTimestamp.longValueExact)
+          )
+        ))
       }
     } catch {
       case NonFatal(e) =>

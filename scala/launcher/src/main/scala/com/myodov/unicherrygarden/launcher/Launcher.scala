@@ -6,11 +6,10 @@ import akka.cluster.ClusterEvent.MemberEvent
 import akka.cluster.typed.{Cluster, Subscribe}
 import com.myodov.unicherrygarden.cherrygardener.CherryGardener
 import com.myodov.unicherrygarden.connectors.graphql.EthereumSingleNodeGraphQLConnector
-import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryPickerRequest, CherryPlanterRequest}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.myodov.unicherrygarden.storages.api.DBStorageAPI
-import com.myodov.unicherrygarden.{CherryPicker, CherryPlanter, UnicherrygardenVersion}
+import com.myodov.unicherrygarden._
 import com.typesafe.config.{ConfigException, ConfigFactory}
 import com.typesafe.scalalogging.LazyLogging
 import scopt.OParser
@@ -224,7 +223,6 @@ object LauncherActor extends LazyLogging {
           logger.info(s"Launching GardenWatcher (pure launcher, no actor): launcher v. $propVersionStr, built at $propBuildTimestampStr")
         case LauncherActor.LaunchCherryGardener() =>
           val dbStorage = getDbStorage(wipe = false)
-          //          ethereumConnector
 
           logger.debug(s"Launching sub-actor CherryPicker ($dbStorage, $ethereumConnector)")
           val cherryPicker: ActorRef[CherryPickerRequest] =
@@ -247,6 +245,10 @@ object LauncherActor extends LazyLogging {
             context.spawn(
               CherryGardener(dbStorage, Some(cherryPicker), Some(cherryPlanter)),
               "CherryGardener")
+
+          val ethereumStatePoller = context.spawn(
+            EthereumStatePoller(ethereumConnector, Seq(cherryGardener, cherryPicker)),
+            "EthereumStatePoller")
 
           val clusterSubscriber = context.spawn(ClusterSubscriber(), "ClusterSubscriber")
 

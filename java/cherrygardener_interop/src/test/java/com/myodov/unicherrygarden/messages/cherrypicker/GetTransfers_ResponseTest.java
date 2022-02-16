@@ -1,11 +1,8 @@
 package com.myodov.unicherrygarden.messages.cherrypicker;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myodov.unicherrygarden.AbstractJacksonSerializationTest;
 import com.myodov.unicherrygarden.api.types.MinedTransfer;
-import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
+import com.myodov.unicherrygarden.api.types.SystemStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Block;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.api.types.dlt.MinedTx;
@@ -44,7 +41,7 @@ public class GetTransfers_ResponseTest extends AbstractJacksonSerializationTest 
         assertEquals(
                 "{\"payload\":{" +
                         "\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers$TransfersRequestResultPayload\"," +
-                        "\"syncStatus\":{\"actualAt\":{\"epochSecond\":1644848996,\"nano\":0},\"blockchain\":{\"currentBlock\":20,\"highestBlock\":25},\"cherryPicker\":{\"latestKnownBlock\":17,\"latestPartiallySyncedBlock\":13,\"latestFullySyncedBlock\":11},\"gasPriceData\":{\"baseFeePerGas\":\"26227529244\"}" +
+                        "\"systemStatus\":{\"actualAt\":{\"epochSecond\":1644848996,\"nano\":0},\"blockchain\":{\"currentBlock\":20,\"highestBlock\":25},\"cherryPicker\":{\"latestKnownBlock\":17,\"latestPartiallySyncedBlock\":13,\"latestFullySyncedBlock\":11},\"gasPriceData\":{\"baseFeePerGas\":\"26227529244\"}" +
                         "}," +
                         "\"transfers\":[" +
                         "{\"from\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24\",\"to\":\"0xaa9f5344e0a207b4d5d59cb00ea939a97e81c688\",\"currencyKey\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\",\"amount\":\"200000\",\"tx\":{\"txhash\":\"0xb0b3d18c67857c30829e348987899026ee08232c989d60e47ccd78dca375d79a\",\"from\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24\",\"to\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\",\"block\":{\"blockNumber\":13550555,\"hash\":\"0x4246574f55f6bb00326e17fa5ed6724df0b821babd3bf456cee2fd6a7b4dd25a\",\"ts\":{\"epochSecond\":1636033366,\"nano\":0}},\"transactionIndex\":220,\"fees\":\"0.00455845\"},\"logIndex\":258}," +
@@ -60,11 +57,19 @@ public class GetTransfers_ResponseTest extends AbstractJacksonSerializationTest 
                         "]}}}",
                 makeJson(new GetTransfers.Response(
                         new GetTransfers.TransfersRequestResultPayload(
-                                new SystemSyncStatus(
-                                        Instant.ofEpochSecond(1644848996l),
-                                        SystemSyncStatus.Blockchain.create(20, 25),
-                                        SystemSyncStatus.CherryPicker.create(17, 13, 11),
-                                        SystemSyncStatus.GasPriceData.create(BigInteger.valueOf(26227529244L))
+                                new SystemStatus(
+                                        Instant.ofEpochSecond(1644848996L),
+                                        SystemStatus.Blockchain.create(
+                                                SystemStatus.Blockchain.SyncingData.create(14205560, 14205570),
+                                                SystemStatus.Blockchain.LatestBlock.create(
+                                                        14205545,
+                                                        30087829L,
+                                                        4802463L,
+                                                        BigInteger.valueOf(0x1308aac060L),
+                                                        Instant.ofEpochSecond(0x620a8debL)
+                                                )
+                                        ),
+                                        SystemStatus.CherryPicker.create(17, 13, 11)
                                 ),
                                 new ArrayList<MinedTransfer>() {{
                                     add(new MinedTransfer(
@@ -79,7 +84,7 @@ public class GetTransfers_ResponseTest extends AbstractJacksonSerializationTest 
                                                     new Block(
                                                             13550555,
                                                             "0x4246574f55f6bb00326e17fa5ed6724df0b821babd3bf456cee2fd6a7b4dd25a",
-                                                            Instant.ofEpochSecond(1636033366)),
+                                                            Instant.ofEpochSecond(1636033366L)),
                                                     220,
                                                     new BigDecimal("0.00455845")
                                             ),
@@ -97,7 +102,7 @@ public class GetTransfers_ResponseTest extends AbstractJacksonSerializationTest 
                                                     new Block(
                                                             13550616,
                                                             "0xdc73aa4e8b3109e5215d541d4604b1fb700f4dcdb65efe3ac68b49568ddb1da7",
-                                                            Instant.ofEpochSecond(1636034174)),
+                                                            Instant.ofEpochSecond(1636034174L)),
                                                     204,
                                                     new BigDecimal("0.00456157")
                                             ),

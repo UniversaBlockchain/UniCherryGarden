@@ -1,11 +1,8 @@
-package com.myodov.unicherrygarden.cherrypicker
+package com.myodov.unicherrygarden
 
 import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
-import com.myodov.unicherrygarden.CherryPicker
-import com.myodov.unicherrygarden.api.types.SystemSyncStatus
-import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages
-import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
+import com.myodov.unicherrygarden.api.GardenMessages
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.duration._
@@ -20,25 +17,24 @@ private class EthereumStatePoller(ethereumConnector: AbstractEthereumNodeConnect
   extends LazyLogging {
 
   import EthereumStatePoller.{Message, Poll}
-  import SyncerMessages.EthereumNodeStatus
+  import GardenMessages.EthereumNodeStatus
 
-  private def launch(listeners: Seq[ActorRef[SyncerMessages.EthereumNodeStatus]]): Behavior[Message] = {
+  private def launch(listeners: Seq[ActorRef[GardenMessages.EthereumNodeStatus]]): Behavior[Message] = {
     logger.debug(s"Launching Ethereum state poller for $listeners")
 
     Behaviors.withTimers[Message] { timers: TimerScheduler[Message] =>
       timers.startTimerWithFixedDelay(
         Poll(),
         0 seconds,
-        CherryPicker.BLOCK_ITERATION_PERIOD,
+        CherryGardenComponent.BLOCK_ITERATION_PERIOD,
       )
       // due to initialDelay = 0 seconds, it also sends this message, instantly, too.
       Behaviors.receiveMessage[Message] {
         case Poll() =>
           logger.debug("Polling Ethereum node for syncing status...")
           // If polling successful (and only then), resend the syncing status to listeners
-          ethereumConnector.ethSyncingBlockNumber.map { syncingStatus =>
-            val msg = EthereumNodeStatus(SystemSyncStatus.Blockchain.create(
-              syncingStatus.currentBlock, syncingStatus.highestBlock))
+          ethereumConnector.ethBlockchainStatus.foreach { syncingStatus =>
+            val msg = EthereumNodeStatus(syncingStatus)
             for (listener <- listeners) {
               listener ! msg
             }
@@ -60,6 +56,6 @@ object EthereumStatePoller {
 
   /** Main constructor. */
   @inline def apply(ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
-                    listeners: Seq[ActorRef[SyncerMessages.EthereumNodeStatus]]): Behavior[Message] =
+                    listeners: Seq[ActorRef[GardenMessages.EthereumNodeStatus]]): Behavior[Message] =
     new EthereumStatePoller(ethereumConnector).launch(listeners)
 }

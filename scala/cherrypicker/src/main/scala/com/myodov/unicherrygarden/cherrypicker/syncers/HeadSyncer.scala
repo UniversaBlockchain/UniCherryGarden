@@ -5,13 +5,13 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
-import com.myodov.unicherrygarden.api.dlt
+import com.myodov.unicherrygarden.api.DBStorage.Progress
+import com.myodov.unicherrygarden.api.GardenMessages.{HeadSyncerMessage, IterateHeadSyncer}
 import com.myodov.unicherrygarden.api.dlt.EthereumBlock
-import com.myodov.unicherrygarden.api.types.SystemSyncStatus
-import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages.{HeadSyncerMessage, IterateHeadSyncer}
-import com.myodov.unicherrygarden.connectors.{AbstractEthereumNodeConnector, Web3ReadOperations}
-import com.myodov.unicherrygarden.storages.api.DBStorage.Progress
-import com.myodov.unicherrygarden.storages.api.{DBStorage, DBStorageAPI}
+import com.myodov.unicherrygarden.api.types.SystemStatus
+import com.myodov.unicherrygarden.api.{DBStorage, GardenMessages, dlt}
+import com.myodov.unicherrygarden.storages.api.DBStorageAPI
+import com.myodov.unicherrygarden.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import scalikejdbc.{DB, DBSession}
 
 import scala.collection.immutable.SortedMap
@@ -34,7 +34,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
     state = HeadSyncer.State()
   ) {
 
-  import com.myodov.unicherrygarden.cherrypicker.syncers.SyncerMessages._
+  import com.myodov.unicherrygarden.api.GardenMessages._
 
   final def launch(): Behavior[HeadSyncerMessage] = {
     Behaviors.setup { context =>
@@ -173,7 +173,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
   /** Check if we even need to check the blockchain for reorganization. */
   private[this] final def reorgCheckCheck(
                                            dbProgressData: DBStorage.Progress.ProgressData,
-                                           nodeSyncingStatus: SystemSyncStatus.Blockchain
+                                           nodeSyncingStatus: SystemStatus.Blockchain
                                          )(implicit session: DBSession): Boolean = {
     // Atomically get the value and unset it
     if (state.nextIterationMustCheckReorg.getAndSet(false)) {
@@ -189,7 +189,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
         case Some(maxBlocksNum) =>
           // Reorg check is needed (i.e. “return true”) if the maximum block number stored in the DB
           // is in “danger zone” (closer than `syncers.max_reorg`) from `eth.syncing.currentBlock`.
-          maxBlocksNum >= nodeSyncingStatus.currentBlock - maxReorg
+          maxBlocksNum >= nodeSyncingStatus.syncingData.currentBlock - maxReorg
       }
     }
   }
@@ -268,14 +268,14 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
    */
   private[this] final def headSync(
                                     progress: Progress.ProgressData,
-                                    nodeSyncingStatus: SystemSyncStatus.Blockchain,
+                                    nodeSyncingStatus: SystemStatus.Blockchain,
                                     iterationStartNanotime: Long
                                   )(implicit session: DBSession): Behavior[HeadSyncerMessage] = {
     logger.debug(s"Now we are ready to do headSync for progress $progress, node $nodeSyncingStatus")
     // headSync is called from within `withValidatedProgressAndSyncingState`, so we can rely upon
     // overall.from being non-empty (and thus `headSyncerStartBlock` too)
     val syncStartBlock = progress.headSyncerStartBlock.get
-    val syncEndBlock = Math.min(syncStartBlock + batchSize - 1, nodeSyncingStatus.currentBlock)
+    val syncEndBlock = Math.min(syncStartBlock + batchSize - 1, nodeSyncingStatus.syncingData.currentBlock)
     val headSyncingRange: EthereumBlock.BlockNumberRange = syncStartBlock to syncEndBlock
     val tailSyncStatus: Option[dlt.EthereumBlock.BlockNumberRange] = state.tailSyncStatus
 
@@ -310,7 +310,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
           val iterationDuration = Duration(System.nanoTime - iterationStartNanotime, TimeUnit.NANOSECONDS)
           val durationStr = s"${iterationDuration.toMillis} ms"
 
-          val remainingBlocks = nodeSyncingStatus.currentBlock - headSyncingRange.last
+          val remainingBlocks = nodeSyncingStatus.syncingData.currentBlock - headSyncingRange.last
 
           if (remainingBlocks <= 0) { // should be “==” rather than “<=”, but just to be safe
             logger.debug(s"HeadSyncing success $headSyncingRange in $durationStr, reached end")
@@ -341,7 +341,7 @@ private class HeadSyncer(dbStorage: DBStorageAPI,
 /** HeadSyncer companion object. */
 object HeadSyncer {
 
-  protected final case class State(@volatile override var ethereumNodeStatus: Option[SystemSyncStatus.Blockchain] = None,
+  protected final case class State(@volatile override var ethereumNodeStatus: Option[SystemStatus.Blockchain] = None,
                                    nextIterationMustCheckReorg: AtomicBoolean = new AtomicBoolean(true),
                                    @volatile var tailSyncStatus: Option[dlt.EthereumBlock.BlockNumberRange] = None)
     extends AbstractSyncer.SyncerState
@@ -351,6 +351,6 @@ object HeadSyncer {
                     ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
                     maxReorg: Int)
                    (batchSize: Int,
-                    catchUpBrakeMaxLead: Int): Behavior[SyncerMessages.HeadSyncerMessage] =
+                    catchUpBrakeMaxLead: Int): Behavior[GardenMessages.HeadSyncerMessage] =
     new HeadSyncer(dbStorage, ethereumConnector, maxReorg)(batchSize, catchUpBrakeMaxLead).launch()
 }

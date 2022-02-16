@@ -5,7 +5,7 @@ import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.myodov.unicherrygarden.api.types.MinedTransfer;
-import com.myodov.unicherrygarden.api.types.SystemSyncStatus;
+import com.myodov.unicherrygarden.api.types.SystemStatus;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.ResponsePayload;
@@ -97,7 +97,7 @@ public class GetTransfers {
          * The total status of blockchain synchronization.
          */
         @NonNull
-        public final SystemSyncStatus syncStatus;
+        public final SystemStatus syncStatus;
 
         @NonNull
         public final List<MinedTransfer> transfers;
@@ -118,7 +118,7 @@ public class GetTransfers {
          * Constructor.
          */
         @JsonCreator
-        public TransfersRequestResultPayload(@NonNull SystemSyncStatus syncStatus,
+        public TransfersRequestResultPayload(@NonNull SystemStatus syncStatus,
                                              @NonNull List<MinedTransfer> transfers,
                                              @NonNull Map<String, List<GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact>> balances) {
             assert syncStatus != null;
