@@ -1,8 +1,10 @@
 package com.myodov.unicherrygarden.connector.impl;
 
+import akka.actor.typed.ActorSystem;
 import com.myodov.unicherrygarden.api.types.PrivateKey;
 import com.myodov.unicherrygarden.api.types.UniCherryGardenError;
 import com.myodov.unicherrygarden.connector.api.Sender;
+import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
 import com.typesafe.config.Config;
@@ -231,37 +233,39 @@ public class SenderImpl implements Sender {
     protected final long chainId;
 
     /**
+     * Null only if created in “offline mode”.
+     */
+    @Nullable
+    private final ActorSystem<ConnectorActorMessage> actorSystem;
+
+
+    /**
      * Constructor.
      *
-     * @param chainId Chain ID (EIP-155) which the sender will use to create/sign the transactions.
-     *                Values from {@link org.web3j.tx.ChainIdLong} (or any other ones) can be used.
-     *                If <code>null</code>, the default Chain ID configured in the library (Ethereum Mainnet)
-     *                will be used.
+     * @param actorSystem Akka actor system to use; <code>null</code> if created in offline mode.
+     * @param chainId     Chain ID (EIP-155) which the sender will use to create/sign the transactions.
+     *                    Values from {@link org.web3j.tx.ChainIdLong} (or any other ones) can be used.
+     *                    If <code>null</code>, the default Chain ID configured in the library (Ethereum Mainnet)
+     *                    will be used.
      * @see <a href="https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md">EIP-155</a>.
      */
     @SuppressWarnings("unused")
-    public SenderImpl(@Nullable Long chainId) {
-        if (chainId != null) {
-            this.chainId = chainId;
-        } else {
-            this.chainId = config.getLong("unicherrygarden.ethereum.chain_id");
-        }
+    public SenderImpl(@Nullable ActorSystem<ConnectorActorMessage> actorSystem,
+                      long chainId) {
+        assert chainId >= 1 || chainId == -1 : chainId;
+        this.actorSystem = actorSystem;
+        this.chainId = chainId;
 
         logger.debug("Starting sender; will use EIP-155 Chain ID {}", this.chainId);
     }
 
     /**
-     * Constructor with defaults.
-     * <p>
-     * Defaults:
-     * <ul>
-     * <li>Chain ID – the default Chain ID configured in the library (Ethereum Mainnet).</li>
-     * </ul>
+     * Simple constructor, creating the Sender in “offline mode”.
      */
-    @SuppressWarnings("unused")
-    public SenderImpl() {
-        this(null);
+    public SenderImpl(long chainId) {
+        this(null, chainId);
     }
+
 
     @Override
     @NonNull

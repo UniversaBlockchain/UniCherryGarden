@@ -110,4 +110,15 @@ public interface ClientConnector {
     @Nullable
     @SuppressWarnings("unused")
     Observer getObserver();
+
+
+    /**
+     * Returns the engine/subsystem that allows you to create and send the Ethereum transactions (typically transfers).
+     * Basically it is the access to “CherryPlanter” subsystem.
+     *
+     * @return <code>null</code> if the client connector is created in “offline mode”.
+     */
+    @Nullable
+    @SuppressWarnings("unused")
+    Sender getSender();
 }
