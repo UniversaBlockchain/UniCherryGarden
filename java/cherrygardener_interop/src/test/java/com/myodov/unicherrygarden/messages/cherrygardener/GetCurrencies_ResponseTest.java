@@ -59,6 +59,11 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
         assertJsonDeserialization(
                 new GetCurrencies.CurrenciesRequestResultPayload(systemStatus, currencies),
                 "{\"@class\":\"com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies$CurrenciesRequestResultPayload\"," +
+                        "\"systemStatus\":{" +
+                        "\"actualAt\":{\"epochSecond\":1644936903,\"nano\":0}," +
+                        "\"blockchain\":{\"syncingData\":{\"currentBlock\":14205560,\"highestBlock\":14205570},\"latestBlock\":{\"number\":14205590,\"gasLimit\":30029295,\"gasUsed\":3063440,\"baseFeePerGas\":\"93747001362\",\"timestamp\":{\"epochSecond\":1644859472,\"nano\":0}}}," +
+                        "\"cherryPicker\":{\"latestKnownBlock\":19,\"latestPartiallySyncedBlock\":15,\"latestFullySyncedBlock\":13}" +
+                        "}," +
                         "\"currencies\":[" +
                         "{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null}," +
                         "{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"transferGasLimit\":\"70000\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}]}",
@@ -68,6 +73,11 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
         assertJsonDeserialization(
                 new GetCurrencies.Response(new GetCurrencies.CurrenciesRequestResultPayload(systemStatus, currencies)),
                 "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies$CurrenciesRequestResultPayload\"," +
+                        "\"systemStatus\":{" +
+                        "\"actualAt\":{\"epochSecond\":1644936903,\"nano\":0}," +
+                        "\"blockchain\":{\"syncingData\":{\"currentBlock\":14205560,\"highestBlock\":14205570},\"latestBlock\":{\"number\":14205590,\"gasLimit\":30029295,\"gasUsed\":3063440,\"baseFeePerGas\":\"93747001362\",\"timestamp\":{\"epochSecond\":1644859472,\"nano\":0}}}," +
+                        "\"cherryPicker\":{\"latestKnownBlock\":19,\"latestPartiallySyncedBlock\":15,\"latestFullySyncedBlock\":13}" +
+                        "}," +
                         "\"currencies\":[" +
                         "{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null}," +
                         "{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"transferGasLimit\":\"70000\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}]}}",

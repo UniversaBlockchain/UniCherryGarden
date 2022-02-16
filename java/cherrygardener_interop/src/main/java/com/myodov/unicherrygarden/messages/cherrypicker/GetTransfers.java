@@ -97,7 +97,7 @@ public class GetTransfers {
          * The total status of blockchain synchronization.
          */
         @NonNull
-        public final SystemStatus syncStatus;
+        public final SystemStatus systemStatus;
 
         @NonNull
         public final List<MinedTransfer> transfers;
@@ -118,14 +118,14 @@ public class GetTransfers {
          * Constructor.
          */
         @JsonCreator
-        public TransfersRequestResultPayload(@NonNull SystemStatus syncStatus,
+        public TransfersRequestResultPayload(@NonNull SystemStatus systemStatus,
                                              @NonNull List<MinedTransfer> transfers,
                                              @NonNull Map<String, List<GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact>> balances) {
-            assert syncStatus != null;
+            assert systemStatus != null;
             assert transfers != null;
             assert balances != null;
 
-            this.syncStatus = syncStatus;
+            this.systemStatus = systemStatus;
             this.transfers = Collections.unmodifiableList(transfers);
 
             final Map<String, List<GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact>> tempModifiableMap =
@@ -176,7 +176,7 @@ public class GetTransfers {
         @Override
         public String toString() {
             return String.format("GetTransfers.TransfersRequestResult(%s, %s, %s)",
-                    syncStatus, transfers, balances);
+                    systemStatus, transfers, balances);
         }
 
         /**

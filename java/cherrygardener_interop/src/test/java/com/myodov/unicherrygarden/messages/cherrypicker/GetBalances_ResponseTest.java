@@ -36,8 +36,9 @@ public class GetBalances_ResponseTest extends AbstractJacksonSerializationTest {
         assertEquals(
                 "{\"payload\":{" +
                         "\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetBalances$BalanceRequestResultPayload\"," +
-                        "\"systemStatus\":{\"actualAt\":{\"epochSecond\":1644850591,\"nano\":0},\"blockchain\":{\"currentBlock\":20,\"highestBlock\":25},\"cherryPicker\":{\"latestKnownBlock\":17,\"latestPartiallySyncedBlock\":13,\"latestFullySyncedBlock\":11}," +
-                        "\"gasPriceData\":{\"baseFeePerGas\":\"49758027985\"}" +
+                        "\"systemStatus\":{\"actualAt\":{\"epochSecond\":1644850591,\"nano\":0}," +
+                        "\"blockchain\":{\"syncingData\":{\"currentBlock\":14205560,\"highestBlock\":14205570},\"latestBlock\":{\"number\":14205550,\"gasLimit\":30135653,\"gasUsed\":16327740,\"baseFeePerGas\":\"71470304869\",\"timestamp\":{\"epochSecond\":1644858896,\"nano\":0}}}," +
+                        "\"cherryPicker\":{\"latestKnownBlock\":17,\"latestPartiallySyncedBlock\":13,\"latestFullySyncedBlock\":11}" +
                         "}," +
                         "\"balances\":[" +
                         "{\"currency\":{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null},\"amount\":\"123.45\",\"blockNumber\":7328}," +

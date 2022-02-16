@@ -1020,7 +1020,7 @@ public class CherryGardenerCLI {
                                     tr.tx.fees
                             );
                         }
-                        printOverallStatus(payload.syncStatus);
+                        printOverallStatus(payload.systemStatus);
                     }
                     connector.shutdown();
                 } catch (CompletionException exc) {
