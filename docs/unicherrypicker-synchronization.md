@@ -57,6 +57,7 @@ There are also some settings which are specified using the database (`ucg_state`
 
 ```hocon
 unicherrygarden {
+  realm = ""
   cherrypicker {
     syncers {
       max_reorg = 100 # >= 1
@@ -76,6 +77,7 @@ unicherrygarden {
 }
 ```
 
+* `realm` – the string name of the “realm” where the UniCherryGarden instance runs. There may be multiple UniCherryGarden executed, and running in the same cluster, and analyzing e.g. the different blockchains (Ethereum Mainnet and Ethereum Testnet, various Ethereum forks, etc). Each set of UniCherryGarden services working with the same blockchain is assumed to have the same realm; and the UniCherryGardens for different blockchains must have different realms configured. You should put here some string identifying the blockchain, like `ethereum`, or `ethereum-mainnet`, or `ethereumclassic`, or `ethereum-ropsten`.
 * `syncers.max_reorg` – maximum length of reorg (number of blocks in the blockchain mismatching what we’ve seen in the blockchain before) we expect.
 * `syncers.head_syncer.batch_size`, `syncers.tail_syncer.batch_size` – maximum number of blocks in a batch-read; the larger the batch, the longer the query and the more it takes from geth to respond.
 * `syncers.head_syncer.catch_up_brake_max_lead` – sometimes both HeadSyncer and TailSyncer are running an at the same time, and TailSyncer trying to catch up (imagine TailSyncer syncing from block 2500, HeadSyncer syncing from block 3000, they both sync in batches of 100 blocks, and they need to reach block 5000). Especially if `head_syncer.batch_size` ≥ `tail_syncer.batch_size`, this may mean TailSyncer rescans many of the blocks just passed by HeadSyncer. `catch_up_brake_max_lead` is the setting for HeadSyncer to pause running forward, if it notices that TailSyncer is closer than `catch_up_brake_max_lead`; so TailSyncer may reach HeadSyncer faster, and only one of them will need to run further.

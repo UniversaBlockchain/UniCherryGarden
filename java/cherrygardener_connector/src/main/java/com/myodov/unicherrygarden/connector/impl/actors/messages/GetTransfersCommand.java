@@ -6,6 +6,7 @@ import akka.actor.typed.receptionist.ServiceKey;
 import akka.japi.function.Function;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommandImpl;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
+import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -79,7 +80,7 @@ public class GetTransfersCommand
 
     @NonNull
     @Override
-    public ServiceKey<GetTransfers.Request> getServiceKey() {
-        return GetTransfers.SERVICE_KEY;
+    public final ServiceKey<GetTransfers.Request> makeServiceKey(@NonNull String realm) {
+        return GetTransfers.makeServiceKey(realm);
     }
 }

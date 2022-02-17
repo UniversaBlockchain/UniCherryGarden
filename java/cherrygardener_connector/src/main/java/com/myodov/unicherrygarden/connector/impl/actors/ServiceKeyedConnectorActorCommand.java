@@ -12,5 +12,5 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 public interface ServiceKeyedConnectorActorCommand<ReqPayload, Resp>
         extends ConnectorActorCommand {
     @NonNull
-    ServiceKey<? extends RequestWithReplyTo<ReqPayload, Resp>> getServiceKey();
+    ServiceKey<? extends RequestWithReplyTo<ReqPayload, Resp>> makeServiceKey(@NonNull String realm);
 }

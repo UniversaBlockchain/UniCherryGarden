@@ -4,12 +4,12 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.ClusterEvent.MemberEvent
 import akka.cluster.typed.{Cluster, Subscribe}
+import com.myodov.unicherrygarden._
+import com.myodov.unicherrygarden.api.DBStorageAPI
 import com.myodov.unicherrygarden.cherrygardener.CherryGardener
 import com.myodov.unicherrygarden.connectors.graphql.EthereumSingleNodeGraphQLConnector
 import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryPickerRequest, CherryPlanterRequest}
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
-import com.myodov.unicherrygarden.storages.api.DBStorageAPI
-import com.myodov.unicherrygarden._
 import com.typesafe.config.{ConfigException, ConfigFactory}
 import com.typesafe.scalalogging.LazyLogging
 import scopt.OParser
@@ -92,6 +92,8 @@ You can choose a different HOCON configuration file instead of the regular appli
     EthereumSingleNodeGraphQLConnector(nodeUrl, actorSystem)
     //    EthereumSingleNodeJsonRpcConnector(nodeUrl)
   }
+
+  private[launcher] lazy val realm: String = config.getString("unicherrygarden.realm")
 
   /** Any config setting containing some number of blocks related to reorg; with validations. */
   private[this] def blocksNumberSetting(path: String): Int = {
@@ -228,6 +230,7 @@ object LauncherActor extends LazyLogging {
           val cherryPicker: ActorRef[CherryPickerRequest] =
             context.spawn(
               CherryPicker(
+                realm,
                 dbStorage,
                 ethereumConnector,
                 maxReorgSetting,
@@ -238,12 +241,12 @@ object LauncherActor extends LazyLogging {
 
           logger.debug(s"Launching sub-actor CherryPlanter")
           val cherryPlanter: ActorRef[CherryPlanterRequest] =
-            context.spawn(CherryPlanter(dbStorage, ethereumConnector), "CherryPlanter")
+            context.spawn(CherryPlanter(realm, dbStorage, ethereumConnector), "CherryPlanter")
 
           logger.info(s"Launched CherryGardener (which now knows about CherryPicker and CherryPlanter)")
           val cherryGardener: ActorRef[CherryGardenerRequest] =
             context.spawn(
-              CherryGardener(dbStorage, Some(cherryPicker), Some(cherryPlanter)),
+              CherryGardener(realm, dbStorage, Some(cherryPicker), Some(cherryPlanter)),
               "CherryGardener")
 
           val ethereumStatePoller = context.spawn(

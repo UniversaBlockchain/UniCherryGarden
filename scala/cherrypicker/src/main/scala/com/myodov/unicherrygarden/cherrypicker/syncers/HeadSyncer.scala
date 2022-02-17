@@ -9,8 +9,7 @@ import com.myodov.unicherrygarden.api.DBStorage.Progress
 import com.myodov.unicherrygarden.api.GardenMessages.{HeadSyncerMessage, IterateHeadSyncer}
 import com.myodov.unicherrygarden.api.dlt.EthereumBlock
 import com.myodov.unicherrygarden.api.types.SystemStatus
-import com.myodov.unicherrygarden.api.{DBStorage, GardenMessages, dlt}
-import com.myodov.unicherrygarden.storages.api.DBStorageAPI
+import com.myodov.unicherrygarden.api.{DBStorage, DBStorageAPI, GardenMessages, dlt}
 import com.myodov.unicherrygarden.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import scalikejdbc.{DB, DBSession}
 
@@ -20,7 +19,7 @@ import scala.language.postfixOps
 
 /** Performs the “Head sync” – syncing the newest blocks, which haven’t been synced yet.
  *
- * @param maxReorg maximum lenmaxReorggth of reorganization in Ethereum blockchain that we support and allow.
+ * @param maxReorg maximum length of reorganization in Ethereum blockchain that we support and allow.
  * @note For more details please read [[/docs/unicherrypicker-synchronization.md]] document.
  */
 private class HeadSyncer(dbStorage: DBStorageAPI,

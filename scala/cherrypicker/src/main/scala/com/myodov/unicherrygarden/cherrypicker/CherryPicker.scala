@@ -5,10 +5,10 @@ import java.util.UUID
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.myodov.unicherrygarden.api.GardenMessages
 import com.myodov.unicherrygarden.api.GardenMessages.EthereumNodeStatus
 import com.myodov.unicherrygarden.api.types.SystemStatus
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload
+import com.myodov.unicherrygarden.api.{DBStorageAPI, GardenMessages}
 import com.myodov.unicherrygarden.cherrypicker.syncers.{HeadSyncer, TailSyncer}
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.AddTrackedAddressesRequestResultPayload
@@ -16,7 +16,6 @@ import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceReque
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.TrackedAddressesRequestResultPayload
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers.TransfersRequestResultPayload
 import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses, GetTransfers}
-import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging
 import scalikejdbc.DB
 
@@ -32,15 +31,18 @@ import scala.util.control.NonFatal
  * @note For more details please read [[/docs/unicherrypicker-synchronization.md]] document.
  * @param maxReorg maximum lenmaxReorggth of reorganization in Ethereum blockchain that we support and allow.
  */
-private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
-                           protected[this] val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
-                           protected[this] val state: CherryPicker.State = CherryPicker.State(),
-                           maxReorg: Int,
-                           headSyncerBatchSize: Int,
-                           tailSyncerBatchSize: Int,
-                           catchUpBrakeMaxLeadSetting: Int
-                          )
-  extends LazyLogging {
+private class CherryPicker(
+                            // CherryGardenComponent-specific
+                            realm: String,
+                            dbStorage: DBStorageAPI,
+                            // CherryPicker-specific
+                            protected[this] val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
+                            protected[this] val state: CherryPicker.State = CherryPicker.State(),
+                            maxReorg: Int,
+                            headSyncerBatchSize: Int,
+                            tailSyncerBatchSize: Int,
+                            catchUpBrakeMaxLeadSetting: Int
+                          ) extends CherryGardenComponent(realm, dbStorage) with LazyLogging {
   assert(maxReorg >= 1, maxReorg)
   assert(headSyncerBatchSize >= 1, headSyncerBatchSize)
   assert(tailSyncerBatchSize >= 1, tailSyncerBatchSize)
@@ -52,7 +54,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
   /** First state: when just launching the CherryPicker after shutdown/restart. */
   private def launch(): Behavior[CherryPickerRequest] = {
     Behaviors.setup { context =>
-      logger.info(s"Launching CherryPicker: v. $propVersionStr, built at $propBuildTimestampStr")
+      logger.info(s"Launching CherryPicker in realm \"$realm\": v. $propVersionStr, built at $propBuildTimestampStr")
 
       logger.debug("CherryPicker: Launching HeadSyncer...")
       val headSyncer: ActorRef[GardenMessages.HeadSyncerMessage] = context.spawn(
@@ -66,10 +68,10 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
 
       // Register all service keys
       List(
-        GetTrackedAddresses.SERVICE_KEY,
-        AddTrackedAddresses.SERVICE_KEY,
-        GetBalances.SERVICE_KEY,
-        GetTransfers.SERVICE_KEY
+        GetTrackedAddresses.makeServiceKey(realm),
+        AddTrackedAddresses.makeServiceKey(realm),
+        GetBalances.makeServiceKey(realm),
+        GetTransfers.makeServiceKey(realm)
       ).foreach(context.system.receptionist ! Receptionist.Register(_, context.self))
 
       // On an `EthereumNodeStatus`, we just write its data into the state;
@@ -205,7 +207,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
   // Construct all the response DB in a single atomic readonly DB transaction.
     DB readOnly { implicit session =>
       new GetBalances.Response(
-        whenStateAndProgressAllow[BalanceRequestResultPayload](
+        CherryGardenComponent.whenStateAndProgressAllow[BalanceRequestResultPayload](
           state.ethereumStatus,
           dbStorage.progress.getProgress,
           "GetBalances",
@@ -222,7 +224,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
             Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
           )
           new BalanceRequestResultPayload(
-            buildSystemSyncStatus(ethereumNodeStatus, progress),
+            CherryGardenComponent.buildSystemSyncStatus(ethereumNodeStatus, progress),
             results.asJava
           )
         }
@@ -233,7 +235,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
   // Construct all the response in a single atomic readonly DB transaction
     DB readOnly { implicit session =>
       new GetTransfers.Response(
-        whenStateAndProgressAllow[TransfersRequestResultPayload](
+        CherryGardenComponent.whenStateAndProgressAllow[TransfersRequestResultPayload](
           state.ethereumStatus,
           dbStorage.progress.getProgress,
           "GetTransfers",
@@ -277,7 +279,7 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
               Map.empty
 
           new TransfersRequestResultPayload(
-            buildSystemSyncStatus(ethereumNodeStatus, progress),
+            CherryGardenComponent.buildSystemSyncStatus(ethereumNodeStatus, progress),
             transfers.asJava,
             balances.map { case (k, v) => k -> v.asJava }.asJava
           )
@@ -288,22 +290,23 @@ private class CherryPicker(protected[this] val dbStorage: DBStorageAPI,
 
 
 /** Akka actor to run CherryPicker operations. */
-object CherryPicker extends CherryGardenComponent with LazyLogging {
+object CherryPicker extends LazyLogging {
   lazy val props = UnicherrygardenVersion.loadPropsFromNamedResource("unicherrygarden_cherrypicker.properties")
   lazy val propVersionStr = props.getProperty("version", "N/A");
   lazy val propBuildTimestampStr = props.getProperty("build_timestamp", "");
 
   protected final case class State(@volatile var ethereumStatus: Option[SystemStatus.Blockchain] = None)
 
-
   /** Main constructor. */
-  @inline final def apply(dbStorage: DBStorageAPI,
+  @inline final def apply(realm: String,
+                          dbStorage: DBStorageAPI,
                           ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations,
                           maxReorg: Int,
                           headSyncerBatchSize: Int,
                           tailSyncerBatchSize: Int,
                           catchUpBrakeMaxLeadSetting: Int): Behavior[CherryPickerRequest] =
     new CherryPicker(
+      realm,
       dbStorage,
       ethereumConnector,
       state = CherryPicker.State(),

@@ -3,14 +3,13 @@ package com.myodov.unicherrygarden.storages
 import java.sql.SQLException
 
 import com.myodov.unicherrygarden.Tools.seqIsIncrementing
-import com.myodov.unicherrygarden.api.dlt
+import com.myodov.unicherrygarden.api.{DBStorageAPI, dlt}
 import com.myodov.unicherrygarden.api.types.MinedTransfer
 import com.myodov.unicherrygarden.api.types.dlt.{Block, MinedTx}
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact
 import com.myodov.unicherrygarden.api.DBStorage.Currencies.DBCurrency
-import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.{CleanResult, MigrateResult}

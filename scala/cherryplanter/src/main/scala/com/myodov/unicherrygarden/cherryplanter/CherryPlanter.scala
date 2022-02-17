@@ -2,16 +2,21 @@ package com.myodov.unicherrygarden
 
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
+import com.myodov.unicherrygarden.api.DBStorageAPI
 import com.myodov.unicherrygarden.messages.CherryPlanterRequest
-import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.language.postfixOps
 
 /** "Cherry planter": the "CherryGarden" subsystem to create and inject new Ethereum transactions
  * into the Ethereum blockchain. */
-class CherryPlanter(private val dbStorage: DBStorageAPI,
-                    private val ethereumConnector: AbstractEthereumNodeConnector) extends LazyLogging {
+class CherryPlanter(
+                     // CherryGardenComponent-specific
+                     realm: String,
+                     dbStorage: DBStorageAPI,
+                     // CherryPlanter-specific
+                     private val ethereumConnector: AbstractEthereumNodeConnector)
+  extends CherryGardenComponent(realm, dbStorage) with LazyLogging {
 }
 
 
@@ -24,13 +29,14 @@ object CherryPlanter extends LazyLogging {
   /** A message informing you need to run a next iteration */
   final case class Iterate() extends CherryPlanterRequest
 
-  def apply(dbStorage: DBStorageAPI,
-            ethereumConnector: AbstractEthereumNodeConnector): Behavior[CherryPlanterRequest] = {
-
-    val planter = new CherryPlanter(dbStorage, ethereumConnector)
+  /** Main constructor. */
+  @inline final def apply(realm: String,
+                          dbStorage: DBStorageAPI,
+                          ethereumConnector: AbstractEthereumNodeConnector): Behavior[CherryPlanterRequest] = {
+    val planter = new CherryPlanter(realm, dbStorage, ethereumConnector)
 
     Behaviors.setup { context =>
-      logger.info(s"Launching CherryPlanter: v. $propVersionStr, built at $propBuildTimestampStr")
+      logger.info(s"Launching CherryPlanter in realm \"$realm\": v. $propVersionStr, built at $propBuildTimestampStr")
 
       Behaviors.receiveMessage {
         (message: CherryPlanterRequest) => {

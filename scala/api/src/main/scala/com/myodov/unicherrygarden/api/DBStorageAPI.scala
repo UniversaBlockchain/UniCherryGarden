@@ -1,9 +1,8 @@
-package com.myodov.unicherrygarden.storages.api
+package com.myodov.unicherrygarden.api
 
 import com.myodov.unicherrygarden.api.DBStorage.Currencies.DBCurrency
 import com.myodov.unicherrygarden.api.DBStorage.Progress.ProgressData
 import com.myodov.unicherrygarden.api.DBStorage.TrackedAddresses.TrackedAddress
-import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.types.MinedTransfer
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact
@@ -185,5 +184,4 @@ object DBStorageAPI {
                       currencyKeys: Option[Set[String]]
                     )(implicit session: DBSession = ReadOnlyAutoSession): List[MinedTransfer]
   }
-
 }

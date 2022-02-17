@@ -75,7 +75,7 @@ public class AddTrackedAddressesCommand
 
     @NonNull
     @Override
-    public ServiceKey<AddTrackedAddresses.Request> getServiceKey() {
-        return AddTrackedAddresses.SERVICE_KEY;
+    public final ServiceKey<AddTrackedAddresses.Request> makeServiceKey(@NonNull String realm) {
+        return AddTrackedAddresses.makeServiceKey(realm);
     }
 }

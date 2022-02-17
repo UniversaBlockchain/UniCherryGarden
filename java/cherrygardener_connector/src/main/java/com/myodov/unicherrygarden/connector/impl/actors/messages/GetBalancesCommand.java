@@ -77,7 +77,7 @@ public class GetBalancesCommand
 
     @NonNull
     @Override
-    public ServiceKey<GetBalances.Request> getServiceKey() {
-        return GetBalances.SERVICE_KEY;
+    public final ServiceKey<GetBalances.Request> makeServiceKey(@NonNull String realm) {
+        return GetBalances.makeServiceKey(realm);
     }
 }

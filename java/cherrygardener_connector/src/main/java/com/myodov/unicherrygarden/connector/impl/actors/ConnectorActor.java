@@ -41,31 +41,74 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
     public static final Duration DEFAULT_CALL_TIMEOUT = Duration.ofSeconds(15);
 
 
+    @NonNull
     private final ActorRef<Receptionist.Listing> receptionistSubscribeCherryGardenResponseAdapter;
 
+    @NonNull
+    private final String realm;
+
     private final List<ActorRef<WaitForBootCommand.BootCompleted>> waitForBootCallers = new ArrayList<>();
+
+    //
+    // Cached service keys:
+    //
+
+    // CherryGardener
+    @NonNull
+    private final ServiceKey<GetCurrencies.Request> skGetCurrencies;
+    @NonNull
+    private final ServiceKey<PingCherryGardener.Request> skPingCherryGardener;
+    // CherryPicker
+    @NonNull
+    private final ServiceKey<AddTrackedAddresses.Request> skAddTrackedAddresses;
+    @NonNull
+    private final ServiceKey<GetBalances.Request> skGetBalances;
+    @NonNull
+    private final ServiceKey<GetTrackedAddresses.Request> skGetTrackedAddresses;
+    @NonNull
+    private final ServiceKey<GetTransfers.Request> skGetTransfers;
+
 
     // -----------------------------------------------------------------------------------------------------------------
 
     /**
      * Private constructor, not usable directly. `create` is to be used instead.
      */
-    private ConnectorActor(@NonNull ActorContext<ConnectorActorMessage> context) {
+    private ConnectorActor(@NonNull ActorContext<ConnectorActorMessage> context,
+                           @NonNull String realm) {
         super(context);
+        assert realm != null;
+
+        this.realm = realm;
+        logger.debug("Launching ConnectorActor in realm \"{}\"", realm);
         receptionistSubscribeCherryGardenResponseAdapter = context.messageAdapter(
                 Receptionist.Listing.class,
                 ReceptionistSubscribeCherryGardenResponse::new);
+
+        // Let's cache the service keys:
+        // 1. CherryGardener service keys
+        skGetCurrencies = GetCurrencies.makeServiceKey(realm);
+        skPingCherryGardener = PingCherryGardener.makeServiceKey(realm);
+        // 2. CherryPicker service keys
+        skAddTrackedAddresses = AddTrackedAddresses.makeServiceKey(realm);
+        skGetBalances = GetBalances.makeServiceKey(realm);
+        skGetTrackedAddresses = GetTrackedAddresses.makeServiceKey(realm);
+        skGetTransfers = GetTransfers.makeServiceKey(realm);
 
         // On launch, we want to subscribe to Receptionist’s changes in CherryGardener (clustered) availability.
         // Each time when CherryGardener availability (by PingCherryGardener.SERVICE_KEY) changes,
         // the message ReceptionistSubscribeCherryGardenResponse is emitted.
         context.getSystem().receptionist().tell(
-                Receptionist.subscribe(PingCherryGardener.SERVICE_KEY, receptionistSubscribeCherryGardenResponseAdapter)
+                Receptionist.subscribe(
+                        skPingCherryGardener,
+                        receptionistSubscribeCherryGardenResponseAdapter
+                )
         );
     }
 
-    public static Behavior<ConnectorActorMessage> create() {
-        return Behaviors.setup(ConnectorActor::new);
+    public static Behavior<ConnectorActorMessage> create(@NonNull String realm) {
+        assert realm != null;
+        return Behaviors.setup((context) -> new ConnectorActor(context, realm));
     }
 
     @Override
@@ -126,7 +169,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         assert msg != null;
 
         final Set<ActorRef<PingCherryGardener.Request>> reachableInstances =
-                msg.listing.getServiceInstances(PingCherryGardener.SERVICE_KEY);
+                msg.listing.getServiceInstances(skPingCherryGardener);
         logger.debug("Received onReceptionistSubscribeCherryGardenResponse with reachable instances {}",
                 reachableInstances);
 
@@ -172,7 +215,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
 
         final ActorContext<ConnectorActorMessage> context = getContext();
         final ActorRef<Receptionist.Command> receptionist = context.getSystem().receptionist();
-        final ServiceKey<GetCurrencies.Request> serviceKey = msg.getServiceKey();
+        final ServiceKey<GetCurrencies.Request> serviceKey = skGetCurrencies;
 
         context.ask(
                 Receptionist.Listing.class,
@@ -205,7 +248,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
 
         final ActorContext<ConnectorActorMessage> context = getContext();
         final ActorRef<Receptionist.Command> receptionist = context.getSystem().receptionist();
-        final ServiceKey<GetTrackedAddresses.Request> serviceKey = msg.getServiceKey();
+        final ServiceKey<GetTrackedAddresses.Request> serviceKey = skGetTrackedAddresses;
 
         context.ask(
                 Receptionist.Listing.class,
@@ -237,7 +280,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
 
         final ActorContext<ConnectorActorMessage> context = getContext();
         final ActorRef<Receptionist.Command> receptionist = context.getSystem().receptionist();
-        final ServiceKey<AddTrackedAddresses.Request> serviceKey = msg.getServiceKey();
+        final ServiceKey<AddTrackedAddresses.Request> serviceKey = skAddTrackedAddresses;
 
         context.ask(
                 Receptionist.Listing.class,
@@ -269,7 +312,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
 
         final ActorContext<ConnectorActorMessage> context = getContext();
         final ActorRef<Receptionist.Command> receptionist = context.getSystem().receptionist();
-        final ServiceKey<GetBalances.Request> serviceKey = msg.getServiceKey();
+        final ServiceKey<GetBalances.Request> serviceKey = skGetBalances;
 
         context.ask(
                 Receptionist.Listing.class,
@@ -301,7 +344,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
 
         final ActorContext<ConnectorActorMessage> context = getContext();
         final ActorRef<Receptionist.Command> receptionist = context.getSystem().receptionist();
-        final ServiceKey<GetTransfers.Request> serviceKey = msg.getServiceKey();
+        final ServiceKey<GetTransfers.Request> serviceKey = skGetTransfers;
 
         context.ask(
                 Receptionist.Listing.class,
@@ -331,7 +374,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         final ActorContext<ConnectorActorMessage> context = getContext();
 
         final Set<ActorRef<GetCurrencies.Request>> reachableInstances =
-                msg.listing.getServiceInstances(GetCurrencies.SERVICE_KEY);
+                msg.listing.getServiceInstances(skGetCurrencies);
 
         logger.debug("Received onGetCurrenciesReceptionistResponse with reachable instances {}",
                 reachableInstances);
@@ -363,7 +406,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         final ActorContext<ConnectorActorMessage> context = getContext();
 
         final Set<ActorRef<GetTrackedAddresses.Request>> reachableInstances =
-                msg.listing.getServiceInstances(GetTrackedAddresses.SERVICE_KEY);
+                msg.listing.getServiceInstances(skGetTrackedAddresses);
 
         logger.debug("Received onGetTrackedAddressesReceptionistResponse with reachable instances {}",
                 reachableInstances);
@@ -396,7 +439,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         final ActorContext<ConnectorActorMessage> context = getContext();
 
         final Set<ActorRef<AddTrackedAddresses.Request>> reachableInstances =
-                msg.listing.getServiceInstances(AddTrackedAddresses.SERVICE_KEY);
+                msg.listing.getServiceInstances(skAddTrackedAddresses);
 
         logger.debug("Received onAddTrackedAddressesReceptionistResponse with reachable instances {}",
                 reachableInstances);
@@ -427,7 +470,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         final ActorContext<ConnectorActorMessage> context = getContext();
 
         final Set<ActorRef<GetBalances.Request>> reachableInstances =
-                msg.listing.getServiceInstances(GetBalances.SERVICE_KEY);
+                msg.listing.getServiceInstances(skGetBalances);
 
         logger.debug("Received onGetBalancesReceptionistResponse with reachable instances {}",
                 reachableInstances);
@@ -458,7 +501,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         final ActorContext<ConnectorActorMessage> context = getContext();
 
         final Set<ActorRef<GetTransfers.Request>> reachableInstances =
-                msg.listing.getServiceInstances(GetTransfers.SERVICE_KEY);
+                msg.listing.getServiceInstances(skGetTransfers);
 
         logger.debug("Received onGetTransfersReceptionistResponse with reachable instances {}",
                 reachableInstances);

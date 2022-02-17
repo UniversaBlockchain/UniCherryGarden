@@ -5,10 +5,10 @@ import java.util.concurrent.TimeUnit
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.api.DBStorage.Progress
+import com.myodov.unicherrygarden.api.DBStorageAPI
 import com.myodov.unicherrygarden.api.GardenMessages.{IterateTailSyncer, TailSyncerMessage, TailSyncing}
 import com.myodov.unicherrygarden.api.dlt.EthereumBlock
 import com.myodov.unicherrygarden.api.types.SystemStatus
-import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.myodov.unicherrygarden.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import scalikejdbc.{DB, DBSession}
 

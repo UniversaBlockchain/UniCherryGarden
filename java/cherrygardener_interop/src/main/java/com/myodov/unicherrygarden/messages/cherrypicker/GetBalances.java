@@ -20,13 +20,17 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 
 public class GetBalances {
     @NonNull
-    public static final ServiceKey<Request> SERVICE_KEY =
-            ServiceKey.create(Request.class, "getBalancesService");
+    public static ServiceKey<Request> makeServiceKey(@NonNull String realm) {
+        return ServiceKey.create(
+                Request.class,
+                String.format("%s:getBalancesService", Objects.requireNonNull(realm)));
+    }
 
 
     public static final class GBRequestPayload

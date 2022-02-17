@@ -6,8 +6,7 @@ import com.myodov.unicherrygarden.AbstractEthereumNodeConnector.SingleBlockData
 import com.myodov.unicherrygarden.api.DBStorage.Progress
 import com.myodov.unicherrygarden.api.GardenMessages.{HeadSyncerMessage, TailSyncerMessage}
 import com.myodov.unicherrygarden.api.types.SystemStatus
-import com.myodov.unicherrygarden.api.{DBStorage, GardenMessages, dlt}
-import com.myodov.unicherrygarden.storages.api.DBStorageAPI
+import com.myodov.unicherrygarden.api.{DBStorage, DBStorageAPI, GardenMessages, dlt}
 import com.myodov.unicherrygarden.{AbstractEthereumNodeConnector, CherryGardenComponent, Web3ReadOperations}
 import com.typesafe.scalalogging.LazyLogging
 import scalikejdbc.DBSession

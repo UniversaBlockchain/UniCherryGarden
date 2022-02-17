@@ -6,9 +6,16 @@ import com.myodov.unicherrygarden.messages.CherryGardenerRequest;
 import com.myodov.unicherrygarden.messages.CherryGardenerResponse;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.util.Objects;
+
 public class PingCherryGardener {
-    public static final ServiceKey<Request> SERVICE_KEY =
-            ServiceKey.create(PingCherryGardener.Request.class, "pingCherryGardenerService");
+    @NonNull
+    public static ServiceKey<Request> makeServiceKey(@NonNull String realm) {
+        return ServiceKey.create(
+                Request.class,
+                String.format("%s:pingCherryGardenerService", Objects.requireNonNull(realm)));
+    }
+
 
     public static class Request implements CherryGardenerRequest {
         public final ActorRef<Response> replyTo;

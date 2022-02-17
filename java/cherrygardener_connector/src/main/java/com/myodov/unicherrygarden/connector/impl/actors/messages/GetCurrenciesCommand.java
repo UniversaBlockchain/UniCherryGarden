@@ -95,7 +95,7 @@ public class GetCurrenciesCommand
 
     @NonNull
     @Override
-    public ServiceKey<GetCurrencies.Request> getServiceKey() {
-        return GetCurrencies.SERVICE_KEY;
+    public final ServiceKey<GetCurrencies.Request> makeServiceKey(@NonNull String realm) {
+        return GetCurrencies.makeServiceKey(realm);
     }
 }

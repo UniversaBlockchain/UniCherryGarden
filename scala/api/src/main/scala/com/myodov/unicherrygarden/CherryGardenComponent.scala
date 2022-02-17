@@ -2,9 +2,9 @@ package com.myodov.unicherrygarden
 
 import java.time.Instant
 
-import com.myodov.unicherrygarden.api.DBStorage
 import com.myodov.unicherrygarden.api.DBStorage.Progress
 import com.myodov.unicherrygarden.api.types.SystemStatus
+import com.myodov.unicherrygarden.api.{DBStorage, DBStorageAPI}
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.duration._
@@ -13,7 +13,16 @@ import scala.language.postfixOps
 /**
  * Any actor/component of the cluster, such as: CherryGardener, CherryPicker, CherryPlanter.
  */
-trait CherryGardenComponent extends LazyLogging {
+abstract class CherryGardenComponent(
+                                      protected[this] val realm: String,
+                                      protected[this] val dbStorage: DBStorageAPI
+                                    ) {
+}
+
+
+object CherryGardenComponent extends LazyLogging {
+  val BLOCK_ITERATION_PERIOD = 10 seconds // Each block is generated about once per 13 seconds, let’s be safe
+
   /**
    * Execute some action `action` and return its result (as a part of handling the message `messageName`),
    * but only if the Ethereum node/blockchain status and the CherryGarden sync status are sane meaning that
@@ -60,9 +69,4 @@ trait CherryGardenComponent extends LazyLogging {
       cherryPickerStatusOpt.orNull
     )
   }
-}
-
-
-object CherryGardenComponent {
-  val BLOCK_ITERATION_PERIOD = 10 seconds // Each block is generated about once per 13 seconds, let’s be safe
 }

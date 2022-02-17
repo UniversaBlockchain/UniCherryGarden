@@ -18,13 +18,17 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 
 public class GetCurrencies {
     @NonNull
-    public static final ServiceKey<Request> SERVICE_KEY =
-            ServiceKey.create(Request.class, "getCurrenciesService");
+    public static ServiceKey<Request> makeServiceKey(@NonNull String realm) {
+        return ServiceKey.create(
+                Request.class,
+                String.format("%s:getCurrenciesService", Objects.requireNonNull(realm)));
+    }
 
 
     // We want to be able to serialize this, no matter the class is empty.

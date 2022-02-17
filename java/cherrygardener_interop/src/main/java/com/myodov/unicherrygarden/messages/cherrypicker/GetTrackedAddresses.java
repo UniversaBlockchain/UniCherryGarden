@@ -16,11 +16,15 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.List;
+import java.util.Objects;
 
 public class GetTrackedAddresses {
     @NonNull
-    public static final ServiceKey<Request> SERVICE_KEY =
-            ServiceKey.create(Request.class, "getTrackedAddressesService");
+    public static ServiceKey<Request> makeServiceKey(@NonNull String realm) {
+        return ServiceKey.create(
+                Request.class,
+                String.format("%s:getTrackedAddressesService", Objects.requireNonNull(realm)));
+    }
 
 
     public static final class GTARequestPayload

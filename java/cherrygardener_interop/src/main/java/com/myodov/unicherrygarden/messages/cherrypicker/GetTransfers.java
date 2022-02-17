@@ -24,8 +24,12 @@ import java.util.stream.Collectors;
 
 public class GetTransfers {
     @NonNull
-    public static final ServiceKey<GetTransfers.Request> SERVICE_KEY =
-            ServiceKey.create(GetTransfers.Request.class, "getTransfersService");
+    public static ServiceKey<Request> makeServiceKey(@NonNull String realm) {
+        return ServiceKey.create(
+                Request.class,
+                String.format("%s:getTransfersService", Objects.requireNonNull(realm)));
+    }
+
 
     public static final class GTRequestPayload
             implements RequestPayload {

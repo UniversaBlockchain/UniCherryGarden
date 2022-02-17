@@ -3,13 +3,13 @@ package com.myodov.unicherrygarden.cherrygardener
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
+import com.myodov.unicherrygarden.api.DBStorageAPI
 import com.myodov.unicherrygarden.api.GardenMessages.EthereumNodeStatus
 import com.myodov.unicherrygarden.api.types.SystemStatus
 import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies.CurrenciesRequestResultPayload
 import com.myodov.unicherrygarden.messages.cherrygardener.{GetCurrencies, PingCherryGardener}
 import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryPickerRequest, CherryPlanterRequest}
-import com.myodov.unicherrygarden.storages.api.DBStorageAPI
 import com.myodov.unicherrygarden.{CherryGardenComponent, CherryPicker, UnicherrygardenVersion}
 import com.typesafe.scalalogging.LazyLogging
 import scalikejdbc.DB
@@ -18,18 +18,22 @@ import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 
 /** "Cherry Gardener": the high-level interface to Ethereum blockchain. */
-class CherryGardener(private val dbStorage: DBStorageAPI,
-                     protected[this] val state: CherryGardener.State = CherryGardener.State()
-                    ) extends LazyLogging {
+class CherryGardener(
+                      // CherryGardenComponent-specific
+                      realm: String,
+                      dbStorage: DBStorageAPI,
+                      // CherryGardener-specific
+                      protected[this] val state: CherryGardener.State = CherryGardener.State()
+                    ) extends CherryGardenComponent(realm, dbStorage) with LazyLogging {
 
   import CherryPicker._
 
   private def launch(): Behavior[CherryGardenerRequest] = {
     Behaviors.setup { context =>
-      logger.info(s"Launching CherryGardener: v. $propVersionStr, built at $propBuildTimestampStr")
+      logger.info(s"Launching CherryGardener in realm \"$realm\": v. $propVersionStr, built at $propBuildTimestampStr")
 
-      context.system.receptionist ! Receptionist.Register(PingCherryGardener.SERVICE_KEY, context.self)
-      context.system.receptionist ! Receptionist.Register(GetCurrencies.SERVICE_KEY, context.self)
+      context.system.receptionist ! Receptionist.Register(PingCherryGardener.makeServiceKey(realm), context.self)
+      context.system.receptionist ! Receptionist.Register(GetCurrencies.makeServiceKey(realm), context.self)
 
       Behaviors.receiveMessage {
         case message@EthereumNodeStatus(status) =>
@@ -64,7 +68,7 @@ class CherryGardener(private val dbStorage: DBStorageAPI,
   // Construct all the response in a single atomic readonly DB transaction
     DB readOnly { implicit session =>
       new GetCurrencies.Response(
-        whenStateAndProgressAllow[CurrenciesRequestResultPayload](
+        CherryGardenComponent.whenStateAndProgressAllow[CurrenciesRequestResultPayload](
           state.ethereumStatus,
           dbStorage.progress.getProgress,
           "GetCurrencies",
@@ -73,7 +77,7 @@ class CherryGardener(private val dbStorage: DBStorageAPI,
           // Real use-case handling
           val result: List[Currency] = dbStorage.currencies.getCurrencies(filterCurrencyKeys, getVerified, getUnverified).map(_.asCurrency)
           new CurrenciesRequestResultPayload(
-            buildSystemSyncStatus(ethereumNodeStatus, progress),
+            CherryGardenComponent.buildSystemSyncStatus(ethereumNodeStatus, progress),
             result.asJava
           )
         }
@@ -83,18 +87,21 @@ class CherryGardener(private val dbStorage: DBStorageAPI,
 
 
 /** Akka actor to run CherryGardener operations. */
-object CherryGardener extends CherryGardenComponent with LazyLogging {
+object CherryGardener extends LazyLogging {
   lazy val props = UnicherrygardenVersion.loadPropsFromNamedResource("unicherrygarden_cherrygardener.properties")
   lazy val propVersionStr = props.getProperty("version", "N/A");
   lazy val propBuildTimestampStr = props.getProperty("build_timestamp", "");
 
   protected final case class State(@volatile var ethereumStatus: Option[SystemStatus.Blockchain] = None)
 
-  @inline final def apply(dbStorage: DBStorageAPI,
+  /** Main constructor. */
+  @inline final def apply(realm: String,
+                          dbStorage: DBStorageAPI,
                           cherryPickerOpt: Option[ActorRef[CherryPickerRequest]],
                           cherryPlanterOpt: Option[ActorRef[CherryPlanterRequest]]
                          ): Behavior[CherryGardenerRequest] =
     new CherryGardener(
+      realm,
       dbStorage,
       state = CherryGardener.State()
     ).launch()
