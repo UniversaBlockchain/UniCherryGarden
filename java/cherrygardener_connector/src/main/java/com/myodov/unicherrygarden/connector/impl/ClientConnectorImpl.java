@@ -150,7 +150,7 @@ public class ClientConnectorImpl implements ClientConnector {
                 .parseString(String.format("akka.remote.artery.canonical.port=%d", listenPort))
                 .withFallback(ConfigFactory.load());
 
-        actorSystem = ActorSystem.create(ConnectorActor.create(realm), "CherryGarden", config);
+        actorSystem = ActorSystem.create(ConnectorActor.create(realm), String.format("CherryGarden-%s", realm), config);
         if (offlineMode) {
             this.observer = null;
             this.sender = new SenderImpl(chainId);
@@ -160,7 +160,7 @@ public class ClientConnectorImpl implements ClientConnector {
             this.sender = new SenderImpl(actorSystem, chainId);
 
             final List<Address> seedNodes = gardenerUrls.stream()
-                    .map(url -> AddressFromURIString.parse(String.format("akka://CherryGarden@%s", url)))
+                    .map(url -> AddressFromURIString.parse(String.format("akka://CherryGarden-%s@%s", realm, url)))
                     .collect(Collectors.toList());
             logger.info("Connecting to {}", seedNodes);
 

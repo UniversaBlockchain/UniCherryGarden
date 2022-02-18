@@ -291,7 +291,15 @@ public class CherryGardenerCLI {
 
         if (line.hasOption("realm")) {
             final String optString = line.getOptionValue("realm");
-            return Optional.of(optString);
+
+            if (optString.matches("^[-_a-zA-Z0-9]*$")) {
+                return Optional.of(optString);
+            } else {
+                System.err.printf("ERROR: --realm option can contain only latin letters, digits, \"-\" or \"_\" sign. " +
+                        "Currently it is \"%s\".\n",
+                        optString);
+                return Optional.empty();
+            }
         } else if (realmConf.isPresent()) {
             // Fallback to the option in conf file
             return realmConf;

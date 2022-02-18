@@ -111,7 +111,14 @@ public class ConfFile {
                 "--realm",
                 "connect.realm",
                 config::getString,
-                null
+                (candidate) -> {
+                    if (candidate.matches("^[-_a-zA-Z0-9]*$")) {
+                        return true;
+                    } else {
+                        System.err.println("\"connect.realm\" setting can contain only latin letters, digits, \"-\" or \"_\" sign.");
+                        return false;
+                    }
+                }
         );
     }
 

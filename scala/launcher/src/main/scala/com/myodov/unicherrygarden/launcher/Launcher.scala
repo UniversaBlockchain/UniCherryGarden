@@ -93,7 +93,13 @@ You can choose a different HOCON configuration file instead of the regular appli
     //    EthereumSingleNodeJsonRpcConnector(nodeUrl)
   }
 
-  private[launcher] lazy val realm: String = config.getString("unicherrygarden.realm")
+  private[launcher] lazy val realm: String = {
+    val candidate = config.getString("unicherrygarden.realm")
+    if (!candidate.matches("^[-_a-zA-Z0-9]*$")) {
+      logger.error("\"unicherrygarden.realm\" setting can contain only latin letters, digits, \"-\" or \"_\" sign!")
+    }
+    candidate
+  }
 
   /** Any config setting containing some number of blocks related to reorg; with validations. */
   private[this] def blocksNumberSetting(path: String): Int = {
@@ -161,7 +167,7 @@ You can choose a different HOCON configuration file instead of the regular appli
   }
 
   lazy val actorSystem: ActorSystem[LauncherActor.LaunchComponent] =
-    ActorSystem(LauncherActor(), "CherryGarden")
+    ActorSystem(LauncherActor(), s"CherryGarden-$realm")
 
   /** Launches the GardenWatcher watchdog (usually executed in a standalone process). */
   private[this] def launchWatcher(): Unit = {
