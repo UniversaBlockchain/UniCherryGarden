@@ -150,7 +150,9 @@ public class ClientConnectorImpl implements ClientConnector {
                 .parseString(String.format("akka.remote.artery.canonical.port=%d", listenPort))
                 .withFallback(ConfigFactory.load());
 
-        actorSystem = ActorSystem.create(ConnectorActor.create(realm), String.format("CherryGarden-%s", realm), config);
+        // All Cluster nodes should have the same name of Actor System
+        final String actorSystemName = String.format("CherryGarden-%s", realm);
+        actorSystem = ActorSystem.create(ConnectorActor.create(realm), actorSystemName, config);
         if (offlineMode) {
             this.observer = null;
             this.sender = new SenderImpl(chainId);
