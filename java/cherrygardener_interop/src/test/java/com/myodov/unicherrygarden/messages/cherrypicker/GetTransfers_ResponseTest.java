@@ -33,7 +33,7 @@ public class GetTransfers_ResponseTest extends AbstractJacksonSerializationTest 
                 BigInteger.valueOf(70_000)
         );
 
-        final ArrayList<Currency> currencies = new ArrayList() {{
+        final ArrayList<Currency> currencies = new ArrayList<Currency>() {{
             add(eth);
             add(utnp);
         }};
@@ -42,7 +42,7 @@ public class GetTransfers_ResponseTest extends AbstractJacksonSerializationTest 
                 "{\"payload\":{" +
                         "\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers$TransfersRequestResultPayload\"," +
                         "\"systemStatus\":{\"actualAt\":{\"epochSecond\":1644848996,\"nano\":0}," +
-                        "\"blockchain\":{\"syncingData\":{\"currentBlock\":14205560,\"highestBlock\":14205570},\"latestBlock\":{\"number\":14205545,\"gasLimit\":30087829,\"gasUsed\":4802463,\"baseFeePerGas\":\"81749786720\",\"timestamp\":{\"epochSecond\":1644858859,\"nano\":0}}}," +
+                        "\"blockchain\":{\"syncingData\":{\"currentBlock\":14205560,\"highestBlock\":14205570},\"latestBlock\":{\"number\":14205545,\"gasLimit\":30087829,\"gasUsed\":4802463,\"baseFeePerGas\":\"81749786720\",\"timestamp\":{\"epochSecond\":1644858859,\"nano\":0}},\"maxPriorityFeePerGas\":\"1500000000\"}," +
                         "\"cherryPicker\":{\"latestKnownBlock\":17,\"latestPartiallySyncedBlock\":13,\"latestFullySyncedBlock\":11}" +
                         "}," +
                         "\"transfers\":[" +
@@ -69,7 +69,8 @@ public class GetTransfers_ResponseTest extends AbstractJacksonSerializationTest 
                                                         4802463L,
                                                         BigInteger.valueOf(0x1308aac060L),
                                                         Instant.ofEpochSecond(0x620a8debL)
-                                                )
+                                                ),
+                                                BigInteger.valueOf(0x59682f00L)
                                         ),
                                         SystemStatus.CherryPicker.create(17, 13, 11)
                                 ),

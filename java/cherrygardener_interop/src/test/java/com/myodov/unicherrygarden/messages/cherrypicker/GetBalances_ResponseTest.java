@@ -37,7 +37,7 @@ public class GetBalances_ResponseTest extends AbstractJacksonSerializationTest {
                 "{\"payload\":{" +
                         "\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetBalances$BalanceRequestResultPayload\"," +
                         "\"systemStatus\":{\"actualAt\":{\"epochSecond\":1644850591,\"nano\":0}," +
-                        "\"blockchain\":{\"syncingData\":{\"currentBlock\":14205560,\"highestBlock\":14205570},\"latestBlock\":{\"number\":14205550,\"gasLimit\":30135653,\"gasUsed\":16327740,\"baseFeePerGas\":\"71470304869\",\"timestamp\":{\"epochSecond\":1644858896,\"nano\":0}}}," +
+                        "\"blockchain\":{\"syncingData\":{\"currentBlock\":14205560,\"highestBlock\":14205570},\"latestBlock\":{\"number\":14205550,\"gasLimit\":30135653,\"gasUsed\":16327740,\"baseFeePerGas\":\"71470304869\",\"timestamp\":{\"epochSecond\":1644858896,\"nano\":0}},\"maxPriorityFeePerGas\":\"1000000000\"}," +
                         "\"cherryPicker\":{\"latestKnownBlock\":17,\"latestPartiallySyncedBlock\":13,\"latestFullySyncedBlock\":11}" +
                         "}," +
                         "\"balances\":[" +
@@ -56,7 +56,8 @@ public class GetBalances_ResponseTest extends AbstractJacksonSerializationTest {
                                                         16327740L,
                                                         BigInteger.valueOf(0x10a3f64e65L),
                                                         Instant.ofEpochSecond(0x620a8e10L)
-                                                )
+                                                ),
+                                                BigInteger.valueOf(0x3b9aca00L)
                                         ),
                                         SystemStatus.CherryPicker.create(17, 13, 11)
                                 ),

@@ -18,7 +18,7 @@ val scalaTestVersion = "3.1.0"
 val scalikeJdbcVersion = "4.0.0"
 val scoptVersion = "4.0.0"
 val sttpClient3Version = "3.3.18"
-val web3jVersion = "4.8.8"
+val web3jVersion = "4.9.0"
 val jacksonCoreVersion = "2.11.4" // same version as used by akka-serialization-jackson for Scala 2.13
 
 val javaSlf4jVersion = "1.7.30"

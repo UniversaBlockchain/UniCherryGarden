@@ -746,7 +746,7 @@ public class CherryGardenerCLI {
                                     (optComment == null) ? "" : String.format(" (%s)", optComment)
                             );
                         }
-                        printOverallStatus(payload.systemStatus);
+                        printSystemStatus(payload.systemStatus);
                     }
                     System.err.printf("--- Done in %s --\n", Duration.between(startTime, Instant.now()));
                 } while (loopEnabled);
@@ -979,7 +979,7 @@ public class CherryGardenerCLI {
                                     balanceFact.blockNumber
                             );
                         }
-                        printOverallStatus(payload.systemStatus);
+                        printSystemStatus(payload.systemStatus);
                     });
                     System.err.println("--- done.");
                 }
@@ -1080,7 +1080,7 @@ public class CherryGardenerCLI {
                                     tr.tx.fees
                             );
                         }
-                        printOverallStatus(payload.systemStatus);
+                        printSystemStatus(payload.systemStatus);
                     }
                     connector.shutdown();
                 } catch (CompletionException exc) {
@@ -1108,7 +1108,7 @@ public class CherryGardenerCLI {
         );
     }
 
-    private static void printOverallStatus(@NonNull SystemStatus syncStatus) {
+    private static void printSystemStatus(@NonNull SystemStatus syncStatus) {
         System.err.printf("" +
                         "Overall status, as of %s:\n" +
                         "  Blockchain:\n" +
@@ -1121,6 +1121,7 @@ public class CherryGardenerCLI {
                         "      gas used: %s%s,\n" +
                         "      base fee per gas: %s%s,\n" +
                         "      timestamp: %s,\n" +
+                        "    maxPriorityFeePerGas: %s,\n" +
                         "  UniCherryPicker:\n" +
                         "    block %10s: latest known,\n" +
                         "    block %10s: latest partially synced,\n" +
@@ -1148,6 +1149,8 @@ public class CherryGardenerCLI {
                         :
                         "",
                 syncStatus.blockchain.latestBlock.timestamp,
+                // Blockchain: maxPriorityFeePerGas
+                syncStatus.blockchain.maxPriorityFeePerGas,
                 // UniCherryPicker
                 syncStatus.cherryPicker.latestKnownBlock,
                 syncStatus.cherryPicker.latestPartiallySyncedBlock,

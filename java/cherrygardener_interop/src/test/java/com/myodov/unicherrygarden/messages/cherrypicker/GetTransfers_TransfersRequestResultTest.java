@@ -49,7 +49,8 @@ public class GetTransfers_TransfersRequestResultTest {
                                     12449124L,
                                     null,
                                     Instant.ofEpochSecond(0x60704389L)
-                            )
+                            ),
+                            BigInteger.valueOf(0x3b9aca00L)
                     ),
                     SystemStatus.CherryPicker.create(13631007, 13631007, 13631007)
             ),

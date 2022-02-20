@@ -142,26 +142,40 @@ public class SystemStatus {
         /**
          * Details about the latest blockchain block retrieved from the Ethereum node.
          * Cannot be <code>null</code> – we either have the data, or the whole “blockchain“ part is unavailable.
-         *
+         * <p>
          * If using the data from this block, please check that the block is really recent
          * (compare its number to the `syncingData.highest`).
          */
         @NonNull
         public final LatestBlock latestBlock;
 
+        /**
+         * The node’s estimating of a gas tip sufficient to ensure a transaction is mined in a timely fashion.
+         */
+        @NonNull
+        public final BigInteger maxPriorityFeePerGas;
+
 
         @JsonCreator
         public Blockchain(@NonNull SyncingData syncingData,
-                          @NonNull LatestBlock latestBlock) {
+                          @NonNull LatestBlock latestBlock,
+                          @NonNull BigInteger maxPriorityFeePerGas) {
             assert syncingData != null;
             assert latestBlock != null;
+            // maxPriorityFeePerGas >= 0
+            assert maxPriorityFeePerGas != null && maxPriorityFeePerGas.compareTo(BigInteger.ZERO) >= 0
+                    :
+                    maxPriorityFeePerGas;
+
             this.syncingData = syncingData;
             this.latestBlock = latestBlock;
+            this.maxPriorityFeePerGas = maxPriorityFeePerGas;
         }
 
         public static Blockchain create(@NonNull SyncingData syncingData,
-                                        @NonNull LatestBlock latestBlock) {
-            return new Blockchain(syncingData, latestBlock);
+                                        @NonNull LatestBlock latestBlock,
+                                        @NonNull BigInteger maxPriorityFeePerGas) {
+            return new Blockchain(syncingData, latestBlock, maxPriorityFeePerGas);
         }
 
         @Override

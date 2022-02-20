@@ -11,7 +11,7 @@ import com.myodov.unicherrygarden.{AbstractEthereumNodeConnector, Web3ReadOperat
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.types.SystemStatus
 import com.myodov.unicherrygarden.AbstractEthereumNodeConnector.SingleBlockData
-import com.myodov.unicherrygarden.connectors.graphql.types.{BlockBasic, BlockLatest, BlockMinimal, TransactionFullView}
+import com.myodov.unicherrygarden.connectors.graphql.types.{BlockBasic, BlockLatest, BlockLatestView, BlockMinimal, TransactionFullView}
 import com.typesafe.scalalogging.LazyLogging
 import sttp.capabilities
 import sttp.capabilities.akka.AkkaStreams
@@ -81,11 +81,11 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
         SyncState.view
       } ~ Query.block() {
         BlockLatest.view
-      }
+      } ~ Query.maxPriorityFeePerGas
 
     // Received a valid response; do something with both paths:
     queryGraphQL(query, argHint = "ethBlockchainStatus").flatMap(_ match {
-      case (Some(syncState), Some(nonlatestBlock)) =>
+      case ((Some(syncState), Some(nonlatestBlock)), maxPriorityFeePerGas) =>
         // The node is still syncing
         logger.debug(s"The node is still syncing: $syncState")
         Some(SystemStatus.Blockchain.create(
@@ -94,9 +94,10 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
             Math.toIntExact(syncState.highestBlock)
           ),
           // This is really not a latest block; but we use what we've received
-          nonlatestBlock.asLatestBlock
+          nonlatestBlock.asLatestBlock,
+          maxPriorityFeePerGas.bigInteger
         ))
-      case (None, Some(latestBlock)) =>
+      case ((None, Some(latestBlock)), maxPriorityFeePerGas) =>
         // Not syncing already.
         logger.debug(s"The node is fully synced, most recent block is $latestBlock")
         // But does the block number really makes sense?
@@ -107,7 +108,8 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
               latestBlockNumber,
               latestBlockNumber
             ),
-            latestBlock.asLatestBlock
+            latestBlock.asLatestBlock,
+            maxPriorityFeePerGas.bigInteger
           ))
         else None // not really synced
       case other =>

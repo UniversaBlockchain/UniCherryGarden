@@ -43,6 +43,9 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
   }
 
   override def ethBlockchainStatus: Option[SystemStatus.Blockchain] = {
+    val maxPriorityFeePerGas: BigInt = 1500000000L
+    // TODO: use web3j.ethMaxPriorityFeePerGas when it is available
+
     try {
       // First JSON-RPC request: `eth.syncing`
       val syncingResult: EthSyncing.Result = web3j.ethSyncing.send.getResult
@@ -59,7 +62,6 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
         // `eth.getBlock('latest')`
         val nonLatestBlock: EthBlock.Block = web3j.ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false).send().getBlock
 
-
         Some(SystemStatus.Blockchain.create(
           SystemStatus.Blockchain.SyncingData.create(
             decodeQuantity(currentBlockStr).intValueExact(),
@@ -69,11 +71,10 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
             nonLatestBlock.getNumber.intValueExact,
             nonLatestBlock.getGasLimit.longValueExact,
             nonLatestBlock.getGasUsed.longValueExact,
-            Option(nonLatestBlock.getBaseFeePerGas)
-              .map(org.web3j.utils.Numeric.decodeQuantity)
-              .orNull,
+            Option(nonLatestBlock.getBaseFeePerGas).orNull,
             Instant.ofEpochSecond(nonLatestBlock.getTimestamp.longValueExact)
-          )
+          ),
+          maxPriorityFeePerGas.bigInteger
         ))
       } else {
         // Not syncing already
@@ -92,11 +93,10 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
             latestBlock.getNumber.intValueExact,
             latestBlock.getGasLimit.longValueExact,
             latestBlock.getGasUsed.longValueExact,
-            Option(latestBlock.getBaseFeePerGas)
-              .map(org.web3j.utils.Numeric.decodeQuantity)
-              .orNull,
+            Option(latestBlock.getBaseFeePerGas).orNull,
             Instant.ofEpochSecond(latestBlock.getTimestamp.longValueExact)
-          )
+          ),
+          maxPriorityFeePerGas.bigInteger
         ))
       }
     } catch {
