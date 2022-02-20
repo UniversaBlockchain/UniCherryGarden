@@ -101,6 +101,14 @@ object DBStorageAPI {
     /** Get the set of all tracked addresses (and just of the address strings, nothing else). */
     def getJustAddresses(implicit session: DBSession = ReadOnlyAutoSession): Set[String]
 
+    /** Get the information about a single tracked address (if present).
+     */
+    def getTrackedAddress(
+                           address: String
+                         )(implicit
+                           session: DBSession = ReadOnlyAutoSession
+                         ): Option[TrackedAddress]
+
     /** Add a new address to be tracked.
      *
      * @return whether the adding happened successfully.
@@ -184,4 +192,5 @@ object DBStorageAPI {
                       currencyKeys: Option[Set[String]]
                     )(implicit session: DBSession = ReadOnlyAutoSession): List[MinedTransfer]
   }
+
 }

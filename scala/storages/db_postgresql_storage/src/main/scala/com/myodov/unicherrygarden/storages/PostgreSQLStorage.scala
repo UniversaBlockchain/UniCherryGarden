@@ -3,13 +3,13 @@ package com.myodov.unicherrygarden.storages
 import java.sql.SQLException
 
 import com.myodov.unicherrygarden.Tools.seqIsIncrementing
-import com.myodov.unicherrygarden.api.{DBStorageAPI, dlt}
+import com.myodov.unicherrygarden.api.DBStorage.Currencies.DBCurrency
 import com.myodov.unicherrygarden.api.types.MinedTransfer
 import com.myodov.unicherrygarden.api.types.dlt.{Block, MinedTx}
+import com.myodov.unicherrygarden.api.{DBStorageAPI, dlt}
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact
-import com.myodov.unicherrygarden.api.DBStorage.Currencies.DBCurrency
 import com.typesafe.scalalogging.LazyLogging
 import org.flywaydb.core.Flyway
 import org.flywaydb.core.api.output.{CleanResult, MigrateResult}
@@ -409,6 +409,26 @@ class PostgreSQLStorage(jdbcUrl: String,
       sql"""
       SELECT address FROM ucg_tracked_address;
       """.map(_.string("address")).list.apply().toSet
+    }
+
+    override final def getTrackedAddress(
+                                          address: String
+                                        )(implicit
+                                          session: DBSession = ReadOnlyAutoSession
+                                        ): Option[TrackedAddress] = {
+      sql"""
+      SELECT
+       address,
+       ucg_comment,
+       synced_from_block_number
+      FROM ucg_tracked_address
+      WHERE address = $address;
+      """.map(rs => TrackedAddress(
+        rs.string("address"),
+        rs.stringOpt("ucg_comment"),
+        rs.intOpt("synced_from_block_number")
+      )).single
+        .apply()
     }
 
     override final def addTrackedAddress(

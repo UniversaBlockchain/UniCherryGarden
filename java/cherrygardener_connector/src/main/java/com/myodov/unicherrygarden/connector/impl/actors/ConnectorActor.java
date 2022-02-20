@@ -14,10 +14,7 @@ import com.myodov.unicherrygarden.connector.impl.ClientConnectorImpl;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.*;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import com.myodov.unicherrygarden.messages.cherrygardener.PingCherryGardener;
-import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers;
+import com.myodov.unicherrygarden.messages.cherrypicker.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,9 +59,11 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
     @NonNull
     private final ServiceKey<AddTrackedAddresses.Request> skAddTrackedAddresses;
     @NonNull
-    private final ServiceKey<GetBalances.Request> skGetBalances;
-    @NonNull
     private final ServiceKey<GetTrackedAddresses.Request> skGetTrackedAddresses;
+    @NonNull
+    private final ServiceKey<GetAddressDetails.Request> skGetAddressDetails;
+    @NonNull
+    private final ServiceKey<GetBalances.Request> skGetBalances;
     @NonNull
     private final ServiceKey<GetTransfers.Request> skGetTransfers;
 
@@ -93,6 +92,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         skAddTrackedAddresses = AddTrackedAddresses.makeServiceKey(realm);
         skGetBalances = GetBalances.makeServiceKey(realm);
         skGetTrackedAddresses = GetTrackedAddresses.makeServiceKey(realm);
+        skGetAddressDetails = GetAddressDetails.makeServiceKey(realm);
         skGetTransfers = GetTransfers.makeServiceKey(realm);
 
         // On launch, we want to subscribe to Receptionist’s changes in CherryGardener (clustered) availability.
@@ -140,6 +140,14 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                         makeMsgResultHandler(
                                 AddTrackedAddresses.Response.class,
                                 AddTrackedAddressesCommand.Result.class))
+                // GetTrackedAddresses
+                .onMessage(GetAddressDetailsCommand.class, this::onGetAddressDetails)
+                .onMessage(GetAddressDetailsCommand.ReceptionistResponse.class, this::onGetAddressDetailsReceptionistResponse)
+                .onMessage(
+                        GetAddressDetailsCommand.InternalResult.class,
+                        makeMsgResultHandler(
+                                GetAddressDetails.Response.class,
+                                GetAddressDetailsCommand.Result.class))
                 // GetBalances
                 .onMessage(GetBalancesCommand.class, this::onGetBalances)
                 .onMessage(GetBalancesCommand.ReceptionistResponse.class, this::onGetBalancesReceptionistResponse)
@@ -303,6 +311,38 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
     }
 
     /**
+     * When someone (like ClientConnector) has sent the {@link GetAddressDetails} message to the actor system
+     * and expect it to be processed and return the result.
+     */
+    private Behavior<ConnectorActorMessage> onGetAddressDetails(@NonNull GetAddressDetailsCommand msg) {
+        assert msg != null;
+        logger.debug("onGetAddressDetails: Received message {}", msg);
+
+        final ActorContext<ConnectorActorMessage> context = getContext();
+        final ActorRef<Receptionist.Command> receptionist = context.getSystem().receptionist();
+        final ServiceKey<GetAddressDetails.Request> serviceKey = skGetAddressDetails;
+
+        context.ask(
+                Receptionist.Listing.class,
+                receptionist,
+                DEFAULT_CALL_TIMEOUT,
+                // Construct the outgoing message
+                (ActorRef<Receptionist.Listing> replyTo) ->
+                        Receptionist.find(serviceKey, replyTo),
+                // Adapt the incoming response into `GetAddressDetailsCommand.ReceptionistResponse`
+                (Receptionist.Listing response, Throwable throwable) -> {
+                    logger.debug("Returned listing response: {}", response);
+                    final Set<ActorRef<GetAddressDetails.Request>> serviceInstances =
+                            response.getServiceInstances(serviceKey);
+                    logger.debug("Service instances for {}: {}", response.getKey(), serviceInstances);
+                    return new GetAddressDetailsCommand.ReceptionistResponse(response, msg.payload, msg.replyTo);
+                }
+        );
+
+        return this;
+    }
+
+    /**
      * When someone (like ClientConnector) has sent the {@link GetBalancesCommand} message to the actor system
      * and expect it to be processed and return the result.
      */
@@ -457,6 +497,39 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                     (AddTrackedAddresses.Response response, Throwable throwable) -> {
                         logger.debug("Returned AddTrackedAddresses response: {}", response);
                         return new AddTrackedAddressesCommand.InternalResult(response, msg.replyTo);
+                    }
+            );
+        }
+        return this;
+    }
+
+    private Behavior<ConnectorActorMessage> onGetAddressDetailsReceptionistResponse(
+            GetAddressDetailsCommand.@NonNull ReceptionistResponse msg) {
+        assert msg != null;
+
+        final ActorContext<ConnectorActorMessage> context = getContext();
+
+        final Set<ActorRef<GetAddressDetails.Request>> reachableInstances =
+                msg.listing.getServiceInstances(skGetAddressDetails);
+
+        logger.debug("Received onGetAddressDetailsReceptionistResponse with reachable instances {}",
+                reachableInstances);
+        if (!reachableInstances.isEmpty()) {
+            // There may be multiple instance, but we take only one, on random
+            final ActorRef<GetAddressDetails.Request> gclProvider = reachableInstances.iterator().next();
+
+            context.ask(
+                    GetAddressDetails.Response.class,
+                    gclProvider,
+                    DEFAULT_CALL_TIMEOUT,
+                    // Construct the outgoing message
+//                    GetAddressDetails.GTARequest::new,
+                    (ActorRef<GetAddressDetails.Response> replyTo) ->
+                            new GetAddressDetails.Request(replyTo, msg.payload),
+                    // Adapt the incoming response
+                    (GetAddressDetails.Response response, Throwable throwable) -> {
+                        logger.debug("Returned GetAddressDetails response: {}", response);
+                        return new GetAddressDetailsCommand.InternalResult(response, msg.replyTo);
                     }
             );
         }

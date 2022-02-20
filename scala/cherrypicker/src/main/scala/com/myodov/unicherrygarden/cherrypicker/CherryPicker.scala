@@ -5,6 +5,7 @@ import java.util.UUID
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
+import com.myodov.unicherrygarden.api.DBStorage.TrackedAddresses
 import com.myodov.unicherrygarden.api.GardenMessages.EthereumNodeStatus
 import com.myodov.unicherrygarden.api.types.SystemStatus
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload
@@ -15,7 +16,7 @@ import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.AddT
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResultPayload
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.TrackedAddressesRequestResultPayload
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers.TransfersRequestResultPayload
-import com.myodov.unicherrygarden.messages.cherrypicker.{AddTrackedAddresses, GetBalances, GetTrackedAddresses, GetTransfers}
+import com.myodov.unicherrygarden.messages.cherrypicker._
 import com.typesafe.scalalogging.LazyLogging
 import scalikejdbc.DB
 
@@ -70,8 +71,9 @@ private class CherryPicker(
       List(
         GetTrackedAddresses.makeServiceKey(realm),
         AddTrackedAddresses.makeServiceKey(realm),
+        GetAddressDetails.makeServiceKey(realm),
         GetBalances.makeServiceKey(realm),
-        GetTransfers.makeServiceKey(realm)
+        GetTransfers.makeServiceKey(realm),
       ).foreach(context.system.receptionist ! Receptionist.Register(_, context.self))
 
       // On an `EthereumNodeStatus`, we just write its data into the state;
@@ -106,6 +108,18 @@ private class CherryPicker(
               message.replyTo,
               msg => AddTrackedAddresses.Response.fromCommonFailure(new FailurePayload.UnspecifiedFailure(msg))
             ) { () => handleAddTrackedAddresses(message.payload) },
+            s"$msgName-${UUID.randomUUID}"
+          )
+          Behaviors.same
+        }
+        case message: GetAddressDetails.Request => {
+          val msgName = "GetAddressDetails"
+          context.spawn(
+            requestHandlerActor[GetAddressDetails.Response](
+              msgName,
+              message.replyTo,
+              msg => GetAddressDetails.Response.fromCommonFailure(new FailurePayload.UnspecifiedFailure(msg))
+            ) { () => handleGetAddressDetails(message.payload) },
             s"$msgName-${UUID.randomUUID}"
           )
           Behaviors.same
@@ -150,16 +164,7 @@ private class CherryPicker(
         .getTrackedAddresses(
           payload.includeComment,
           payload.includeSyncedFrom)
-        .map { item =>
-          new TrackedAddressesRequestResultPayload.TrackedAddressInformation(
-            item.address,
-            // The subsequent items may be Java-nullable
-            item.comment.orNull,
-            // Converting the Option[Int] to nullable Java Integers needs some cunning processing,
-            // to avoid Null getting converted to 0
-            item.syncedFrom.map(Integer.valueOf).orNull
-          )
-        }
+        .map(_.toTrackedAddressInformation)
 
       new GetTrackedAddresses.Response(
         new TrackedAddressesRequestResultPayload(
@@ -200,6 +205,28 @@ private class CherryPicker(
 
       new AddTrackedAddresses.Response(
         new AddTrackedAddressesRequestResultPayload(addressesActuallyAdded.asJava)
+      )
+    }
+
+  private[this] def handleGetAddressDetails(payload: GetAddressDetails.GADRequestPayload): GetAddressDetails.Response =
+  // Construct all the response DB in a single atomic read-write DB transaction.
+    DB readOnly { implicit session =>
+      val trackedAddr: Option[TrackedAddresses.TrackedAddress] = dbStorage
+        .trackedAddresses
+        .getTrackedAddress(payload.address)
+
+      new GetAddressDetails.Response(
+        new GetAddressDetails.AddressDetailsRequestResultPayload(
+          new GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails(
+            payload.address,
+            trackedAddr.map(_.toTrackedAddressInformation).orNull,
+            new GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails.Nonces(
+              17,
+              18,
+              null // TODO: add logic when CherryPlanter is created
+            )
+          )
+        )
       )
     }
 

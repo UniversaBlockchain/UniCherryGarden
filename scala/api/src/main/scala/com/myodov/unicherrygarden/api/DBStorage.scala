@@ -2,6 +2,7 @@ package com.myodov.unicherrygarden.api
 
 import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.ethereum.EthUtils
+import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses.TrackedAddressesRequestResultPayload
 import com.typesafe.scalalogging.LazyLogging
 import scalikejdbc.WrappedResultSet
 
@@ -199,7 +200,17 @@ object DBStorage {
     sealed case class TrackedAddress(address: String,
                                      comment: Option[String],
                                      syncedFrom: Option[Int]
-                                    )
+                                    ) {
+      lazy val toTrackedAddressInformation: TrackedAddressesRequestResultPayload.TrackedAddressInformation =
+        new TrackedAddressesRequestResultPayload.TrackedAddressInformation(
+          address,
+          // The subsequent items may be Java-nullable
+          comment.orNull,
+          // Converting the Option[Int] to nullable Java Integers needs some cunning processing,
+          // to avoid Null getting converted to 0
+          syncedFrom.map(Integer.valueOf).orNull
+        )
+    }
 
   }
 
