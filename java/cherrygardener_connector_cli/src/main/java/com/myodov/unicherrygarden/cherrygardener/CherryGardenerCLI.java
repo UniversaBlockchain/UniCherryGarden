@@ -9,10 +9,7 @@ import com.myodov.unicherrygarden.connector.api.Observer;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryGardenResponseWithPayload;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
-import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers;
+import com.myodov.unicherrygarden.messages.cherrypicker.*;
 import org.apache.commons.cli.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -97,6 +94,9 @@ public class CherryGardenerCLI {
             addOption(new Option(
                     "gta", "get-tracked-addresses", false,
                     "Print the list of addresses tracked by CherryPicker."));
+            addOption(new Option(
+                    "gad", "get-address-details", true,
+                    "Print the details about a single address, tracked or untracked."));
             addOption(new Option(
                     "ata", "add-tracked-address", true,
                     "Add an Ethereum address to track.\n" +
@@ -296,7 +296,7 @@ public class CherryGardenerCLI {
                 return Optional.of(optString);
             } else {
                 System.err.printf("ERROR: --realm option can contain only latin letters, digits, \"-\" or \"_\" sign. " +
-                        "Currently it is \"%s\".\n",
+                                "Currently it is \"%s\".\n",
                         optString);
                 return Optional.empty();
             }
@@ -676,6 +676,8 @@ public class CherryGardenerCLI {
                 handleGetCurrencies(line);
             } else if (line.hasOption("get-tracked-addresses")) {
                 handleGetTrackedAddresses(line);
+            } else if (line.hasOption("get-address-details")) {
+                handleGetAddressDetails(line);
             } else if (line.hasOption("add-tracked-address")) {
                 handleAddTrackedAddress(line);
             } else if (line.hasOption("get-balances")) {
@@ -784,13 +786,63 @@ public class CherryGardenerCLI {
 
                         System.err.printf("Tracked addresses (%s):\n", trackedAddresses.size());
                         for (GetTrackedAddresses.TrackedAddressesRequestResultPayload.TrackedAddressInformation addr : trackedAddresses) {
-                            System.err.printf("  %s%s\n",
-                                    addr.address,
-                                    (addr.comment != null) ? "" : String.format("(%s)", addr.comment));
+                            printTrackedAddressInformation(addr, 2);
                         }
                     }
                     System.err.printf("--- Done in %s --\n", Duration.between(startTime, Instant.now()));
                 } while (loopEnabled);
+                connector.shutdown();
+            } catch (CompletionException exc) {
+                System.err.println("ERROR: Could not connect to UniCherryGarden!");
+                System.err.printf("%s\n", exc);
+            }
+        }
+    }
+
+    private static void handleGetAddressDetails(@NonNull CommandLine line) {
+        assert line != null;
+
+        printTitle(System.err);
+
+        final @NonNull Optional<ConnectionSettings> connectionSettingsOpt = parseConnectionSettings(line);
+        final @NonNull Optional<String> addressOpt = parseEthereumAddressOption(line, "get-address-details", true);
+
+        if (true &&
+                connectionSettingsOpt.isPresent() &&
+                addressOpt.isPresent()
+        ) {
+            final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
+            final @NonNull String address = addressOpt.get();
+
+            System.err.printf("Getting details about address %s...\n", address);
+
+            try {
+                final ClientConnector connector = connectionSettings.createClientConnector();
+                final Observer observer = connector.getObserver();
+
+                final GetAddressDetails.Response response = observer.getAddressDetails(address);
+                if (response.isFailure()) {
+                    System.err.printf("ERROR: Could not get the details about address %s! Problem: %s\n",
+                            address, response.getFailure());
+                } else {
+                    final GetAddressDetails.AddressDetailsRequestResultPayload payload = response.getPayloadAsSuccessful();
+                    final GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails details = payload.details;
+
+                    if (details.address.equals(address)) {
+                        System.err.printf("Address %s:\n" +
+                                        "---------------------------------------------------\n" +
+                                        "Tracked by CherryPicker: %s\n",
+                                address,
+                                (details.trackedAddressInformation != null) ? "yes" : "no");
+                        if (details.trackedAddressInformation != null) {
+                            printTrackedAddressInformation(details.trackedAddressInformation, 2);
+                        }
+                        printNonces(details.nonces);
+                    } else {
+                        System.err.printf("ERROR: Requested details for address %s, but received for address %s!\n",
+                                address, details.address);
+                    }
+                }
                 connector.shutdown();
             } catch (CompletionException exc) {
                 System.err.println("ERROR: Could not connect to UniCherryGarden!");
@@ -1104,10 +1156,40 @@ public class CherryGardenerCLI {
 
     }
 
+    private static void printTrackedAddressInformation(
+            GetTrackedAddresses.TrackedAddressesRequestResultPayload.@NonNull TrackedAddressInformation trackedAddressInformation,
+            int offset
+    ) {
+        assert offset >= 0 : offset;
+
+        System.err.printf("%s%s%s\n",
+                String.format("%" + offset + "s", ""),
+                trackedAddressInformation.address,
+                (trackedAddressInformation.comment != null) ? "" : String.format("(%s)", trackedAddressInformation.comment));
+    }
+
+    private static void printNonces(
+            GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails.@NonNull Nonces nonces
+    ) {
+        System.err.printf("Nonces:\n" +
+                        "    Next in blockchain: %s,\n" +
+                        "  Next in pending pool: %s,\n" +
+                        "         Next planting: %s\n",
+                nonces.nextInBlockchain,
+                naIfNull(nonces.nextInPendingPool),
+                naIfNull(nonces.nextPlanting)
+        );
+
+    }
+
     private static void printHelp() {
         final HelpFormatter formatter = new HelpFormatter();
         formatter.setOptionComparator(null); // don’t sort the options
         formatter.printHelp("java -jar cherrygardener", options);
+    }
+
+    private static <T> String naIfNull(@Nullable T stringable) {
+        return (stringable == null) ? "N/A" : stringable.toString();
     }
 
     public static void main(String[] args) {

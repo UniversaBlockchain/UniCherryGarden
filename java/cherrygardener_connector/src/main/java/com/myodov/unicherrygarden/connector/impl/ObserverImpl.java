@@ -7,14 +7,8 @@ import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload;
 import com.myodov.unicherrygarden.connector.api.Observer;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActor;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
-import com.myodov.unicherrygarden.connector.impl.actors.messages.AddTrackedAddressesCommand;
-import com.myodov.unicherrygarden.connector.impl.actors.messages.GetBalancesCommand;
-import com.myodov.unicherrygarden.connector.impl.actors.messages.GetTrackedAddressesCommand;
-import com.myodov.unicherrygarden.connector.impl.actors.messages.GetTransfersCommand;
-import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers;
+import com.myodov.unicherrygarden.connector.impl.actors.messages.*;
+import com.myodov.unicherrygarden.messages.cherrypicker.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -105,11 +99,28 @@ public class ObserverImpl implements Observer {
     }
 
     @Override
+    public GetAddressDetails.@NonNull Response getAddressDetails(@NonNull String address) {
+        final CompletionStage<GetAddressDetailsCommand.Result> stage =
+                AskPattern.ask(
+                        actorSystem,
+                        GetAddressDetailsCommand.createReplier(address),
+                        ConnectorActor.DEFAULT_CALL_TIMEOUT,
+                        actorSystem.scheduler());
+
+        try {
+            return stage.toCompletableFuture().join().response;
+        } catch (CancellationException | CompletionException exc) {
+            logger.error("Could not complete GetAddressDetailsCommand command", exc);
+            return GetAddressDetails.Response.fromCommonFailure(FailurePayload.CANCELLATION_COMPLETION_FAILURE);
+        }
+    }
+
+    @Override
     public GetBalances.@NonNull Response getAddressBalances(
             int confirmations,
             @NonNull String address,
             @Nullable Set<String> filterCurrencyKeys) {
-        assert confirmations >= 0 && confirmations + mandatoryConfirmations >= 0:
+        assert confirmations >= 0 && confirmations + mandatoryConfirmations >= 0 :
                 String.format("%s/%s", confirmations, mandatoryConfirmations);
         assert address != null : address;
         Validators.requireValidLowercasedEthereumAddress("address", address);
@@ -144,7 +155,7 @@ public class ObserverImpl implements Observer {
             boolean includeBalances
     ) {
         // Validations
-        assert confirmations >= 0 && confirmations + mandatoryConfirmations >= 0:
+        assert confirmations >= 0 && confirmations + mandatoryConfirmations >= 0 :
                 String.format("%s/%s", confirmations, mandatoryConfirmations);
 
         if (sender != null) Validators.requireValidLowercasedEthereumAddress("sender", sender);

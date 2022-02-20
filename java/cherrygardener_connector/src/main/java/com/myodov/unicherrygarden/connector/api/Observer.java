@@ -1,9 +1,6 @@
 package com.myodov.unicherrygarden.connector.api;
 
-import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers;
+import com.myodov.unicherrygarden.messages.cherrypicker.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -81,6 +78,14 @@ public interface Observer {
      * Each address is regular Ethereum address string, lowercased.
      */
     GetTrackedAddresses.@NonNull Response getTrackedAddresses();
+
+    /**
+     * Get the details about any Ethereum address, tracked or not.
+     *
+     * @param address the regular Ethereum address string, lowercased.
+     *                For this address the details will be returned.
+     */
+    GetAddressDetails.@NonNull Response getAddressDetails(@NonNull String address);
 
     /**
      * Get the balances of some Ethereum address.
