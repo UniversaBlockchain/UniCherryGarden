@@ -387,17 +387,37 @@ class PostgreSQLStorage(jdbcUrl: String,
     import com.myodov.unicherrygarden.api.DBStorage.TrackedAddresses._
 
     override final def getTrackedAddresses(
+                                            filterAddresses: Option[Set[String]],
                                             includeComment: Boolean,
                                             includeSyncedFrom: Boolean
                                           )(implicit
                                             session: DBSession = ReadOnlyAutoSession
                                           ): List[TrackedAddress] = {
       sql"""
+      WITH
+          _vars AS (
+              SELECT
+                  ARRAY [${filterAddresses.map(_.toSeq).orNull}]::TEXT[] AS filter_addresses
+          ),
+          vars AS (
+              SELECT
+                  _vars.*,
+                  filter_addresses != ARRAY[NULL]::TEXT[] AS has_filter_addresses
+              FROM _vars
+          )
       SELECT
-       address,
-       CASE WHEN $includeComment THEN ucg_comment ELSE NULL END AS ucg_comment,
-       CASE WHEN $includeSyncedFrom THEN synced_from_block_number ELSE NULL END AS synced_from_block_number
-      FROM ucg_tracked_address;
+          address,
+          CASE WHEN $includeComment THEN ucg_comment ELSE NULL END AS ucg_comment,
+          CASE WHEN $includeSyncedFrom THEN synced_from_block_number ELSE NULL END AS synced_from_block_number
+      FROM
+          vars,
+          ucg_tracked_address
+      WHERE
+          CASE
+              WHEN has_filter_addresses
+                  THEN ucg_tracked_address.address = ANY (filter_addresses)
+              ELSE TRUE
+          END;
       """.map(rs => TrackedAddress(
         rs.string("address"),
         rs.stringOpt("ucg_comment"),

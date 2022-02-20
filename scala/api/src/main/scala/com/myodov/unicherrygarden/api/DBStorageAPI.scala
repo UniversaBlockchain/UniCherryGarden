@@ -92,6 +92,7 @@ object DBStorageAPI {
      * optionally containing (or not containing) various extra information about each address.
      */
     def getTrackedAddresses(
+                             filterAddresses: Option[Set[String]],
                              includeComment: Boolean,
                              includeSyncedFrom: Boolean
                            )(implicit

@@ -8,6 +8,9 @@ import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommandImp
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetTrackedAddresses;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+
+import java.util.Set;
 
 /**
  * Akka API command to “list tracked addresses”.
@@ -62,11 +65,13 @@ public class GetTrackedAddressesCommand
      * containing the incoming arguments.
      */
     public static Function<ActorRef<Result>, ConnectorActorMessage> createReplier(
+            @Nullable Set<String> filterAddresses,
             boolean includeComment,
             boolean includeSyncedFrom) {
         return (replyTo) -> new GetTrackedAddressesCommand(
                 replyTo,
                 new GetTrackedAddresses.GTARequestPayload(
+                        filterAddresses,
                         includeComment,
                         includeSyncedFrom
                 ));

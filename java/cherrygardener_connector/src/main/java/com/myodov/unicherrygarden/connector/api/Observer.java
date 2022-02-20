@@ -4,6 +4,7 @@ import com.myodov.unicherrygarden.messages.cherrypicker.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -23,6 +24,7 @@ public interface Observer {
      * @param comment     (Optional) comment to the tracked address; may freely be <code>null</code>
      *                    (which is different from <code>""</code>).
      */
+    @SuppressWarnings("unused")
     AddTrackedAddresses.@NonNull Response startTrackingAddress(
             @NonNull String address,
             AddTrackedAddresses.@NonNull StartTrackingAddressMode mode,
@@ -39,6 +41,7 @@ public interface Observer {
      * @param comment     (Optional) comment to the tracked address; may freely be <code>null</code>
      *                    (which is different from <code>""</code>).
      */
+    @SuppressWarnings("unused")
     default AddTrackedAddresses.@NonNull Response startTrackingAddressFromBlock(
             @NonNull String address,
             int blockNumber,
@@ -65,6 +68,7 @@ public interface Observer {
      * @param comment (Optional) comment to the tracked address; may freely be <code>null</code>
      *                (which is different from <code>""</code>).
      */
+    @SuppressWarnings("unused")
     default AddTrackedAddresses.@NonNull Response startTrackingAddress(
             @NonNull String address,
             AddTrackedAddresses.@NonNull StartTrackingAddressMode mode,
@@ -74,10 +78,37 @@ public interface Observer {
     }
 
     /**
-     * Get the list of addresses that are tracked by UniCherryGarden.
+     * Get the list of addresses that are tracked by UniCherryGarden,
+     * probably filtered by `filterAddresses`.
+     * Each address is regular Ethereum address string, lowercased.
+     *
+     * @param filterAddresses what addresses (each one is Ethereum address string, lowercased) to return;
+     *                        all addresses are returned if <code>null</code>.
+     */
+    @SuppressWarnings("unused")
+    GetTrackedAddresses.@NonNull Response getTrackedAddresses(@Nullable Set<String> filterAddresses);
+
+    /**
+     * Get the list of all addresses that are tracked by UniCherryGarden.
      * Each address is regular Ethereum address string, lowercased.
      */
-    GetTrackedAddresses.@NonNull Response getTrackedAddresses();
+    @SuppressWarnings("unused")
+    default GetTrackedAddresses.@NonNull Response getTrackedAddresses() {
+        return getTrackedAddresses(null);
+    }
+
+    /**
+     * Get the information about a single address tracked by UniCherryGarden.
+     *
+     * @param address the regular Ethereum address string, lowercased.
+     *                For this address the details will be returned.
+     */
+    @SuppressWarnings("unused")
+    default GetTrackedAddresses.@NonNull Response getTrackedAddress(@NonNull String address) {
+        return getTrackedAddresses(new HashSet<String>() {{
+            add(address);
+        }});
+    }
 
     /**
      * Get the details about any Ethereum address, tracked or not.
@@ -85,6 +116,7 @@ public interface Observer {
      * @param address the regular Ethereum address string, lowercased.
      *                For this address the details will be returned.
      */
+    @SuppressWarnings("unused")
     GetAddressDetails.@NonNull Response getAddressDetails(@NonNull String address);
 
     /**
@@ -99,6 +131,7 @@ public interface Observer {
      *                           20 confirmations on large crypto exchanges.
      *                           Each confirmation roughly takes 15 seconds, i.e. 4 confirmations per minute.
      */
+    @SuppressWarnings("unused")
     GetBalances.@NonNull Response getAddressBalances(
             int confirmations,
             @NonNull String address,
@@ -134,6 +167,7 @@ public interface Observer {
      * @param includeBalances    Should the final balances be returned in the <code>transfers</code> part of the result.
      *                           If <code>false</code>, <code>result.transfers</code> will be empty.
      */
+    @SuppressWarnings("unused")
     GetTransfers.@NonNull Response getTransfers(
             int confirmations,
             @Nullable String sender,
@@ -174,6 +208,7 @@ public interface Observer {
      * Note that the balances are <b>not</b> requested, so the result will contain
      * the empty <code>result.transfers</code> field.
      */
+    @SuppressWarnings("unused")
     default GetTransfers.@NonNull Response getTransfers(
             int confirmations,
             @Nullable String sender,

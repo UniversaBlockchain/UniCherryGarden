@@ -17,6 +17,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public class GetTrackedAddresses {
     @NonNull
@@ -29,20 +30,32 @@ public class GetTrackedAddresses {
 
     public static final class GTARequestPayload
             implements RequestPayload {
+
+        @Nullable
+        public final Set<String> filterAddresses;
         public final boolean includeComment;
         public final boolean includeSyncedFrom;
 
         @JsonCreator
-        public GTARequestPayload(boolean includeComment,
+        public GTARequestPayload(@Nullable Set<String> filterAddresses,
+                                 boolean includeComment,
                                  boolean includeSyncedFrom) {
+            assert filterAddresses == null ||
+                    filterAddresses
+                            .stream()
+                            .allMatch(addr -> (addr != null) && EthUtils.Addresses.isValidLowercasedAddress(addr))
+                    :
+                    filterAddresses;
+
+            this.filterAddresses = filterAddresses;
             this.includeComment = includeComment;
             this.includeSyncedFrom = includeSyncedFrom;
         }
 
         @Override
         public String toString() {
-            return String.format("GetTrackedAddresses.GTARequestPayload(%s, %s)",
-                    includeComment, includeSyncedFrom);
+            return String.format("GetTrackedAddresses.GTARequestPayload(%s, %s, %s)",
+                    filterAddresses, includeComment, includeSyncedFrom);
         }
     }
 

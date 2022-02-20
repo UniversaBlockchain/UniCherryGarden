@@ -162,6 +162,7 @@ private class CherryPicker(
       val results: List[TrackedAddressesRequestResultPayload.TrackedAddressInformation] = dbStorage
         .trackedAddresses
         .getTrackedAddresses(
+          Option(payload.filterAddresses).map(_.asScala.toSet),
           payload.includeComment,
           payload.includeSyncedFrom)
         .map(_.toTrackedAddressInformation)

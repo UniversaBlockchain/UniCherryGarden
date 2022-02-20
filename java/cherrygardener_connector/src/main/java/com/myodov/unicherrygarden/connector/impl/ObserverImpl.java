@@ -8,6 +8,7 @@ import com.myodov.unicherrygarden.connector.api.Observer;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActor;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.*;
+import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.cherrypicker.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -79,11 +80,19 @@ public class ObserverImpl implements Observer {
     }
 
     @Override
-    public GetTrackedAddresses.@NonNull Response getTrackedAddresses() {
+    public GetTrackedAddresses.@NonNull Response getTrackedAddresses(@Nullable Set<String> filterAddresses) {
+        assert filterAddresses == null ||
+                filterAddresses
+                        .stream()
+                        .allMatch(addr -> (addr != null) && EthUtils.Addresses.isValidLowercasedAddress(addr))
+                :
+                filterAddresses;
+
         final CompletionStage<GetTrackedAddressesCommand.Result> stage =
                 AskPattern.ask(
                         actorSystem,
                         GetTrackedAddressesCommand.createReplier(
+                                filterAddresses,
                                 false,
                                 false
                         ),
@@ -96,6 +105,17 @@ public class ObserverImpl implements Observer {
             logger.error("Could not complete GetTrackedAddressesCommand command", exc);
             return GetTrackedAddresses.Response.fromCommonFailure(FailurePayload.CANCELLATION_COMPLETION_FAILURE);
         }
+    }
+
+    /**
+     * Get the information about a single address tracked by UniCherryGarden.
+     *
+     * @param address the regular Ethereum address string, lowercased.
+     *                For this address the details will be returned.
+     */
+    @Override
+    public GetTrackedAddresses.@NonNull Response getTrackedAddress(@NonNull String address) {
+        return null;
     }
 
     @Override
