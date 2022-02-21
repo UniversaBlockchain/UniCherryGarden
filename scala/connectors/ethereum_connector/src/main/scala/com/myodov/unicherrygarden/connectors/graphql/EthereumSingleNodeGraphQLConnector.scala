@@ -7,11 +7,12 @@ import akka.actor.typed.{ActorSystem => TypedActorSystem}
 import akka.actor.{ActorSystem => ClassicActorSystem}
 import caliban.client.Operations.RootQuery
 import caliban.client.{CalibanClientError, SelectionBuilder}
-import com.myodov.unicherrygarden.{AbstractEthereumNodeConnector, Web3ReadOperations}
+import com.myodov.unicherrygarden.AbstractEthereumNodeConnector.SingleBlockData
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.types.SystemStatus
-import com.myodov.unicherrygarden.AbstractEthereumNodeConnector.SingleBlockData
-import com.myodov.unicherrygarden.connectors.graphql.types.{BlockBasic, BlockLatest, BlockLatestView, BlockMinimal, TransactionFullView}
+import com.myodov.unicherrygarden.connectors.graphql.types._
+import com.myodov.unicherrygarden.ethereum.EthUtils
+import com.myodov.unicherrygarden.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.typesafe.scalalogging.LazyLogging
 import sttp.capabilities
 import sttp.capabilities.akka.AkkaStreams
@@ -226,10 +227,46 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
         BlockMinimal.view
       }
 
-    queryGraphQL(query, "readBlockHashes($range)").map {
+    queryGraphQL(query, argHint = s"readBlockHashes($range)").map {
       // If result is present, convert the result list to result map
       _.map(bl => Math.toIntExact(bl.number) -> bl.hash)
         .to(SortedMap)
+    }
+  }
+
+  override def getAddressNonces(address: String): Option[(Int, Option[Int])] = {
+    require(EthUtils.Addresses.isValidLowercasedAddress(address), address)
+
+    import caliban.Geth._
+
+    val query =
+      Query.block() {
+        Block.account(address = address) {
+          Account.transactionCount
+        }
+      } ~ Query.pending {
+        Pending.account(address = address) {
+          Account.transactionCount
+        }
+      }
+
+    // Nonces are assumed `Int` here
+    queryGraphQL(query, argHint = s"getAddressNonces($address)").flatMap {
+      case (None, pendingNonce) =>
+        logger.error(s"in getAddressNonces($address), received only pendingNonce $pendingNonce!")
+        None
+      case (Some(blockNonce), pendingNonce) if pendingNonce < blockNonce =>
+        logger.error(s"in getAddressNonces($address), pendingNonce $pendingNonce < blockNonce $blockNonce!")
+        None
+      case (Some(blockNonce), pendingNonce) =>
+        require(pendingNonce < Int.MaxValue, pendingNonce)
+        if (pendingNonce == blockNonce) {
+          // Pending pool nonce is equal to blockchain nonce; this means there is nothing special in pending pool
+          Some((blockNonce.toInt, None))
+        } else { // if pendingNonce > blockNonce
+          // Pending pool nonce > blockchain nonce; there is something in pending pool!
+          Some((blockNonce.toInt, Some(pendingNonce.toInt)))
+        }
     }
   }
 }

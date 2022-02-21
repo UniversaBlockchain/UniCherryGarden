@@ -31,7 +31,8 @@ public interface FailurePayload extends ResponsePayload {
             UNSPECIFIED_FAILURE,
             NOT_AVAILABLE_IN_OFFLINE_MODE,
             NO_RESPONSE_FROM_CHERRYGARDEN,
-            CANCELLATION_COMPLETION_FAILURE
+            CANCELLATION_COMPLETION_FAILURE,
+            NODE_REQUEST_FAILURE
         }
 
         @Override
@@ -109,6 +110,20 @@ public interface FailurePayload extends ResponsePayload {
     @NonNull
     CancellationCompletionFailure CANCELLATION_COMPLETION_FAILURE = new CancellationCompletionFailure();
 
+
+    /**
+     * There was a failure in connecting to the Ethereum node for the result.
+     */
+    final class NodeRequestFailure extends CommonFailurePayload {
+        @Override
+        @NonNull
+        public CommonFailureType getCommonFailureType() {
+            return CommonFailureType.NODE_REQUEST_FAILURE;
+        }
+    }
+
+    @NonNull
+    NodeRequestFailure NODE_REQUEST_FAILURE = new NodeRequestFailure();
 
     abstract class SpecificFailurePayload implements FailurePayload {
         @Override

@@ -8,7 +8,7 @@ import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.api.DBStorage.TrackedAddresses
 import com.myodov.unicherrygarden.api.GardenMessages.EthereumNodeStatus
 import com.myodov.unicherrygarden.api.types.SystemStatus
-import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload
+import com.myodov.unicherrygarden.api.types.responseresult.{FailurePayload, ResponsePayload}
 import com.myodov.unicherrygarden.api.{DBStorageAPI, GardenMessages}
 import com.myodov.unicherrygarden.cherrypicker.syncers.{HeadSyncer, TailSyncer}
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
@@ -216,19 +216,25 @@ private class CherryPicker(
         .trackedAddresses
         .getTrackedAddress(payload.address)
 
-      new GetAddressDetails.Response(
-        new GetAddressDetails.AddressDetailsRequestResultPayload(
-          new GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails(
-            payload.address,
-            trackedAddr.map(_.toTrackedAddressInformation).orNull,
-            new GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails.Nonces(
-              17,
-              18,
-              null // TODO: add logic when CherryPlanter is created
+      ethereumConnector.getAddressNonces(payload.address) match {
+        case None =>
+          logger.error(s"Could not get getAddressNonces(${payload.address}) hence failing")
+          GetAddressDetails.Response.fromCommonFailure(FailurePayload.NODE_REQUEST_FAILURE);
+        case Some((nonceLatest, optNoncePending)) =>
+          new GetAddressDetails.Response(
+            new GetAddressDetails.AddressDetailsRequestResultPayload(
+              new GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails(
+                payload.address,
+                trackedAddr.map(_.toTrackedAddressInformation).orNull,
+                new GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails.Nonces(
+                  nonceLatest,
+                  optNoncePending.map(new Integer(_)).orNull,
+                  null // TODO: add logic when CherryPlanter is created
+                )
+              )
             )
           )
-        )
-      )
+      }
     }
 
   private[this] def handleGetBalances(payload: GetBalances.GBRequestPayload): GetBalances.Response =

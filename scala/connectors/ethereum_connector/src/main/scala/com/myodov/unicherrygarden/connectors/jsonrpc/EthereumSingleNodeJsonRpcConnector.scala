@@ -1,11 +1,13 @@
 package com.myodov.unicherrygarden.connectors.jsonrpc
 
+import java.math.BigInteger
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 import com.myodov.unicherrygarden.AbstractEthereumNodeConnector.SingleBlockData
 import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.types.SystemStatus
+import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.{AbstractEthereumNodeConnector, Web3ReadOperations}
 import com.typesafe.scalalogging.LazyLogging
 import org.web3j.protocol.Web3j
@@ -396,6 +398,33 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
   ////            val resultList = FunctionReturnDecoder.decode(l.getData, Erc20TransferEvent.eventNonIndexedParametersJava).asScala.toList
   ////            val transferAmountType = resultList(0)
   ////            val transferAmount = transferAmountType.getValue
+
+  override def getAddressNonces(address: String): Option[(Int, Option[Int])] = {
+    require(EthUtils.Addresses.isValidLowercasedAddress(address), address)
+    try {
+      val nonceLatest: BigInt = web3j
+        .ethGetTransactionCount(address, DefaultBlockParameterName.LATEST)
+        .send()
+        .getTransactionCount
+      val noncePending: BigInt = web3j
+        .ethGetTransactionCount(address, DefaultBlockParameterName.PENDING)
+        .send()
+        .getTransactionCount
+
+      if (noncePending < nonceLatest) {
+        logger.error(s"noncePending $noncePending < nonceLatest $nonceLatest!")
+        None
+      } else if (noncePending == nonceLatest) {
+        Some((nonceLatest.toInt, None))
+      } else { // (noncePending > nonceLatest)
+        Some((nonceLatest.toInt, Some(noncePending.toInt)))
+      }
+    } catch {
+      case NonFatal(e) =>
+        logger.error(s"Cannot call getAddressNonces($address)!", e)
+        None
+    }
+  }
 }
 
 /** Connector that handles a connection to single Ethereum node via RPC, and communicates with it. */

@@ -141,6 +141,12 @@ trait Web3ReadOperations extends LazyLogging {
     }
     validateBlockHashes(range, result)
   }
+
+  /** For a specific address `address`, get its nonces:
+   * 1. next in blockchain (definitely present; equivalent to `eth.getTransactionCount(ADDR)`), and
+   * 2. next in pending pool (may be missing if no extra data in pending pool).
+   */
+  def getAddressNonces(address: String): Option[(Int, Option[Int])]
 }
 
 object AbstractEthereumNodeConnector extends LazyLogging {
