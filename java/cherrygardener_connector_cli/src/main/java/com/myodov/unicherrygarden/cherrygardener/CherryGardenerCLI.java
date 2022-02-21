@@ -139,6 +139,7 @@ public class CherryGardenerCLI {
 //                            "See also:\n" +
 //                            "--sender (mandatory),\n" +
 //                            "--recipient (mandatory),\n" +
+//                            "--chain-id (optional, default: 1 for Ethereum Mainnet),\n" +
 //                            "--currency-key (mandatory),\n" +
 //                            "--amount (mandatory),\n" +
 //                            "--comment (optional)."));

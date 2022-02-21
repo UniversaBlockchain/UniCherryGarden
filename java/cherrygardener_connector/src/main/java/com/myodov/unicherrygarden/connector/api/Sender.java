@@ -1,6 +1,7 @@
 package com.myodov.unicherrygarden.connector.api;
 
 import com.myodov.unicherrygarden.api.types.PrivateKey;
+import com.myodov.unicherrygarden.messages.Serializable;
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -15,6 +16,36 @@ import java.math.BigInteger;
  * The client connector part that ensures sending of the Ethereum ETH/ERC20 payments.
  */
 public interface Sender {
+
+    /**
+     * How you want your nonce to be configured?
+     */
+    interface NonceSpecifier {
+
+        @SuppressWarnings("unused")
+        enum Selector implements Serializable {
+            BLOCKCHAIN,
+            PENDING_POOL,
+            CHERRYPLANTER
+        }
+
+        /**
+         * Specify your nonce by a particular number.
+         *
+         * @param nonce number of nonce you want to use.
+         *              Should be 0 <= nonce <= 2^64-1 per EIP-2681; uses `int` type as all existing data
+         *              doesn't have any nonces even close to reach the limit of MAXINT.
+         */
+        @NonNull NonceSpecifier fromNumber(int nonce);
+
+        /**
+         * Specify your nonce as next by some data stored in blockchain / pending pool / CherryPlanter.
+         * Most of the times you want to use “next by CherryPlanter.”
+         *
+         * @param selector “next by what data” you want to use to select your Nonce.
+         */
+        @NonNull NonceSpecifier nextBy(@NonNull Selector selector);
+    }
 
     interface PreparedOutgoingTransaction {
         /**
