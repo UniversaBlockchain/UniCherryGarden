@@ -55,7 +55,7 @@ public class SystemStatus {
 
             @Override
             public String toString() {
-                return String.format("%s(%s, %s)",
+                return String.format("%s.%s(%s, %s)",
                         getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
                         currentBlock, highestBlock);
             }
@@ -126,7 +126,7 @@ public class SystemStatus {
 
             @Override
             public String toString() {
-                return String.format("%s(%s, %s, %s, %s, %s)",
+                return String.format("%s.%s(%s, %s, %s, %s, %s)",
                         getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
                         number, gasLimit, gasUsed, baseFeePerGas, timestamp);
             }
@@ -180,7 +180,7 @@ public class SystemStatus {
 
         @Override
         public String toString() {
-            return String.format("%s(%s, %s)",
+            return String.format("%s.%s(%s, %s)",
                     getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
                     syncingData, latestBlock);
         }
@@ -242,7 +242,7 @@ public class SystemStatus {
 
         @Override
         public String toString() {
-            return String.format("%s(%s, %s, %s)",
+            return String.format("%s.%s(%s, %s, %s)",
                     getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
                     latestKnownBlock, latestPartiallySyncedBlock, latestFullySyncedBlock);
         }
@@ -286,7 +286,7 @@ public class SystemStatus {
     @Override
     public String toString() {
         return String.format("%s(%s, %s)",
-                this.getClass().getSimpleName(),
+                getClass().getSimpleName(),
                 actualAt, blockchain, cherryPicker);
     }
 }

@@ -28,6 +28,6 @@ public class RequestWithReplyTo<ReqPayload, Resp> {
     @Override
     public String toString() {
         return String.format("%s(%s, %s)",
-                this.getClass().getSimpleName(), replyTo, payload);
+                getClass().getSimpleName(), replyTo, payload);
     }
 }

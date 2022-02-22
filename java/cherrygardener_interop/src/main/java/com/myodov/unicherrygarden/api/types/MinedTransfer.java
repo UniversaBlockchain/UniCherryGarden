@@ -55,7 +55,7 @@ public class MinedTransfer extends Transfer {
     @Override
     public String toString() {
         return String.format("%s(%s %s from %s to %s in %s; #%d)",
-                this.getClass().getSimpleName(),
+                getClass().getSimpleName(),
                 amount, currencyKey, from, to, tx, logIndex);
     }
 

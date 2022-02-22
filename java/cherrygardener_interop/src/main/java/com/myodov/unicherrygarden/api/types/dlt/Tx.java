@@ -51,7 +51,7 @@ public class Tx {
     @Override
     public String toString() {
         return String.format("%s(%s, %s, %s)",
-                this.getClass().getSimpleName(),
+                getClass().getSimpleName(),
                 txhash, from, to);
     }
 

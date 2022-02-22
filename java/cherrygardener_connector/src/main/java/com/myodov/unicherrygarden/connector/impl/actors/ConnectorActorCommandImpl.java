@@ -46,7 +46,7 @@ public abstract class ConnectorActorCommandImpl<
         @Override
         public String toString() {
             return String.format("%s(%s, %s, %s)",
-                    this.getClass().getSimpleName(),
+                    getClass().getSimpleName(),
                     listing, payload, replyTo);
         }
     }
@@ -74,7 +74,7 @@ public abstract class ConnectorActorCommandImpl<
         @Override
         public String toString() {
             return String.format("%s(%s, %s)",
-                    this.getClass().getSimpleName(),
+                    getClass().getSimpleName(),
                     response, replyTo);
         }
     }
@@ -95,7 +95,7 @@ public abstract class ConnectorActorCommandImpl<
         @Override
         public String toString() {
             return String.format("%s(%s)",
-                    this.getClass().getSimpleName(),
+                    getClass().getSimpleName(),
                     response);
         }
     }
@@ -121,7 +121,7 @@ public abstract class ConnectorActorCommandImpl<
     @Override
     public String toString() {
         return String.format("%s(%s, %s)",
-                this.getClass().getSimpleName(),
+                getClass().getSimpleName(),
                 replyTo, payload);
     }
 }

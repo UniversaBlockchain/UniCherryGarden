@@ -47,7 +47,7 @@ public class Block {
     @Override
     public String toString() {
         return String.format("%s(%s: %s at %s)",
-                this.getClass().getSimpleName(),
+                getClass().getSimpleName(),
                 blockNumber, hash, ts);
     }
 

@@ -52,7 +52,7 @@ public class MinedTx extends Tx {
     @Override
     public String toString() {
         return String.format("%s(%s, %s, %s, #%d in %s, fees %s)",
-                this.getClass().getSimpleName(),
+                getClass().getSimpleName(),
                 txhash, from, to, transactionIndex, block, fees);
     }
 

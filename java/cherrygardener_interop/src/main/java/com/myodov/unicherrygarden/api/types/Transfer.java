@@ -46,7 +46,7 @@ public class Transfer {
     @Override
     public String toString() {
         return String.format("%s(%s %s from %s to %s)",
-                this.getClass().getSimpleName(),
+                getClass().getSimpleName(),
                 amount, currencyKey, from, to);
     }
 
