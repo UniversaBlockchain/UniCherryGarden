@@ -71,7 +71,8 @@ public class AddTrackedAddresses {
 
         @Override
         public String toString() {
-            return String.format("AddTrackedAddresses.AddressDataToTrack(%s, %s)",
+            return String.format("%s.%s(%s, %s)",
+                    getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
                     address, comment);
         }
     }
@@ -110,7 +111,8 @@ public class AddTrackedAddresses {
 
         @Override
         public String toString() {
-            return String.format("AddTrackedAddresses.ATARequestPayload(%s, %s, %s)",
+            return String.format("%s(%s, %s, %s)",
+                    getClass().getSimpleName(),
                     trackingMode, addressesToTrack, fromBlock);
         }
     }

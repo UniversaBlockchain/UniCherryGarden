@@ -68,7 +68,8 @@ public class GetCurrencies {
 
         @Override
         public String toString() {
-            return String.format("GetCurrencies.GCRequestPayload(%s, %s, %s)",
+            return String.format("%s(%s, %s, %s)",
+                    getClass().getSimpleName(),
                     filterCurrencyKeys, getVerified, getUnverified);
         }
     }
@@ -108,7 +109,8 @@ public class GetCurrencies {
 
         @Override
         public String toString() {
-            return String.format("CurrenciesRequestResultPayload(%s, %s)",
+            return String.format("%s(%s, %s)",
+                    getClass().getSimpleName(),
                     systemStatus, currencies);
         }
     }

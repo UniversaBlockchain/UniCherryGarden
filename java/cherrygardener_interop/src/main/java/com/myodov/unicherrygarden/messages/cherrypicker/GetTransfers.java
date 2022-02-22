@@ -80,7 +80,8 @@ public class GetTransfers {
 
         @Override
         public String toString() {
-            return String.format("GetTransfers.GTRequestPayload(%s, %s, %s, %s, %s, %s, %s)",
+            return String.format("%s(%s, %s, %s, %s, %s, %s, %s)",
+                    getClass().getSimpleName(),
                     confirmations, sender, receiver, startBlock, endBlock, filterCurrencyKeys, includeBalances);
         }
     }
@@ -179,7 +180,8 @@ public class GetTransfers {
 
         @Override
         public String toString() {
-            return String.format("GetTransfers.TransfersRequestResult(%s, %s, %s)",
+            return String.format("%s(%s, %s, %s)",
+                    getClass().getSimpleName(),
                     systemStatus, transfers, balances);
         }
 

@@ -41,7 +41,8 @@ public class GetAddressDetails {
 
         @Override
         public String toString() {
-            return String.format("GetAddressDetails.GADRequestPayload(%s)",
+            return String.format("%s(%s)",
+                    getClass().getSimpleName(),
                     address);
         }
     }
@@ -113,7 +114,8 @@ public class GetAddressDetails {
 
                 @Override
                 public String toString() {
-                    return String.format("GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails.Nonces(%s, %s, %s)",
+                    return String.format("%s.%s.%s(%s, %s, %s)",
+                            getClass().getEnclosingClass().getEnclosingClass().getSimpleName(), getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
                             nextInBlockchain, nextInPendingPool, nextPlanting);
                 }
             }
@@ -157,7 +159,8 @@ public class GetAddressDetails {
 
             @Override
             public String toString() {
-                return String.format("GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails(%s, %s, %s)",
+                return String.format("%s.%s(%s, %s, %s)",
+                        getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
                         address, trackedAddressInformation, nonces);
             }
         }
@@ -179,7 +182,8 @@ public class GetAddressDetails {
 
         @Override
         public String toString() {
-            return String.format("GetAddressDetails.AddressDetailsRequestResultPayload(%s)",
+            return String.format("%s(%s)",
+                    getClass().getSimpleName(),
                     details);
         }
     }

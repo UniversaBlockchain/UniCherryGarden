@@ -68,7 +68,8 @@ public class GetBalances {
 
         @Override
         public String toString() {
-            return String.format("GetBalances.GBRequestPayload(%s, %s, %s)",
+            return String.format("%s(%s, %s, %s)",
+                    getClass().getSimpleName(),
                     confirmations, address, filterCurrencyKeys);
         }
     }
@@ -124,7 +125,8 @@ public class GetBalances {
 
             @Override
             public String toString() {
-                return String.format("CurrencyBalanceFact(%s: amount=%s at block %s)",
+                return String.format("%s(%s: amount=%s at block %s)",
+                        getClass().getSimpleName(),
                         currency, amount, blockNumber);
             }
         }
@@ -153,7 +155,8 @@ public class GetBalances {
 
         @Override
         public String toString() {
-            return String.format("BalanceRequestResult.BalanceRequestResult(%s, %s)",
+            return String.format("%s(%s, %s)",
+                    getClass().getSimpleName(),
                     systemStatus, balances);
         }
     }
