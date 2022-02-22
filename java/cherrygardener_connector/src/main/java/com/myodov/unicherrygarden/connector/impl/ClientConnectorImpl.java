@@ -180,7 +180,7 @@ public class ClientConnectorImpl implements ClientConnector {
                 stage.toCompletableFuture().join();
             } catch (CompletionException | CancellationException exc) {
                 logger.error("Could not boot ClientConnector; shutting down Akka", exc);
-                shutdown();
+                close();
                 throw exc;
             }
             logger.debug("Boot is completed!");
@@ -248,7 +248,7 @@ public class ClientConnectorImpl implements ClientConnector {
     }
 
     @Override
-    public void shutdown() {
+    public void close() {
         actorSystem.terminate();
     }
 

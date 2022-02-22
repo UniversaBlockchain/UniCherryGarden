@@ -22,8 +22,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.AbstractExecutorService;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -713,10 +711,8 @@ public class CherryGardenerCLI {
             }
             final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
 
-            try {
-                // ChainID is non-essential for GetCurrencies, so let it be just 1.
-                final ClientConnector connector = connectionSettings.createClientConnector();
-
+            // ChainID is non-essential for GetCurrencies, so let it be just the default.
+            try (final ClientConnector connector = connectionSettings.createClientConnector()) {
                 do {
                     final Instant startTime = Instant.now();
                     final GetCurrencies.Response response = connector.getCurrencies(
@@ -751,9 +747,8 @@ public class CherryGardenerCLI {
                     }
                     System.err.printf("--- Done in %s --\n", Duration.between(startTime, Instant.now()));
                 } while (loopEnabled);
-                connector.shutdown();
-            } catch (CompletionException exc) {
-                System.err.println("ERROR: Could not connect to UniCherryGarden!");
+            } catch (Exception e) {
+                System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
             }
         }
     }
@@ -771,9 +766,8 @@ public class CherryGardenerCLI {
             System.err.println("Getting tracked addresses...");
             final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
 
-            try {
-                final ClientConnector connector = connectionSettings.createClientConnector();
-
+            // ChainID is non-essential for GetTrackedAddresses, so let it be just the default.
+            try (final ClientConnector connector = connectionSettings.createClientConnector()) {
                 do {
                     final Instant startTime = Instant.now();
 
@@ -792,10 +786,8 @@ public class CherryGardenerCLI {
                     }
                     System.err.printf("--- Done in %s --\n", Duration.between(startTime, Instant.now()));
                 } while (loopEnabled);
-                connector.shutdown();
-            } catch (CompletionException exc) {
-                System.err.println("ERROR: Could not connect to UniCherryGarden!");
-                System.err.printf("%s\n", exc);
+            } catch (Exception e) {
+                System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
             }
         }
     }
@@ -817,8 +809,8 @@ public class CherryGardenerCLI {
 
             System.err.printf("Getting details about address %s...\n", address);
 
-            try {
-                final ClientConnector connector = connectionSettings.createClientConnector();
+            // ChainID is non-essential for GetAddressDetails, so let it be just the default.
+            try (final ClientConnector connector = connectionSettings.createClientConnector()) {
                 final Observer observer = connector.getObserver();
 
                 final GetAddressDetails.Response response = observer.getAddressDetails(address);
@@ -844,10 +836,8 @@ public class CherryGardenerCLI {
                                 address, details.address);
                     }
                 }
-                connector.shutdown();
-            } catch (CompletionException exc) {
-                System.err.println("ERROR: Could not connect to UniCherryGarden!");
-                System.err.printf("%s\n", exc);
+            } catch (Exception e) {
+                System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
             }
         }
     }
@@ -878,8 +868,8 @@ public class CherryGardenerCLI {
                     trackFromBlock.block
             );
 
-            try {
-                final ClientConnector connector = connectionSettings.createClientConnector();
+            // ChainID is non-essential for AddTrackingAddress, so let it be just the default.
+            try (final ClientConnector connector = connectionSettings.createClientConnector()) {
                 final Observer observer = connector.getObserver();
 
                 final AddTrackedAddresses.Response response = observer.startTrackingAddress(
@@ -899,10 +889,8 @@ public class CherryGardenerCLI {
                         System.err.printf("ERROR: Address %s failed to add!\n", address);
                     }
                 }
-                connector.shutdown();
-            } catch (CompletionException exc) {
-                System.err.println("ERROR: Could not connect to UniCherryGarden!");
-                System.err.printf("%s\n", exc);
+            } catch (Exception e) {
+                System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
             }
         }
     }
@@ -936,9 +924,8 @@ public class CherryGardenerCLI {
 
             final AbstractExecutorService executor = new ForkJoinPool(addresses.size());
 
-            try {
-                final ClientConnector connector = connectionSettings.createClientConnector(confirmations);
-
+            // ChainID is non-essential for GetBalances, so let it be just the default.
+            try (final ClientConnector connector = connectionSettings.createClientConnector(confirmations)) {
                 final Stream<String> addressStream = runInParallel ?
                         addresses.stream().parallel() :
                         addresses.stream();
@@ -984,13 +971,8 @@ public class CherryGardenerCLI {
                     });
                     System.err.println("--- done.");
                 }
-                connector.shutdown();
-            } catch (CompletionException exc) {
-                System.err.println("ERROR: Could not connect to UniCherryGarden!");
-            } catch (InterruptedException e) {
-                System.err.printf("ERROR: Could not connect to UniCherryGarden! InterruptedException %s\n", e);
-            } catch (ExecutionException e) {
-                System.err.printf("ERROR: Could not connect to UniCherryGarden! ExecutionException %s\n", e);
+            } catch (Exception e) {
+                System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
             } finally {
                 executor.shutdownNow();
             }
@@ -1052,9 +1034,8 @@ public class CherryGardenerCLI {
 
                 System.err.printf("Getting transfers %s...\n", transfersDescription);
 
-                try {
-                    final ClientConnector connector = connectionSettings.createClientConnector(confirmations);
-
+                // ChainID is non-essential for GetTransfers, so let it be just the default.
+                try (final ClientConnector connector = connectionSettings.createClientConnector(confirmations)) {
                     final GetTransfers.Response response = connector.getObserver().getTransfers(
                             0, // on top of connector-level confirmations number
                             senderOpt.orElse(null),
@@ -1083,9 +1064,8 @@ public class CherryGardenerCLI {
                         }
                         printSystemStatus(payload.systemStatus);
                     }
-                    connector.shutdown();
-                } catch (CompletionException exc) {
-                    System.err.println("ERROR: Could not connect to UniCherryGarden!");
+                } catch (Exception e) {
+                    System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
                 }
             }
         }

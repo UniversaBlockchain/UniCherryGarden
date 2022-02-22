@@ -12,13 +12,7 @@ import java.util.Set;
  * The general interface for creating “cherry gardeners”, i.e. connectors
  * to UniCherryGarden that access all the functionality and features of Ethereum blockchain.
  */
-public interface ClientConnector {
-    /**
-     * Stop whole connector to shut it down.
-     */
-    @SuppressWarnings("unused")
-    void shutdown();
-
+public interface ClientConnector extends AutoCloseable {
     /**
      * Get all the supported currencies, or some subset of them.
      * Depending on the settings, may include verified, unverified currencies, or both;
