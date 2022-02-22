@@ -17,6 +17,8 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.Objects;
 
+import static com.myodov.unicherrygarden.StringTools.naIfNull;
+
 public class GetAddressDetails {
     @NonNull
     public static ServiceKey<Request> makeServiceKey(@NonNull String realm) {
@@ -117,6 +119,18 @@ public class GetAddressDetails {
                     return String.format("%s.%s.%s(%s, %s, %s)",
                             getClass().getEnclosingClass().getEnclosingClass().getSimpleName(), getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
                             nextInBlockchain, nextInPendingPool, nextPlanting);
+                }
+
+                public String toHumanString() {
+                    return String.format("" +
+                                    "Nonces:\n" +
+                                    "    Next in blockchain: %s,\n" +
+                                    "  Next in pending pool: %s,\n" +
+                                    "         Next planting: %s\n",
+                            nextInBlockchain,
+                            naIfNull(nextInPendingPool),
+                            naIfNull(nextPlanting)
+                    );
                 }
             }
 

@@ -1,6 +1,7 @@
 package com.myodov.unicherrygarden.api.types;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.myodov.unicherrygarden.ethereum.EthUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -180,9 +181,50 @@ public class SystemStatus {
 
         @Override
         public String toString() {
-            return String.format("%s.%s(%s, %s)",
+            return String.format("%s.%s(%s, %s, %s)",
                     getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
-                    syncingData, latestBlock);
+                    syncingData, latestBlock, maxPriorityFeePerGas);
+        }
+
+        @NonNull
+        public String toHumanString() {
+            return String.format("" +
+                            "Blockchain:\n" +
+                            "  Sync status:\n" +
+                            "    block %10s: latest known (highestBlock),\n" +
+                            "    block %10s: latest synced by node (currentBlock),\n" +
+                            "  Latest block:\n" +
+                            "    number: %s,\n" +
+                            "    gas limit: %s,\n" +
+                            "    gas used: %s%s,\n" +
+                            "    base fee per gas: %s%s,\n" +
+                            "    timestamp: %s,\n" +
+                            "  maxPriorityFeePerGas: %s.",
+                    // Blockchain: sync status
+                    syncingData.highestBlock,
+                    syncingData.currentBlock,
+                    // Blockchain: latest block
+                    latestBlock.number,
+                    latestBlock.gasLimit,
+                    latestBlock.gasUsed,
+                    (latestBlock.gasLimit > 0) ?
+                            String.format(" (%.01s%%)", 100.0 * latestBlock.gasUsed / latestBlock.gasLimit)
+                            :
+                            "",
+                    (latestBlock.baseFeePerGas != null) ?
+                            latestBlock.baseFeePerGas
+                            :
+                            "N/A (pre-London)",
+                    (latestBlock.baseFeePerGas != null) ?
+                            String.format(" (%s Gwei)",
+                                    EthUtils.Wei.valueToGweis(EthUtils.Wei.valueFromWeis(latestBlock.baseFeePerGas))
+                            )
+                            :
+                            "",
+                    latestBlock.timestamp,
+                    // Blockchain: maxPriorityFeePerGas
+                    maxPriorityFeePerGas
+            );
         }
     }
 
@@ -246,6 +288,19 @@ public class SystemStatus {
                     getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
                     latestKnownBlock, latestPartiallySyncedBlock, latestFullySyncedBlock);
         }
+
+        @NonNull
+        public String toHumanString() {
+            return String.format(
+                    "UniCherryPicker:\n" +
+                            "  block %10s: latest known,\n" +
+                            "  block %10s: latest partially synced,\n" +
+                            "  block %10s: latest fully synced.",
+                    latestKnownBlock,
+                    latestPartiallySyncedBlock,
+                    latestFullySyncedBlock
+            );
+        }
     }
 
     /**
@@ -285,7 +340,7 @@ public class SystemStatus {
 
     @Override
     public String toString() {
-        return String.format("%s(%s, %s)",
+        return String.format("%s(%s, %s, %s)",
                 getClass().getSimpleName(),
                 actualAt, blockchain, cherryPicker);
     }

@@ -102,6 +102,15 @@ public class GetTrackedAddresses {
                         getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
                         address, comment, syncedFrom);
             }
+
+            @NonNull
+            public String toHumanString() {
+                return String.format(
+                        "%s%s",
+                        address,
+                        (comment != null) ? "" : String.format("(%s)", comment)
+                );
+            }
         }
 
 

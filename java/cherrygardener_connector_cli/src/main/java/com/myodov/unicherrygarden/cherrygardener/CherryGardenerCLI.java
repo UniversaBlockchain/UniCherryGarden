@@ -13,6 +13,8 @@ import com.myodov.unicherrygarden.messages.cherrypicker.*;
 import org.apache.commons.cli.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.web3j.tx.ChainIdLong;
 
 import java.io.IOException;
@@ -27,6 +29,8 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+
+import static com.myodov.unicherrygarden.StringTools.withOffset;
 
 
 /**
@@ -695,6 +699,8 @@ public class CherryGardenerCLI {
     private static void handleGetCurrencies(@NonNull CommandLine line) {
         assert line != null;
 
+        final Logger logger = LoggerFactory.getLogger(CherryGardenerCLI.class);
+
         printTitle(System.err);
 
         // Mandatory
@@ -749,12 +755,15 @@ public class CherryGardenerCLI {
                 } while (loopEnabled);
             } catch (Exception e) {
                 System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
+                logger.error("Execution error", e);
             }
         }
     }
 
     private static void handleGetTrackedAddresses(@NonNull CommandLine line) {
         assert line != null;
+
+        final Logger logger = LoggerFactory.getLogger(CherryGardenerCLI.class);
 
         printTitle(System.err);
 
@@ -781,19 +790,22 @@ public class CherryGardenerCLI {
 
                         System.err.printf("Tracked addresses (%s):\n", trackedAddresses.size());
                         for (GetTrackedAddresses.TrackedAddressesRequestResultPayload.TrackedAddressInformation addr : trackedAddresses) {
-                            printTrackedAddressInformation(addr, 2);
+                            System.err.println(withOffset(2, addr.toHumanString()));
                         }
                     }
                     System.err.printf("--- Done in %s --\n", Duration.between(startTime, Instant.now()));
                 } while (loopEnabled);
             } catch (Exception e) {
                 System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
+                logger.error("Execution error", e);
             }
         }
     }
 
     private static void handleGetAddressDetails(@NonNull CommandLine line) {
         assert line != null;
+
+        final Logger logger = LoggerFactory.getLogger(CherryGardenerCLI.class);
 
         printTitle(System.err);
 
@@ -824,13 +836,20 @@ public class CherryGardenerCLI {
                     if (details.address.equals(address)) {
                         System.err.printf("Address %s:\n" +
                                         "---------------------------------------------------\n" +
-                                        "Tracked by CherryPicker: %s\n",
+                                        "Tracked by CherryPicker: %s\n" +
+                                        "%s" +
+                                        "%s\n",
                                 address,
-                                (details.trackedAddressInformation != null) ? "yes" : "no");
-                        if (details.trackedAddressInformation != null) {
-                            printTrackedAddressInformation(details.trackedAddressInformation, 2);
-                        }
-                        printNonces(details.nonces);
+                                (details.trackedAddressInformation != null) ? "yes" : "no",
+                                (details.trackedAddressInformation != null) ?
+                                        String.format(
+                                                "  %s\n",
+                                                details.trackedAddressInformation.toHumanString()
+                                        )
+                                        :
+                                        "",
+                                details.nonces.toHumanString()
+                        );
                     } else {
                         System.err.printf("ERROR: Requested details for address %s, but received for address %s!\n",
                                 address, details.address);
@@ -838,12 +857,15 @@ public class CherryGardenerCLI {
                 }
             } catch (Exception e) {
                 System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
+                logger.error("Execution error", e);
             }
         }
     }
 
     private static void handleAddTrackedAddress(@NonNull CommandLine line) {
         assert line != null;
+
+        final Logger logger = LoggerFactory.getLogger(CherryGardenerCLI.class);
 
         printTitle(System.err);
 
@@ -891,12 +913,15 @@ public class CherryGardenerCLI {
                 }
             } catch (Exception e) {
                 System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
+                logger.error("Execution error", e);
             }
         }
     }
 
     private static void handleGetBalances(@NonNull CommandLine line) {
         assert line != null;
+
+        final Logger logger = LoggerFactory.getLogger(CherryGardenerCLI.class);
 
         printTitle(System.err);
 
@@ -973,6 +998,7 @@ public class CherryGardenerCLI {
                 }
             } catch (Exception e) {
                 System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
+                logger.error("Execution error", e);
             } finally {
                 executor.shutdownNow();
             }
@@ -981,6 +1007,8 @@ public class CherryGardenerCLI {
 
     private static void handleGetTransfers(@NonNull CommandLine line) {
         assert line != null;
+
+        final Logger logger = LoggerFactory.getLogger(CherryGardenerCLI.class);
 
         printTitle(System.err);
 
@@ -1066,6 +1094,7 @@ public class CherryGardenerCLI {
                     }
                 } catch (Exception e) {
                     System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
+                    logger.error("Execution error", e);
                 }
             }
         }
@@ -1089,91 +1118,29 @@ public class CherryGardenerCLI {
         );
     }
 
-    private static void printSystemStatus(@NonNull SystemStatus syncStatus) {
+    private static void printSystemStatus(@NonNull SystemStatus systemStatus) {
         System.err.printf("" +
                         "Overall status, as of %s:\n" +
-                        "  Blockchain:\n" +
-                        "    Sync status:\n" +
-                        "      block %10s: latest known (highestBlock),\n" +
-                        "      block %10s: latest synced by node (currentBlock),\n" +
-                        "    Latest block:\n" +
-                        "      number: %s,\n" +
-                        "      gas limit: %s,\n" +
-                        "      gas used: %s%s,\n" +
-                        "      base fee per gas: %s%s,\n" +
-                        "      timestamp: %s,\n" +
-                        "    maxPriorityFeePerGas: %s,\n" +
-                        "  UniCherryPicker:\n" +
-                        "    block %10s: latest known,\n" +
-                        "    block %10s: latest partially synced,\n" +
-                        "    block %10s: latest fully synced.\n",
-                syncStatus.actualAt,
-                // Blockchain: sync status
-                syncStatus.blockchain.syncingData.highestBlock,
-                syncStatus.blockchain.syncingData.currentBlock,
-                // Blockchain: latest block
-                syncStatus.blockchain.latestBlock.number,
-                syncStatus.blockchain.latestBlock.gasLimit,
-                syncStatus.blockchain.latestBlock.gasUsed,
-                (syncStatus.blockchain.latestBlock.gasLimit > 0) ?
-                        String.format(" (%.01s%%)", 100.0 * syncStatus.blockchain.latestBlock.gasUsed / syncStatus.blockchain.latestBlock.gasLimit)
-                        :
-                        "",
-                (syncStatus.blockchain.latestBlock.baseFeePerGas != null) ?
-                        syncStatus.blockchain.latestBlock.baseFeePerGas
-                        :
-                        "N/A (pre-London)",
-                (syncStatus.blockchain.latestBlock.baseFeePerGas != null) ?
-                        String.format(" (%s Gwei)",
-                                EthUtils.Wei.valueToGweis(EthUtils.Wei.valueFromWeis(syncStatus.blockchain.latestBlock.baseFeePerGas))
-                        )
-                        :
-                        "",
-                syncStatus.blockchain.latestBlock.timestamp,
-                // Blockchain: maxPriorityFeePerGas
-                syncStatus.blockchain.maxPriorityFeePerGas,
-                // UniCherryPicker
-                syncStatus.cherryPicker.latestKnownBlock,
-                syncStatus.cherryPicker.latestPartiallySyncedBlock,
-                syncStatus.cherryPicker.latestFullySyncedBlock
+                        "%s\n" +
+                        "%s\n",
+                systemStatus.actualAt,
+                withOffset(2,
+                        (systemStatus.blockchain != null) ?
+                                systemStatus.blockchain.toHumanString() :
+                                "Blockchain: N/A"
+                ),
+                withOffset(2,
+                        (systemStatus.cherryPicker != null) ?
+                                systemStatus.cherryPicker.toHumanString() :
+                                "UniCherryPicker: N/A"
+                )
         );
-
-    }
-
-    private static void printTrackedAddressInformation(
-            GetTrackedAddresses.TrackedAddressesRequestResultPayload.@NonNull TrackedAddressInformation trackedAddressInformation,
-            int offset
-    ) {
-        assert offset >= 0 : offset;
-
-        System.err.printf("%s%s%s\n",
-                String.format("%" + offset + "s", ""),
-                trackedAddressInformation.address,
-                (trackedAddressInformation.comment != null) ? "" : String.format("(%s)", trackedAddressInformation.comment));
-    }
-
-    private static void printNonces(
-            GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails.@NonNull Nonces nonces
-    ) {
-        System.err.printf("Nonces:\n" +
-                        "    Next in blockchain: %s,\n" +
-                        "  Next in pending pool: %s,\n" +
-                        "         Next planting: %s\n",
-                nonces.nextInBlockchain,
-                naIfNull(nonces.nextInPendingPool),
-                naIfNull(nonces.nextPlanting)
-        );
-
     }
 
     private static void printHelp() {
         final HelpFormatter formatter = new HelpFormatter();
         formatter.setOptionComparator(null); // don’t sort the options
         formatter.printHelp("java -jar cherrygardener", options);
-    }
-
-    private static <T> String naIfNull(@Nullable T stringable) {
-        return (stringable == null) ? "N/A" : stringable.toString();
     }
 
     public static void main(String[] args) {

@@ -1,6 +1,5 @@
-package com.myodov.unicherrygarden;
+package com.myodov.unicherrygarden.api.types;
 
-import com.myodov.unicherrygarden.api.types.SystemStatus;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -44,7 +43,8 @@ public class SystemStatusTest {
         assertEquals(
                 "SystemStatus.Blockchain(" +
                         "Blockchain.SyncingData(14205560, 14205570), " +
-                        "Blockchain.LatestBlock(14205590, 30029295, 3063440, 93747001362, 2022-02-14T17:24:32Z)" +
+                        "Blockchain.LatestBlock(14205590, 30029295, 3063440, 93747001362, 2022-02-14T17:24:32Z), " +
+                        "1000000000" +
                         ")",
                 blockchain.toString()
         );
@@ -57,7 +57,8 @@ public class SystemStatusTest {
                         "2022-02-15T14:55:03Z, " +
                         "SystemStatus.Blockchain(" +
                         "Blockchain.SyncingData(14205560, 14205570), " +
-                        "Blockchain.LatestBlock(14205590, 30029295, 3063440, 93747001362, 2022-02-14T17:24:32Z)" +
+                        "Blockchain.LatestBlock(14205590, 30029295, 3063440, 93747001362, 2022-02-14T17:24:32Z), " +
+                        "1000000000" +
                         "))",
                 systemStatus.toString()
         );
