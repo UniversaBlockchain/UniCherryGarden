@@ -74,8 +74,8 @@ class PostgreSQLStorage(jdbcUrl: String,
             to = rs.intOpt("block_to"),
           ),
           TrackedAddressesSyncStatus(
-            minFrom = rs.int("address_from_min"),
-            maxFrom = rs.int("address_from_max")
+            minFrom = rs.intOpt("address_from_min"),
+            maxFrom = rs.intOpt("address_from_max")
           ),
           PerCurrencyTrackedAddressesSyncStatus(
             minFrom = rs.intOpt("currency_address_from_min"),
@@ -215,7 +215,7 @@ class PostgreSQLStorage(jdbcUrl: String,
             ),
             -- Function argument
             actually_tracked_address_arg(address) AS (
-                SELECT unnest(ARRAY[$trackedAddresses])
+                SELECT unnest(ARRAY[$trackedAddresses]::TEXT[])
             ),
             -- Preprocess the function argument and find the IDs of tracked addresses
             actually_tracked_address(id, address, synced_from_block_number) AS (
@@ -276,7 +276,7 @@ class PostgreSQLStorage(jdbcUrl: String,
                 SELECT $syncedBlockNumber
             ),
             actually_tracked_address_arg(address) AS (
-                SELECT unnest(ARRAY[$trackedAddresses])
+                SELECT unnest(ARRAY[$trackedAddresses]::TEXT[])
             ),
             actually_tracked_address(id, address, synced_from_block_number) AS (
                 SELECT

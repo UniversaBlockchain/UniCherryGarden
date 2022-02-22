@@ -61,7 +61,7 @@ object DBStorage {
             s"is ${currencies.minSyncFrom.get}; " +
             s"it should not be lower than $overallFrom!")
           false
-        } else if (trackedAddresses.minFrom < overallFrom) {
+        } else if (trackedAddresses.minFrom.isDefined && trackedAddresses.minFrom.get < overallFrom) {
           logger.error("The minimum `ucg_tracked_address.synced_from_block_number` value " +
             s"is ${trackedAddresses.minFrom}; " +
             s"it should not be lower than $overallFrom!")
@@ -88,10 +88,10 @@ object DBStorage {
 
     /** Sync status of `ucg_tracked_address` table.
      *
-     * @param minFrom : minimum `synced_from_block_number` value among all tracked addresses.
-     * @param maxFrom : maximum `synced_from_block_number` value among all tracked addresses.
+     * @param minFrom : minimum `synced_from_block_number` value among all tracked addresses. `None` if no tracked addresses.
+     * @param maxFrom : maximum `synced_from_block_number` value among all tracked addresses. `None` if no tracked addresses.
      */
-    sealed case class TrackedAddressesSyncStatus(minFrom: Int, maxFrom: Int)
+    sealed case class TrackedAddressesSyncStatus(minFrom: Option[Int], maxFrom: Option[Int])
 
     /** Sync status of `ucg_currency_tracked_address_progress` table.
      *
