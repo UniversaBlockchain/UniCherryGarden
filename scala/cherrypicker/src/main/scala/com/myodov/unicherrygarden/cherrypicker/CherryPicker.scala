@@ -228,7 +228,7 @@ private class CherryPicker(
                 trackedAddr.map(_.toTrackedAddressInformation).orNull,
                 new GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails.Nonces(
                   nonceLatest,
-                  optNoncePending.map(new Integer(_)).orNull,
+                  optNoncePending.map(Integer.valueOf).orNull,
                   null // TODO: add logic when CherryPlanter is created
                 )
               )
