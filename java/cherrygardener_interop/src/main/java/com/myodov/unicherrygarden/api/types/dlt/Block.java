@@ -12,7 +12,7 @@ import java.util.Objects;
  */
 public class Block {
     /**
-     * Number of the Ethereum.
+     * Number of the Ethereum block.
      */
     @NonNull
     public final int blockNumber;

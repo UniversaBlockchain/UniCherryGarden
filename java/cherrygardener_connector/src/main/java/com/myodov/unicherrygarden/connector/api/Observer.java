@@ -139,7 +139,7 @@ public interface Observer {
 
     /**
      * Get transfers (optionally filtered by currency, sender, receiver, start-block number, end-block number).
-     * Optionally, the balances of mentioned addreses (whether `sender` or `receiver` are mentioned) are requested.
+     * Optionally, the balances of mentioned addresses (whether `sender` or `receiver` are mentioned) are requested.
      *
      * @param confirmations      The number of extra confirmations required, i.e. the offset from the latest data.
      *                           Should be 0 or higher. Normally it is 6–12 confirmations,
@@ -203,9 +203,7 @@ public interface Observer {
      * @param filterCurrencyKeys (optional) the set of the currency keys, for which to get the balances.
      *                           If <code>null</code>, gets the balances for all the supported currencies.
      *                           (Note if the set is empty, it will return the empty balances).
-     * @return The structure containing the data about the balances;
-     * or <code>null</code> if the request failed.
-     * Note that the balances are <b>not</b> requested, so the result will contain
+     * @implNote Note that the balances are <b>not</b> requested, so the result will contain
      * the empty <code>result.transfers</code> field.
      */
     @SuppressWarnings("unused")
@@ -216,6 +214,13 @@ public interface Observer {
             @Nullable Integer startBlock,
             @Nullable Integer endBlock,
             @Nullable Set<String> filterCurrencyKeys) {
-        return getTransfers(confirmations, sender, receiver, startBlock, endBlock, filterCurrencyKeys);
+        return getTransfers(
+                confirmations,
+                sender,
+                receiver,
+                startBlock,
+                endBlock,
+                filterCurrencyKeys,
+                false);
     }
 }
