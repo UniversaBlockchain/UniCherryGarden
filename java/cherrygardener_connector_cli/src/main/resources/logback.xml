@@ -8,6 +8,11 @@
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
+    <appender name="STDOUT_ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="STDOUT" />
+        <queueSize>16384</queueSize>
+        <neverBlock>true</neverBlock>
+    </appender>
 
     <!--
     <appender name="SYSLOG-TCP" class="com.github.serioussam.syslogappender.SyslogAppender">
@@ -28,7 +33,7 @@
     <logger name="com.myodov.unicherrygarden" level="DEBUG"/>
 
     <root level="DEBUG">
-        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="STDOUT_ASYNC"/>
         <!--        <appender-ref ref="SYSLOG-TCP"/>-->
     </root>
 </configuration>
