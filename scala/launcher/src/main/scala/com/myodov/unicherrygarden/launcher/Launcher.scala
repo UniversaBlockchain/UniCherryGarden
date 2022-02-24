@@ -12,6 +12,7 @@ import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryPickerR
 import com.myodov.unicherrygarden.storages.PostgreSQLStorage
 import com.typesafe.config.{ConfigException, ConfigFactory}
 import com.typesafe.scalalogging.LazyLogging
+import org.web3j.tx.ChainIdLong
 import scopt.OParser
 
 import scala.jdk.CollectionConverters._
@@ -99,6 +100,16 @@ You can choose a different HOCON configuration file instead of the regular appli
       logger.error("\"unicherrygarden.realm\" setting can contain only latin letters, digits, \"-\" or \"_\" sign!")
     }
     candidate
+  }
+
+  private[launcher] lazy val chainId: Long = {
+    val candidate = config.getLong("unicherrygarden.ethereum.chain_id")
+    if (candidate == -1 || candidate >= 1) {
+      candidate
+    } else {
+      logger.error(s"\"unicherrygarden.ethereum.chain_id\" setting can be -1 or >= 1, but your value is $candidate! Resetting to 1 (Ethereum Mainnet).")
+      ChainIdLong.MAINNET
+    }
   }
 
   /** Any config setting containing some number of blocks related to reorg; with validations. */
@@ -252,7 +263,7 @@ object LauncherActor extends LazyLogging {
           logger.info(s"Launched CherryGardener (which now knows about CherryPicker and CherryPlanter)")
           val cherryGardener: ActorRef[CherryGardenerRequest] =
             context.spawn(
-              CherryGardener(realm, dbStorage, Some(cherryPicker), Some(cherryPlanter)),
+              CherryGardener(realm, chainId, dbStorage, Some(cherryPicker), Some(cherryPlanter)),
               "CherryGardener")
 
           val ethereumStatePoller = context.spawn(

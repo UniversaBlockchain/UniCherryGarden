@@ -729,9 +729,9 @@ public class CherryGardenerCLI {
 
                     System.err.printf("" +
                                     "Ping completed!\n" +
-                                    "UniCherryGarden running in realm \"%s\"; \n" +
+                                    "UniCherryGarden running in realm \"%s\" for Chain ID %d; \n" +
                                     "  build v.%s at %s.\n",
-                            payload.realm,
+                            payload.realm, payload.chainId,
                             payload.version, payload.buildTs);
                     printSystemStatus(payload.systemStatus);
                 }

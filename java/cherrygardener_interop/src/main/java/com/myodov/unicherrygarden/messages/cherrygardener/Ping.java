@@ -66,6 +66,8 @@ public class Ping {
         @NonNull
         public final String realm;
 
+        public final long chainId;
+
         @NonNull
         public final String version;
 
@@ -75,24 +77,27 @@ public class Ping {
         @JsonCreator
         public PingRequestResultPayload(@NonNull SystemStatus systemStatus,
                                         @NonNull String realm,
+                                        long chainId,
                                         @NonNull String version,
                                         @NonNull String buildTs) {
             assert systemStatus != null;
             assert realm != null;
+            assert chainId == -1 || chainId >= 1: chainId;
             assert version != null;
             assert buildTs != null;
 
             this.systemStatus = systemStatus;
             this.realm = realm;
+            this.chainId = chainId;
             this.version = version;
             this.buildTs = buildTs;
         }
 
         @Override
         public final String toString() {
-            return String.format("%s(%s, %s, %s, %s)",
+            return String.format("%s(%s, %s,%s,  %s, %s)",
                     getClass().getSimpleName(),
-                    systemStatus, realm, version, buildTs);
+                    systemStatus, realm, chainId, version, buildTs);
         }
     }
 

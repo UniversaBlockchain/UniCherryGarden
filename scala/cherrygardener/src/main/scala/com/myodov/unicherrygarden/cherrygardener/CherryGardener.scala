@@ -22,6 +22,7 @@ import scala.language.postfixOps
 class CherryGardener(
                       // CherryGardenComponent-specific
                       realm: String,
+                      chainId: Long,
                       dbStorage: DBStorageAPI,
                       // CherryGardener-specific
                       protected[this] val state: CherryGardener.State = CherryGardener.State()
@@ -31,7 +32,9 @@ class CherryGardener(
 
   private def launch(): Behavior[CherryGardenerRequest] = {
     Behaviors.setup { context: ActorContext[CherryGardenerRequest] =>
-      context.log.info(s"Launching CherryGardener in realm \"$realm\": v. $propVersionStr, built at $propBuildTimestampStr")
+      context.log.info(
+        s"Launching CherryGardener in realm \"$realm\" for Chain ID $chainId: " +
+        s"v. $propVersionStr, built at $propBuildTimestampStr")
 
       context.system.receptionist ! Receptionist.Register(Ping.makeServiceKey(realm), context.self)
       context.system.receptionist ! Receptionist.Register(GetCurrencies.makeServiceKey(realm), context.self)
@@ -54,6 +57,7 @@ class CherryGardener(
               new PingRequestResultPayload(
                 CherryGardenComponent.buildSystemSyncStatus(ethereumNodeStatus, progress),
                 realm,
+                chainId,
                 propVersionStr,
                 propBuildTimestampStr
               )
@@ -119,12 +123,14 @@ object CherryGardener extends LazyLogging {
 
   /** Main constructor. */
   @inline final def apply(realm: String,
+                          chainId: Long,
                           dbStorage: DBStorageAPI,
                           cherryPickerOpt: Option[ActorRef[CherryPickerRequest]],
                           cherryPlanterOpt: Option[ActorRef[CherryPlanterRequest]]
                          ): Behavior[CherryGardenerRequest] =
     new CherryGardener(
       realm,
+      chainId,
       dbStorage,
       state = CherryGardener.State()
     ).launch()

@@ -69,4 +69,13 @@ public class UniCherryGardenError extends Error {
                     badValue));
         }
     }
+
+    /**
+     * Some network problem occurred during the operation.
+     */
+    public static class NetworkError extends UniCherryGardenError {
+        public NetworkError(String message) {
+            super(message);
+        }
+    }
 }
