@@ -9,6 +9,7 @@ import com.myodov.unicherrygarden.connector.api.Observer;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryGardenResponseWithPayload;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
+import com.myodov.unicherrygarden.messages.cherrygardener.Ping;
 import com.myodov.unicherrygarden.messages.cherrypicker.*;
 import org.apache.commons.cli.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -80,6 +81,9 @@ public class CherryGardenerCLI {
             addOption(new Option(
                     "h", "help", false,
                     "Display help."));
+            addOption(new Option(
+                    null, "ping", false,
+                    "Ping the CherryGardener."));
             addOption(Option.builder("gc")
                     .longOpt("get-currencies")
                     .hasArgs()
@@ -675,6 +679,8 @@ public class CherryGardenerCLI {
             final CommandLine line = parser.parse(options, args);
             if (line.hasOption("help")) {
                 printHelp();
+            } else if (line.hasOption("ping")) {
+                handlePing(line);
             } else if (line.hasOption("get-currencies")) {
                 handleGetCurrencies(line);
             } else if (line.hasOption("get-tracked-addresses")) {
@@ -693,6 +699,46 @@ public class CherryGardenerCLI {
         } catch (ParseException exp) {
             System.err.printf("ERROR: Parsing failed. Reason: %s\n", exp.getMessage());
             printHelp();
+        }
+    }
+
+    private static void handlePing(@NonNull CommandLine line) {
+        assert line != null;
+
+        final Logger logger = LoggerFactory.getLogger(CherryGardenerCLI.class);
+
+        printTitle(System.err);
+
+        // Mandatory
+        final @NonNull Optional<ConnectionSettings> connectionSettingsOpt = parseConnectionSettings(line);
+
+        if (connectionSettingsOpt.isPresent()) {
+            System.err.println("Pinging...");
+            final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
+
+            // ChainID is non-essential for Ping, so let it be just the default.
+            try (final ClientConnector connector = connectionSettings.createClientConnector()) {
+
+                final Ping.Response response = connector.ping();
+
+                if (response.isFailure()) {
+                    System.err.printf("ERROR: Could not ping UniCherryGarden! Problem: %s\n",
+                            response.getFailure());
+                } else {
+                    final Ping.PingRequestResultPayload payload = response.getPayloadAsSuccessful();
+
+                    System.err.printf("" +
+                                    "Ping completed!\n" +
+                                    "UniCherryGarden running in realm \"%s\"; \n" +
+                                    "  build v.%s at %s.\n",
+                            payload.realm,
+                            payload.version, payload.buildTs);
+                    printSystemStatus(payload.systemStatus);
+                }
+            } catch (Exception e) {
+                System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
+                logger.error("Execution error", e);
+            }
         }
     }
 

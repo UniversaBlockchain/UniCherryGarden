@@ -67,7 +67,7 @@ public class GetBalances {
         }
 
         @Override
-        public String toString() {
+        public final String toString() {
             return String.format("%s(%s, %s, %s)",
                     getClass().getSimpleName(),
                     confirmations, address, filterCurrencyKeys);
@@ -124,7 +124,7 @@ public class GetBalances {
             }
 
             @Override
-            public String toString() {
+            public final String toString() {
                 return String.format("%s(%s: amount=%s at block %s)",
                         getClass().getSimpleName(),
                         currency, amount, blockNumber);
@@ -154,7 +154,7 @@ public class GetBalances {
         }
 
         @Override
-        public String toString() {
+        public final String toString() {
             return String.format("%s(%s, %s)",
                     getClass().getSimpleName(),
                     systemStatus, balances);

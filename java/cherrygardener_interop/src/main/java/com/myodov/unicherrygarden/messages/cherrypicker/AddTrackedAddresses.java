@@ -70,7 +70,7 @@ public class AddTrackedAddresses {
         }
 
         @Override
-        public String toString() {
+        public final String toString() {
             return String.format("%s.%s(%s, %s)",
                     getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
                     address, comment);
@@ -110,7 +110,7 @@ public class AddTrackedAddresses {
         }
 
         @Override
-        public String toString() {
+        public final String toString() {
             return String.format("%s(%s, %s, %s)",
                     getClass().getSimpleName(),
                     trackingMode, addressesToTrack, fromBlock);
@@ -142,6 +142,13 @@ public class AddTrackedAddresses {
             assert addresses.stream().allMatch(addr -> (addr != null) && EthUtils.Addresses.isValidLowercasedAddress(addr))
                     : addresses;
             this.addresses = Collections.unmodifiableSet(addresses);
+        }
+
+        @Override
+        public final String toString() {
+            return String.format("%s(%s)",
+                    getClass().getSimpleName(),
+                    addresses);
         }
     }
 

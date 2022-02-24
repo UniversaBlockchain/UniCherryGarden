@@ -38,10 +38,10 @@ object CherryGardenComponent extends LazyLogging {
                                         ): T =
     (ethereumStatusOpt, syncProgressOpt) match {
       case (None, _) | (_, None) =>
-        logger.warn(s"Received $messageName request while not ready; respond with error")
+        logger.warn(s"Received $messageName request while not ready; respond with error: $resultOnError")
         resultOnError
       case (Some(ethereumNodeStatus), Some(progress)) if progress.blocks.to.isEmpty =>
-        logger.warn(s"Received $messageName request but blocks are not ready; respond with error")
+        logger.warn(s"Received $messageName request but blocks are not ready; respond with error: $resultOnError")
         resultOnError
       case (Some(ethereumNodeStatus), Some(progress)) =>
         // Real use-case handling

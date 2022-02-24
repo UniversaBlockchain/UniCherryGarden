@@ -4,29 +4,31 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.japi.function.Function;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommandImpl;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
-import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers;
+import com.myodov.unicherrygarden.messages.cherrygardener.Ping;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.Set;
 
+
 /**
- * Akka API command to “get transfers”.
+ * Akka API command to “ping” the cluster.
  */
-public class GetTransfersCommand
-        extends ConnectorActorCommandImpl<GetTransfers.@NonNull GTRequestPayload, GetTransfersCommand.Result, GetTransfers.Response> {
+public class PingCommand
+        extends ConnectorActorCommandImpl<Ping.@NonNull PRequestPayload, PingCommand.Result, Ping.Response> {
     /**
      * During the command execution, we ask the Receptionist
      * about available service providing this command; this class is the response adapted
      * to handle the command.
      */
     public static class ReceptionistResponse
-            extends ReceptionistResponseImpl<GetTransfers.@NonNull GTRequestPayload, Result> {
+            extends ReceptionistResponseImpl<Ping.@NonNull PRequestPayload, Result> {
+        @JsonCreator
         public ReceptionistResponse(Receptionist.@NonNull Listing listing,
-                                    GetTransfers.@NonNull GTRequestPayload payload,
+                                    Ping.@NonNull PRequestPayload payload,
                                     @NonNull ActorRef<Result> replyTo) {
             super(listing, payload, replyTo);
         }
@@ -34,8 +36,8 @@ public class GetTransfersCommand
 
 
     public static class InternalResult
-            extends InternalResultImpl<GetTransfers.@NonNull Response, Result> {
-        public InternalResult(GetTransfers.@NonNull Response response,
+            extends InternalResultImpl<Ping.@NonNull Response, Result> {
+        public InternalResult(Ping.@NonNull Response response,
                               @NonNull ActorRef<Result> replyTo) {
             super(response, replyTo);
         }
@@ -43,8 +45,8 @@ public class GetTransfersCommand
 
 
     public static class Result
-            extends ConnectorActorCommandImpl.ResultImpl<GetTransfers.@NonNull Response> {
-        public Result(GetTransfers.@NonNull Response response) {
+            extends ConnectorActorCommandImpl.ResultImpl<Ping.@NonNull Response> {
+        public Result(Ping.@NonNull Response response) {
             super(response);
         }
     }
@@ -53,8 +55,8 @@ public class GetTransfersCommand
     /**
      * Constructor.
      */
-    public GetTransfersCommand(@NonNull ActorRef<Result> replyTo,
-                               GetTransfers.@NonNull GTRequestPayload payload) {
+    public PingCommand(@NonNull ActorRef<Result> replyTo,
+                       Ping.@NonNull PRequestPayload payload) {
         super(replyTo, payload);
     }
 
@@ -65,22 +67,15 @@ public class GetTransfersCommand
      * that turns the incoming `replyTo` ActorRef into a Command handling this `replyTo` with the payload
      * containing the incoming arguments.
      */
-    public static Function<ActorRef<Result>, ConnectorActorMessage> createReplier(
-            int confirmations,
-            @Nullable String sender,
-            @Nullable String receiver,
-            @Nullable Integer startBlock,
-            @Nullable Integer endBlock,
-            @Nullable Set<String> filterCurrencyKeys,
-            boolean getTransfers) {
-        return (replyTo) -> new GetTransfersCommand(
+    public static Function<ActorRef<Result>, ConnectorActorMessage> createReplier() {
+        return (replyTo) -> new PingCommand(
                 replyTo,
-                new GetTransfers.GTRequestPayload(confirmations, sender, receiver, startBlock, endBlock, filterCurrencyKeys, getTransfers));
+                new Ping.PRequestPayload());
     }
 
     @NonNull
     @Override
-    public final ServiceKey<GetTransfers.Request> makeServiceKey(@NonNull String realm) {
-        return GetTransfers.makeServiceKey(realm);
+    public final ServiceKey<Ping.Request> makeServiceKey(@NonNull String realm) {
+        return Ping.makeServiceKey(realm);
     }
 }

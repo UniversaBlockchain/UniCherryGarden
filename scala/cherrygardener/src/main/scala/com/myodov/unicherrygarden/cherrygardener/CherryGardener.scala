@@ -1,14 +1,15 @@
 package com.myodov.unicherrygarden.cherrygardener
 
 import akka.actor.typed.receptionist.Receptionist
-import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.api.DBStorageAPI
 import com.myodov.unicherrygarden.api.GardenMessages.EthereumNodeStatus
 import com.myodov.unicherrygarden.api.types.SystemStatus
 import com.myodov.unicherrygarden.api.types.dlt.Currency
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies.CurrenciesRequestResultPayload
-import com.myodov.unicherrygarden.messages.cherrygardener.{GetCurrencies, PingCherryGardener}
+import com.myodov.unicherrygarden.messages.cherrygardener.Ping.PingRequestResultPayload
+import com.myodov.unicherrygarden.messages.cherrygardener.{GetCurrencies, Ping}
 import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryPickerRequest, CherryPlanterRequest}
 import com.myodov.unicherrygarden.{CherryGardenComponent, CherryPicker, UnicherrygardenVersion}
 import com.typesafe.scalalogging.LazyLogging
@@ -24,35 +25,57 @@ class CherryGardener(
                       dbStorage: DBStorageAPI,
                       // CherryGardener-specific
                       protected[this] val state: CherryGardener.State = CherryGardener.State()
-                    ) extends CherryGardenComponent(realm, dbStorage) with LazyLogging {
+                    ) extends CherryGardenComponent(realm, dbStorage) {
 
-  import CherryPicker._
+  import CherryPicker.{logger => _, _}
 
   private def launch(): Behavior[CherryGardenerRequest] = {
-    Behaviors.setup { context =>
-      logger.info(s"Launching CherryGardener in realm \"$realm\": v. $propVersionStr, built at $propBuildTimestampStr")
+    Behaviors.setup { context: ActorContext[CherryGardenerRequest] =>
+      context.log.info(s"Launching CherryGardener in realm \"$realm\": v. $propVersionStr, built at $propBuildTimestampStr")
 
-      context.system.receptionist ! Receptionist.Register(PingCherryGardener.makeServiceKey(realm), context.self)
+      context.system.receptionist ! Receptionist.Register(Ping.makeServiceKey(realm), context.self)
       context.system.receptionist ! Receptionist.Register(GetCurrencies.makeServiceKey(realm), context.self)
 
       Behaviors.receiveMessage {
         case message@EthereumNodeStatus(status) =>
-          logger.debug(s"CherryGardener received Ethereum node syncing status: $message")
+          context.log.debug(s"CherryGardener received Ethereum node syncing status: $message")
           state.ethereumStatus = Some(status)
           Behaviors.same
+        case message: Ping.Request => {
+          context.log.debug(s"Received Ping($message) command")
+
+          val response = new Ping.Response(
+            CherryGardenComponent.whenStateAndProgressAllow[PingRequestResultPayload](
+              state.ethereumStatus,
+              dbStorage.progress.getProgress,
+              "Ping",
+              null
+            ) { (ethereumNodeStatus, progress) =>
+              new PingRequestResultPayload(
+                CherryGardenComponent.buildSystemSyncStatus(ethereumNodeStatus, progress),
+                realm,
+                propVersionStr,
+                propBuildTimestampStr
+              )
+            }
+          )
+          context.log.debug(s"Replying with $response")
+          message.replyTo ! response
+          Behaviors.same
+        }
         case message: GetCurrencies.Request => {
-          logger.debug(s"Received GetCurrencies($message) command")
+          context.log.debug(s"Received GetCurrencies($message) command")
 
           val response = getCurrencies(
             Option(message.payload.filterCurrencyKeys).map(_.asScala.toSet),
             message.payload.getVerified,
             message.payload.getUnverified)
-          logger.debug(s"Replying with $response")
+          context.log.debug(s"Replying with $response")
           message.replyTo ! response
           Behaviors.same
         }
         case unknown => {
-          logger.error(s"Unknown CherryGardener message: $unknown")
+          context.log.error(s"Unknown CherryGardener message: $unknown")
           Behaviors.same
         }
       }

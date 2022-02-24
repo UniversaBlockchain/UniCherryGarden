@@ -13,7 +13,7 @@ import akka.japi.function.Function;
 import com.myodov.unicherrygarden.connector.impl.ClientConnectorImpl;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.*;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
-import com.myodov.unicherrygarden.messages.cherrygardener.PingCherryGardener;
+import com.myodov.unicherrygarden.messages.cherrygardener.Ping;
 import com.myodov.unicherrygarden.messages.cherrypicker.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
@@ -54,7 +54,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
     @NonNull
     private final ServiceKey<GetCurrencies.Request> skGetCurrencies;
     @NonNull
-    private final ServiceKey<PingCherryGardener.Request> skPingCherryGardener;
+    private final ServiceKey<Ping.Request> skPing;
     // CherryPicker
     @NonNull
     private final ServiceKey<AddTrackedAddresses.Request> skAddTrackedAddresses;
@@ -87,7 +87,7 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         // Let's cache the service keys:
         // 1. CherryGardener service keys
         skGetCurrencies = GetCurrencies.makeServiceKey(realm);
-        skPingCherryGardener = PingCherryGardener.makeServiceKey(realm);
+        skPing = Ping.makeServiceKey(realm);
         // 2. CherryPicker service keys
         skAddTrackedAddresses = AddTrackedAddresses.makeServiceKey(realm);
         skGetBalances = GetBalances.makeServiceKey(realm);
@@ -96,11 +96,11 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         skGetTransfers = GetTransfers.makeServiceKey(realm);
 
         // On launch, we want to subscribe to Receptionist’s changes in CherryGardener (clustered) availability.
-        // Each time when CherryGardener availability (by PingCherryGardener.SERVICE_KEY) changes,
+        // Each time when CherryGardener availability (by Ping.SERVICE_KEY) changes,
         // the message ReceptionistSubscribeCherryGardenResponse is emitted.
         context.getSystem().receptionist().tell(
                 Receptionist.subscribe(
-                        skPingCherryGardener,
+                        skPing,
                         receptionistSubscribeCherryGardenResponseAdapter
                 )
         );
@@ -116,7 +116,15 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         return newReceiveBuilder()
                 .onMessage(ReceptionistSubscribeCherryGardenResponse.class, this::onReceptionistSubscribeCherryGardenResponse)
                 .onMessage(WaitForBootCommand.class, this::onWaitForBoot)
-                // GetCurrenciesCommand
+                // Ping
+                .onMessage(PingCommand.class, this::onPing)
+                .onMessage(PingCommand.ReceptionistResponse.class, this::onPingReceptionistResponse)
+                .onMessage(
+                        PingCommand.InternalResult.class,
+                        makeMsgResultHandler(
+                                Ping.Response.class,
+                                PingCommand.Result.class))
+                // GetCurrencies
                 .onMessage(GetCurrenciesCommand.class, this::onGetCurrencies)
                 .onMessage(GetCurrenciesCommand.ReceptionistResponse.class, this::onGetCurrenciesReceptionistResponse)
                 .onMessage(
@@ -176,8 +184,8 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
             @NonNull ReceptionistSubscribeCherryGardenResponse msg) {
         assert msg != null;
 
-        final Set<ActorRef<PingCherryGardener.Request>> reachableInstances =
-                msg.listing.getServiceInstances(skPingCherryGardener);
+        final Set<ActorRef<Ping.Request>> reachableInstances =
+                msg.listing.getServiceInstances(skPing);
         logger.debug("Received onReceptionistSubscribeCherryGardenResponse with reachable instances {}",
                 reachableInstances);
 
@@ -214,7 +222,40 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
     }
 
     /**
-     * When someone (like ClientConnector) has sent the {@link GetCurrenciesCommand} message to the actor system
+     * When someone (like ClientConnector) has sent the {@link PingCommand} message to the actor system
+     * and expect it to be processed and return the result.
+     */
+    private Behavior<ConnectorActorMessage> onPing(@NonNull PingCommand msg) {
+        assert msg != null;
+        logger.debug("onPing: Received message {}", msg);
+
+        final ActorContext<ConnectorActorMessage> context = getContext();
+        final ActorRef<Receptionist.Command> receptionist = context.getSystem().receptionist();
+        final ServiceKey<Ping.Request> serviceKey = skPing;
+
+        context.ask(
+                Receptionist.Listing.class,
+                receptionist,
+                DEFAULT_CALL_TIMEOUT,
+                // Construct the outgoing message
+                (ActorRef<Receptionist.Listing> replyTo) ->
+                        Receptionist.find(serviceKey, replyTo),
+                // Adapt the incoming response into `PingCommand.ReceptionistResponse`
+                (Receptionist.Listing listing, Throwable throwable) -> {
+                    logger.debug("Returned listing response: {}", listing);
+                    final Set<ActorRef<Ping.Request>> serviceInstances =
+                            listing.getServiceInstances(serviceKey);
+                    logger.debug("Service instances for {}: {}", listing.getKey(), serviceInstances);
+                    return new PingCommand.ReceptionistResponse(
+                            listing, msg.payload, msg.replyTo);
+                }
+        );
+
+        return this;
+    }
+
+    /**
+     * When someone (like ClientConnector) has sent the {@link PingCommand} message to the actor system
      * and expect it to be processed and return the result.
      */
     private Behavior<ConnectorActorMessage> onGetCurrencies(@NonNull GetCurrenciesCommand msg) {
@@ -406,6 +447,38 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         return this;
     }
 
+
+    private Behavior<ConnectorActorMessage> onPingReceptionistResponse(
+            PingCommand.@NonNull ReceptionistResponse msg) {
+        assert msg != null;
+
+        final ActorContext<ConnectorActorMessage> context = getContext();
+
+        final Set<ActorRef<Ping.Request>> reachableInstances =
+                msg.listing.getServiceInstances(skPing);
+
+        logger.debug("Received onPingReceptionistResponse with reachable instances {}",
+                reachableInstances);
+        if (!reachableInstances.isEmpty()) {
+            // There may be multiple instance, but we take only one, on random
+            final ActorRef<Ping.Request> gclProvider = reachableInstances.iterator().next();
+
+            context.ask(
+                    Ping.Response.class,
+                    gclProvider,
+                    DEFAULT_CALL_TIMEOUT,
+                    // Construct the outgoing message
+                    (ActorRef<Ping.Response> replyTo) ->
+                            new Ping.Request(replyTo, msg.payload),
+                    // Adapt the incoming response
+                    (Ping.Response response, Throwable throwable) -> {
+                        logger.debug("Returned Ping response: {}", response);
+                        return new PingCommand.InternalResult(response, msg.replyTo);
+                    }
+            );
+        }
+        return this;
+    }
 
     private Behavior<ConnectorActorMessage> onGetCurrenciesReceptionistResponse(
             GetCurrenciesCommand.@NonNull ReceptionistResponse msg) {

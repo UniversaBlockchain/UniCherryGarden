@@ -24,7 +24,7 @@ public class GetBalancesCommand
      * to handle the command.
      */
     public static class ReceptionistResponse
-            extends ConnectorActorCommandImpl.ReceptionistResponseImpl<GetBalances.@NonNull GBRequestPayload, Result> {
+            extends ReceptionistResponseImpl<GetBalances.@NonNull GBRequestPayload, Result> {
         public ReceptionistResponse(Receptionist.@NonNull Listing listing,
                                     GetBalances.@NonNull GBRequestPayload payload,
                                     @NonNull ActorRef<Result> replyTo) {
@@ -34,7 +34,7 @@ public class GetBalancesCommand
 
 
     public static class InternalResult
-            extends ConnectorActorCommandImpl.InternalResultImpl<GetBalances.@NonNull Response, Result> {
+            extends InternalResultImpl<GetBalances.@NonNull Response, Result> {
         public InternalResult(GetBalances.@NonNull Response response,
                               @NonNull ActorRef<Result> replyTo) {
             super(response, replyTo);

@@ -3,7 +3,6 @@ package com.myodov.unicherrygarden.messages.cherrygardener;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.myodov.unicherrygarden.api.types.SystemStatus;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
@@ -31,11 +30,6 @@ public class GetCurrencies {
     }
 
 
-    // We want to be able to serialize this, no matter the class is empty.
-    // Otherwise Jackson fails with a error like
-    // "No serializer found for class ... and no properties discovered to create BeanSerializer
-    // (to avoid exception, disable SerializationFeature.FAIL_ON_EMPTY_BEANS)".
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     public static final class GCRequestPayload
             implements RequestPayload {
 
@@ -67,7 +61,7 @@ public class GetCurrencies {
         }
 
         @Override
-        public String toString() {
+        public final String toString() {
             return String.format("%s(%s, %s, %s)",
                     getClass().getSimpleName(),
                     filterCurrencyKeys, getVerified, getUnverified);
@@ -108,7 +102,7 @@ public class GetCurrencies {
         }
 
         @Override
-        public String toString() {
+        public final String toString() {
             return String.format("%s(%s, %s)",
                     getClass().getSimpleName(),
                     systemStatus, currencies);
@@ -117,7 +111,6 @@ public class GetCurrencies {
 
     public static class CurrenciesRequestResultFailure extends SpecificFailurePayload {
     }
-
 
     public static final class Response
             extends CherryGardenResponseWithPayload<CurrenciesRequestResultPayload, CurrenciesRequestResultFailure> {

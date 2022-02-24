@@ -58,8 +58,9 @@ public class SystemStatusTest {
                         "SystemStatus.Blockchain(" +
                         "Blockchain.SyncingData(14205560, 14205570), " +
                         "Blockchain.LatestBlock(14205590, 30029295, 3063440, 93747001362, 2022-02-14T17:24:32Z), " +
-                        "1000000000" +
-                        "))",
+                        "1000000000), " +
+                        "SystemStatus.CherryPicker(19, 15, 13)" +
+                        ")",
                 systemStatus.toString()
         );
     }

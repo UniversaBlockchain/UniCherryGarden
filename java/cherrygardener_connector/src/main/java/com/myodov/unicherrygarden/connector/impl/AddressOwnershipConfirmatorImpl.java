@@ -19,7 +19,7 @@ import java.security.SignatureException;
 /**
  * The default implementation for {@link AddressOwnershipConfirmator} interface.
  */
-public class AddressOwnershipConfirmatorImpl implements AddressOwnershipConfirmator {
+public final class AddressOwnershipConfirmatorImpl implements AddressOwnershipConfirmator {
     final Logger logger = LoggerFactory.getLogger(AddressOwnershipConfirmatorImpl.class);
 
     private static Sign.SignatureData getSignatureData(@NonNull String sig) {

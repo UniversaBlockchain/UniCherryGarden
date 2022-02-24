@@ -53,7 +53,7 @@ public class GetTrackedAddresses {
         }
 
         @Override
-        public String toString() {
+        public final String toString() {
             return String.format("%s(%s, %s, %s)",
                     getClass().getSimpleName(),
                     filterAddresses, includeComment, includeSyncedFrom);
@@ -97,7 +97,7 @@ public class GetTrackedAddresses {
             }
 
             @Override
-            public String toString() {
+            public final String toString() {
                 return String.format("%s.%s(%s, %s, %s)",
                         getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
                         address, comment, syncedFrom);
@@ -145,7 +145,7 @@ public class GetTrackedAddresses {
         }
 
         @Override
-        public String toString() {
+        public final String toString() {
             return String.format("%s(%s, incComm=%s, incSyncFrom=%s)",
                     getClass().getSimpleName(),
                     addresses, includeComment, includeSyncedFrom);

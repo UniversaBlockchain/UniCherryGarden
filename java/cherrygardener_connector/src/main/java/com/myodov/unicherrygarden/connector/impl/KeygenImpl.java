@@ -15,7 +15,7 @@ import java.security.NoSuchProviderException;
 /**
  * The default implementation for {@link Keygen} interface.
  */
-public class KeygenImpl implements Keygen {
+public final class KeygenImpl implements Keygen {
     @NonNull
     @Override
     public final PrivateKey generatePrivateKey() {

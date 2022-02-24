@@ -14,8 +14,10 @@ import com.myodov.unicherrygarden.connector.api.*;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActor;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.GetCurrenciesCommand;
+import com.myodov.unicherrygarden.connector.impl.actors.messages.PingCommand;
 import com.myodov.unicherrygarden.connector.impl.actors.messages.WaitForBootCommand;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
+import com.myodov.unicherrygarden.messages.cherrygardener.Ping;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -39,7 +41,7 @@ import java.util.stream.Collectors;
  * @implSpec The default implementation is the primary API for CherryGardener calls;
  * and by default, it uses {@link ConnectorActor} as the primary
  */
-public class ClientConnectorImpl implements ClientConnector {
+public final class ClientConnectorImpl implements ClientConnector {
     @NonNull
     protected static final AddressOwnershipConfirmator confirmator = new AddressOwnershipConfirmatorImpl();
     @NonNull
@@ -290,7 +292,27 @@ public class ClientConnectorImpl implements ClientConnector {
     // Methods that return the actual business logic data.
     //
 
-    //    IllegalArgumentException
+    @Override
+    public Ping.@NonNull Response ping() {
+        if (offlineMode) {
+            return Ping.Response.fromCommonFailure(FailurePayload.NOT_AVAILABLE_IN_OFFLINE_MODE);
+        } else {
+            final CompletionStage<PingCommand.Result> stage =
+                    AskPattern.ask(
+                            actorSystem,
+                            PingCommand.createReplier(),
+                            ConnectorActor.DEFAULT_CALL_TIMEOUT,
+                            actorSystem.scheduler());
+
+            try {
+                return stage.toCompletableFuture().join().response;
+            } catch (CancellationException | CompletionException exc) {
+                logger.error("Could not complete PingCommand command", exc);
+                return Ping.Response.fromCommonFailure(FailurePayload.CANCELLATION_COMPLETION_FAILURE);
+            }
+        }
+    }
+
     @Override
     public GetCurrencies.@NonNull Response getCurrencies(
             @Nullable Set<String> filterCurrencyKeys,

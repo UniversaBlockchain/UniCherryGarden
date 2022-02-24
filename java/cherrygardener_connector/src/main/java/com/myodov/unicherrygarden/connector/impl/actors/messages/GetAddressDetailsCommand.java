@@ -20,7 +20,7 @@ public class GetAddressDetailsCommand
      * to handle the command.
      */
     public static class ReceptionistResponse
-            extends ConnectorActorCommandImpl.ReceptionistResponseImpl<GetAddressDetails.@NonNull GADRequestPayload, Result> {
+            extends ReceptionistResponseImpl<GetAddressDetails.@NonNull GADRequestPayload, Result> {
         public ReceptionistResponse(Receptionist.@NonNull Listing listing,
                                     GetAddressDetails.@NonNull GADRequestPayload payload,
                                     @NonNull ActorRef<Result> replyTo) {
@@ -30,7 +30,7 @@ public class GetAddressDetailsCommand
 
 
     public static class InternalResult
-            extends ConnectorActorCommandImpl.InternalResultImpl<GetAddressDetails.@NonNull Response, Result> {
+            extends InternalResultImpl<GetAddressDetails.@NonNull Response, Result> {
         public InternalResult(GetAddressDetails.@NonNull Response response,
                               @NonNull ActorRef<Result> replyTo) {
             super(response, replyTo);

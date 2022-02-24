@@ -16,10 +16,6 @@ import java.util.Set;
 
 /**
  * Akka API command to “get currencies” (which are supported by the system).
- * <p>
- * ReqPayload=`GetCurrencies.@NonNull GCRequestPayload`
- * Res=`GetCurrencies.Result`
- * Resp=`GetCurrencies.Response`
  */
 public class GetCurrenciesCommand
         extends ConnectorActorCommandImpl<GetCurrencies.@NonNull GCRequestPayload, GetCurrenciesCommand.Result, GetCurrencies.Response> {
@@ -27,13 +23,9 @@ public class GetCurrenciesCommand
      * During the command execution, we ask the Receptionist
      * about available service providing this command; this class is the response adapted
      * to handle the command.
-     * <p>
-     * NOTE:
-     * ReqPayload=`GetCurrencies.@NonNull GCRequestPayload`
-     * Res=`Result`
      */
     public static class ReceptionistResponse
-            extends ConnectorActorCommandImpl.ReceptionistResponseImpl<GetCurrencies.@NonNull GCRequestPayload, Result> {
+            extends ReceptionistResponseImpl<GetCurrencies.@NonNull GCRequestPayload, Result> {
         @JsonCreator
         public ReceptionistResponse(Receptionist.@NonNull Listing listing,
                                     GetCurrencies.@NonNull GCRequestPayload payload,
@@ -43,12 +35,8 @@ public class GetCurrenciesCommand
     }
 
 
-    /**
-     * Resp=`GetCurrencies.@NonNull Response`
-     * Res=`Result`
-     */
     public static class InternalResult
-            extends ConnectorActorCommandImpl.InternalResultImpl<GetCurrencies.@NonNull Response, Result> {
+            extends InternalResultImpl<GetCurrencies.@NonNull Response, Result> {
         public InternalResult(GetCurrencies.@NonNull Response response,
                               @NonNull ActorRef<Result> replyTo) {
             super(response, replyTo);
@@ -56,9 +44,6 @@ public class GetCurrenciesCommand
     }
 
 
-    /**
-     * Resp=`GetCurrencies.@NonNull Response`
-     */
     public static class Result
             extends ConnectorActorCommandImpl.ResultImpl<GetCurrencies.@NonNull Response> {
         public Result(GetCurrencies.@NonNull Response response) {

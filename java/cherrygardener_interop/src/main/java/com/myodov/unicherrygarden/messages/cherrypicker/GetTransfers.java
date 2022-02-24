@@ -79,7 +79,7 @@ public class GetTransfers {
         }
 
         @Override
-        public String toString() {
+        public final String toString() {
             return String.format("%s(%s, %s, %s, %s, %s, %s, %s)",
                     getClass().getSimpleName(),
                     confirmations, sender, receiver, startBlock, endBlock, filterCurrencyKeys, includeBalances);
@@ -179,7 +179,7 @@ public class GetTransfers {
         }
 
         @Override
-        public String toString() {
+        public final String toString() {
             return String.format("%s(%s, %s, %s)",
                     getClass().getSimpleName(),
                     systemStatus, transfers, balances);

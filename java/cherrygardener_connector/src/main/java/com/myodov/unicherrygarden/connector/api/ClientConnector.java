@@ -2,6 +2,7 @@ package com.myodov.unicherrygarden.connector.api;
 
 import com.myodov.unicherrygarden.connector.impl.Validators;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
+import com.myodov.unicherrygarden.messages.cherrygardener.Ping;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -13,6 +14,12 @@ import java.util.Set;
  * to UniCherryGarden that access all the functionality and features of Ethereum blockchain.
  */
 public interface ClientConnector extends AutoCloseable {
+    /**
+     * Ping the system.
+     */
+    @SuppressWarnings("unused")
+    Ping.@NonNull Response ping();
+
     /**
      * Get all the supported currencies, or some subset of them.
      * Depending on the settings, may include verified, unverified currencies, or both;

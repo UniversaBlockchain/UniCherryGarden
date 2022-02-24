@@ -26,7 +26,7 @@ import java.math.BigInteger;
 /**
  * The default implementation for {@link Sender} interface.
  */
-public class SenderImpl implements Sender {
+public final class SenderImpl implements Sender {
     final Logger logger = LoggerFactory.getLogger(SenderImpl.class);
 
     static class ByteBasedOutgoingTransactionImpl implements PreparedOutgoingTransaction {
@@ -269,7 +269,7 @@ public class SenderImpl implements Sender {
 
     @Override
     @NonNull
-    public final UnsignedOutgoingTransaction buildTransaction(
+    public UnsignedOutgoingTransaction buildTransaction(
             @NonNull String receiver,
             @NonNull String currencyKey,
             @NonNull BigDecimal amount) {
@@ -314,7 +314,7 @@ public class SenderImpl implements Sender {
 
     @Override
     @NonNull
-    public final SignedOutgoingTransaction signTransaction(
+    public SignedOutgoingTransaction signTransaction(
             @NonNull UnsignedOutgoingTransaction tx,
             byte[] privateKey) {
         return tx.sign(new PrivateKeyImpl(privateKey));

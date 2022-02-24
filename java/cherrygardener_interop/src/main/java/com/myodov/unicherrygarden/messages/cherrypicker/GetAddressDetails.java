@@ -42,7 +42,7 @@ public class GetAddressDetails {
         }
 
         @Override
-        public String toString() {
+        public final String toString() {
             return String.format("%s(%s)",
                     getClass().getSimpleName(),
                     address);
@@ -115,7 +115,7 @@ public class GetAddressDetails {
                 }
 
                 @Override
-                public String toString() {
+                public final String toString() {
                     return String.format("%s.%s.%s(%s, %s, %s)",
                             getClass().getEnclosingClass().getEnclosingClass().getSimpleName(), getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
                             nextInBlockchain, nextInPendingPool, nextPlanting);
@@ -172,7 +172,7 @@ public class GetAddressDetails {
             }
 
             @Override
-            public String toString() {
+            public final String toString() {
                 return String.format("%s.%s(%s, %s, %s)",
                         getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
                         address, trackedAddressInformation, nonces);
@@ -195,7 +195,7 @@ public class GetAddressDetails {
         }
 
         @Override
-        public String toString() {
+        public final String toString() {
             return String.format("%s(%s)",
                     getClass().getSimpleName(),
                     details);

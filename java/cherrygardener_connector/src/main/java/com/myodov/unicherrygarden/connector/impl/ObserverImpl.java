@@ -24,7 +24,7 @@ import java.util.concurrent.CompletionStage;
 /**
  * The default implementation for {@link Observer} interface.
  */
-public class ObserverImpl implements Observer {
+public final class ObserverImpl implements Observer {
     final Logger logger = LoggerFactory.getLogger(ObserverImpl.class);
 
     @NonNull
