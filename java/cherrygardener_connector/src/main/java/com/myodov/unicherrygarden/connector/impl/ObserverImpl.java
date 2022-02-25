@@ -107,17 +107,6 @@ public final class ObserverImpl implements Observer {
         }
     }
 
-    /**
-     * Get the information about a single address tracked by UniCherryGarden.
-     *
-     * @param address the regular Ethereum address string, lowercased.
-     *                For this address the details will be returned.
-     */
-    @Override
-    public GetTrackedAddresses.@NonNull Response getTrackedAddress(@NonNull String address) {
-        return null;
-    }
-
     @Override
     public GetAddressDetails.@NonNull Response getAddressDetails(@NonNull String address) {
         final CompletionStage<GetAddressDetailsCommand.Result> stage =
