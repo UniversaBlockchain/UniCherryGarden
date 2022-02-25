@@ -340,10 +340,8 @@ public class CherryGardenerCLI {
             // Fallback to the option in conf file
             return chainIdConf;
         } else {
-            // Final fallback to the default: 1 (Mainnet)
-            final long defaultValue = ChainIdLong.MAINNET;
-            System.err.printf("Note: --chain-id value is missing, using %s as default.\n", defaultValue);
-            return Optional.of(defaultValue);
+            System.err.printf("Note: explicit --chain-id value is missing, will have to autodetect it if it's needed.");
+            return Optional.empty();
         }
     }
 
@@ -379,13 +377,12 @@ public class CherryGardenerCLI {
 
         if (listenPortOpt.isPresent() &&
                 connectUrlsOpt.isPresent() &&
-                realmOpt.isPresent() &&
-                chainIdOpt.isPresent()) {
+                realmOpt.isPresent()) {
             return Optional.of(new ConnectionSettings(
                     listenPortOpt.get(),
                     connectUrlsOpt.get(),
                     realmOpt.get(),
-                    chainIdOpt.get()
+                    chainIdOpt.orElse(null)
             ));
         } else {
             return Optional.empty();
@@ -716,8 +713,9 @@ public class CherryGardenerCLI {
             System.err.println("Pinging...");
             final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
 
-            // ChainID is non-essential for Ping, so let it be just the default.
-            try (final ClientConnector connector = connectionSettings.createClientConnector()) {
+            // ChainID is non-essential for Ping;
+            // mandatory confirmations are irrelevant too.
+            try (final ClientConnector connector = connectionSettings.createClientConnector(0)) {
 
                 final Ping.Response response = connector.ping();
 
@@ -763,8 +761,9 @@ public class CherryGardenerCLI {
             }
             final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
 
-            // ChainID is non-essential for GetCurrencies, so let it be just the default.
-            try (final ClientConnector connector = connectionSettings.createClientConnector()) {
+            // ChainID is non-essential for GetCurrencies;
+            // mandatory confirmations are irrelevant too.
+            try (final ClientConnector connector = connectionSettings.createClientConnector(0)) {
                 do {
                     final Instant startTime = Instant.now();
                     final GetCurrencies.Response response = connector.getCurrencies(
@@ -821,8 +820,9 @@ public class CherryGardenerCLI {
             System.err.println("Getting tracked addresses...");
             final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
 
-            // ChainID is non-essential for GetTrackedAddresses, so let it be just the default.
-            try (final ClientConnector connector = connectionSettings.createClientConnector()) {
+            // ChainID is non-essential for GetTrackedAddresses;
+            // mandatory confirmations are irrelevant too.
+            try (final ClientConnector connector = connectionSettings.createClientConnector(0)) {
                 do {
                     final Instant startTime = Instant.now();
 
@@ -868,7 +868,7 @@ public class CherryGardenerCLI {
             System.err.printf("Getting details about address %s...\n", address);
 
             // ChainID is non-essential for GetAddressDetails, so let it be just the default.
-            try (final ClientConnector connector = connectionSettings.createClientConnector()) {
+            try (final ClientConnector connector = connectionSettings.createClientConnector(0)) {
                 final Observer observer = connector.getObserver();
 
                 final GetAddressDetails.Response response = observer.getAddressDetails(address);
@@ -937,7 +937,7 @@ public class CherryGardenerCLI {
             );
 
             // ChainID is non-essential for AddTrackingAddress, so let it be just the default.
-            try (final ClientConnector connector = connectionSettings.createClientConnector()) {
+            try (final ClientConnector connector = connectionSettings.createClientConnector(0)) {
                 final Observer observer = connector.getObserver();
 
                 final AddTrackedAddresses.Response response = observer.startTrackingAddress(
