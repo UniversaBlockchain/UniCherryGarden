@@ -12,8 +12,8 @@ import com.typesafe.scalalogging.LazyLogging
  *
  * Hash is selected for referential integrity only.
  */
-case class BlockMinimalView(number: Long,
-                            hash: String)
+final case class BlockMinimalView(number: Long,
+                                  hash: String)
 
 object BlockMinimal {
   /** A shorthand method to select the minimal block data to query. */
@@ -25,11 +25,11 @@ object BlockMinimal {
 
 /** Get the useful information about the most recent Block.
  */
-case class BlockLatestView(number: Long,
-                           gasLimit: Long,
-                           gasUsed: Long,
-                           baseFeePerGas: Option[BigInt],
-                           timestamp: Long) {
+final case class BlockLatestView(number: Long,
+                                 gasLimit: Long,
+                                 gasUsed: Long,
+                                 baseFeePerGas: Option[BigInt],
+                                 timestamp: Long) {
   lazy val asLatestBlock: SystemStatus.Blockchain.LatestBlock =
     SystemStatus.Blockchain.LatestBlock.create(
       Math.toIntExact(number),
@@ -54,12 +54,12 @@ object BlockLatest {
 
 
 /** For a Block, select most of the information needed for our processing. */
-case class BlockBasicView(number: Long,
-                          hash: String,
-                          parent: Option[BlockMinimalView],
-                          timestamp: Long,
-                          transactions: Option[List[TransactionFullView]]
-                         ) {
+final case class BlockBasicView(number: Long,
+                                hash: String,
+                                parent: Option[BlockMinimalView],
+                                timestamp: Long,
+                                transactions: Option[List[TransactionFullView]]
+                               ) {
   lazy val asMinimalBlock: BlockMinimalView = BlockMinimalView(number, hash)
 }
 

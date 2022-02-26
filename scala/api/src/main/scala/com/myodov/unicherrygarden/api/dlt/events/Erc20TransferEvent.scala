@@ -5,4 +5,4 @@ package com.myodov.unicherrygarden.api.dlt.events
  *
  * @see [[https://eips.ethereum.org/EIPS/eip-20 ERC20/EIP-20 specification]].
  */
-case class Erc20TransferEvent(from: String, to: String, value: BigInt)
+final case class Erc20TransferEvent(from: String, to: String, value: BigInt)

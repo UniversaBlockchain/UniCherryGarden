@@ -3,6 +3,7 @@ package com.myodov.unicherrygarden.messages.cherrypicker;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.ResponsePayload;
@@ -15,10 +16,7 @@ import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 
 public class AddTrackedAddresses {
@@ -128,31 +126,62 @@ public class AddTrackedAddresses {
         }
     }
 
-    public static class AddTrackedAddressesRequestResultPayload extends SuccessPayload {
+    public static final class AddTrackedAddressesRequestResultPayload extends SuccessPayload {
         /**
-         * The Ethereum addresses (lowercased) that were successfully added to tracking.
+         * The Ethereum addresses (lowercased) that were just successfully added to tracking
+         * (selected for “Cherry-Picking”).
          * Stored as {@link Set} so they are definitely unique/non-repeating.
          */
         @NonNull
-        public final Set<String> addresses;
+        public final Set<String> justAdded;
+
+        /**
+         * The Ethereum addresses (lowercased) that haven’t been added
+         * (selected for “Cherry-Picking”) because they were present already.
+         * Stored as {@link Set} so they are definitely unique/non-repeating.
+         */
+        @NonNull
+        public final Set<String> presentAlready;
 
         @JsonCreator
-        public AddTrackedAddressesRequestResultPayload(@NonNull Set<String> addresses) {
-            assert addresses != null;
-            assert addresses.stream().allMatch(addr -> (addr != null) && EthUtils.Addresses.isValidLowercasedAddress(addr))
-                    : addresses;
-            this.addresses = Collections.unmodifiableSet(addresses);
+        public AddTrackedAddressesRequestResultPayload(@NonNull Set<String> justAdded,
+                                                       @NonNull Set<String> presentAlready) {
+            assert justAdded != null;
+            assert justAdded.stream().allMatch(addr -> (addr != null) && EthUtils.Addresses.isValidLowercasedAddress(addr))
+                    : justAdded;
+
+            assert presentAlready != null;
+            assert presentAlready.stream().allMatch(addr -> (addr != null) && EthUtils.Addresses.isValidLowercasedAddress(addr))
+                    : presentAlready;
+
+            this.justAdded = Collections.unmodifiableSet(justAdded);
+            this.presentAlready = Collections.unmodifiableSet(presentAlready);
         }
 
         @Override
-        public final String toString() {
-            return String.format("%s(%s)",
+        public String toString() {
+            return String.format("%s(%s, %s)",
                     getClass().getSimpleName(),
-                    addresses);
+                    justAdded, presentAlready);
+        }
+
+        /**
+         * The Ethereum addresses (lowercased) that are definitely present in CherryPicker
+         * after this operation.
+         *
+         * Is the <code>OR</code> operation between {@link #justAdded} and {@link #presentAlready}.
+         */
+        @JsonIgnore
+        @SuppressWarnings("unused")
+        public Set<String> getEnsured() {
+            final HashSet<String> result = new HashSet<>(justAdded);
+            result.addAll(presentAlready);
+
+            return Collections.unmodifiableSet(result);
         }
     }
 
-    public static class AddTrackedAddressesRequestResultFailure extends SpecificFailurePayload {
+    public static final class AddTrackedAddressesRequestResultFailure extends SpecificFailurePayload {
     }
 
     public static final class Response

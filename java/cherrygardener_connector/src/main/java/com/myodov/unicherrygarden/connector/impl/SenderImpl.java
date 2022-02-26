@@ -228,8 +228,6 @@ public final class SenderImpl implements Sender {
         }
     }
 
-    private static final Config config = ConfigFactory.load();
-
     protected final long chainId;
 
     /**

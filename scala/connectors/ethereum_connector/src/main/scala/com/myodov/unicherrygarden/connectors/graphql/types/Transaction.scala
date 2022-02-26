@@ -4,7 +4,7 @@ import caliban.Geth.{Bytes32, Transaction}
 import caliban.client.SelectionBuilder
 
 /** For a Transaction, get just its hash (for referential integrity only). */
-case class TransactionMinimalView(hash: String)
+final case class TransactionMinimalView(hash: String)
 
 object TransactionMinimal {
   /** A shorthand method to select the minimal block data to query. */
@@ -14,24 +14,24 @@ object TransactionMinimal {
 }
 
 /** For a Transaction, get most of its data. */
-case class TransactionFullView(
-                                // *** Before-mined transaction ***
-                                hash: Bytes32,
-                                from: AccountMinimalView,
-                                to: Option[AccountMinimalView],
-                                gas: Long,
-                                gasPrice: BigInt,
-                                nonce: Long,
-                                value: BigInt,
-                                // *** Mined transaction ***
-                                status: Option[Long],
-                                block: Option[BlockMinimalView],
-                                index: Option[Int],
-                                gasUsed: Option[Long],
-                                effectiveGasPrice: Option[BigInt],
-                                cumulativeGasUsed: Option[Long],
-                                logs: Option[List[LogFullView]]
-                              ) {
+final case class TransactionFullView(
+                                      // *** Before-mined transaction ***
+                                      hash: Bytes32,
+                                      from: AccountMinimalView,
+                                      to: Option[AccountMinimalView],
+                                      gas: Long,
+                                      gasPrice: BigInt,
+                                      nonce: Long,
+                                      value: BigInt,
+                                      // *** Mined transaction ***
+                                      status: Option[Long],
+                                      block: Option[BlockMinimalView],
+                                      index: Option[Int],
+                                      gasUsed: Option[Long],
+                                      effectiveGasPrice: Option[BigInt],
+                                      cumulativeGasUsed: Option[Long],
+                                      logs: Option[List[LogFullView]]
+                                    ) {
   lazy val asMinimalTransaction: TransactionMinimalView = TransactionMinimalView(hash)
 }
 

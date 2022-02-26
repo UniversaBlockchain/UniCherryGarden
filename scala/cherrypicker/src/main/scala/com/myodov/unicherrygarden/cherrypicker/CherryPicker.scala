@@ -181,8 +181,10 @@ private class CherryPicker(
     DB localTx { implicit session =>
       // Here goes the list of all added addresses
       // (as Options; with `None` instead of any address that failed to add)
+      val toAdd = payload.addressesToTrack.asScala.toList
+
       val addressesMaybeAdded: List[Option[String]] = (
-        for (addr: AddTrackedAddresses.AddressDataToTrack <- payload.addressesToTrack.asScala.toList)
+        for (addr: AddTrackedAddresses.AddressDataToTrack <- toAdd)
           yield {
             if (dbStorage.trackedAddresses.addTrackedAddress(
               addr.address,
@@ -202,10 +204,18 @@ private class CherryPicker(
 
       // Flatten it to just the added elements
       val addressesActuallyAdded: Set[String] = addressesMaybeAdded.flatten.toSet
-      logger.debug(s"Actually added the following addresses to watch: $addressesActuallyAdded")
+
+      val addressesToAdd = toAdd.map(_.address).toSet
+      val addressesAlreadyPresent = addressesToAdd diff addressesActuallyAdded
+
+      logger.debug(s"Actually added the following addresses to watch: $addressesActuallyAdded; " +
+        s"present already were $addressesAlreadyPresent")
 
       new AddTrackedAddresses.Response(
-        new AddTrackedAddressesRequestResultPayload(addressesActuallyAdded.asJava)
+        new AddTrackedAddressesRequestResultPayload(
+          addressesActuallyAdded.asJava,
+          addressesAlreadyPresent.asJava
+        )
       )
     }
 

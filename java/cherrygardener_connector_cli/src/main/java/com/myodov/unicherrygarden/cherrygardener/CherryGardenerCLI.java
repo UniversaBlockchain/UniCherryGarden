@@ -16,7 +16,6 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.web3j.tx.ChainIdLong;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -950,11 +949,16 @@ public class CherryGardenerCLI {
                             address, response.getFailure());
                 } else {
                     final AddTrackedAddresses.AddTrackedAddressesRequestResultPayload payload = response.getPayloadAsSuccessful();
-                    final Set<String> addedAddresses = payload.addresses;
+                    final Set<String> addedAddresses = payload.justAdded;
+                    final Set<String> presentAddresses = payload.presentAlready;
                     if (addedAddresses.size() == 1 && addedAddresses.stream().findFirst().get().equals(address)) {
                         System.err.printf("Address %s successfully added!\n", address);
+                    } else if (presentAddresses.size() == 1 && presentAddresses.stream().findFirst().get().equals(address)) {
+                        System.err.printf("Address %s was already present!\n", address);
                     } else {
-                        System.err.printf("ERROR: Address %s failed to add!\n", address);
+                        System.err.printf("ERROR: Address %s failed to add (added %s, already present %s)!\n",
+                                address,
+                                addedAddresses, presentAddresses);
                     }
                 }
             } catch (Exception e) {
