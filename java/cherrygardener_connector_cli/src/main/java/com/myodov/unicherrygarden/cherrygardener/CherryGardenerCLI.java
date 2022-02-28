@@ -102,14 +102,17 @@ public class CherryGardenerCLI {
             addOption(new Option(
                     "gad", "get-address-details", true,
                     "Print the details about a single address, tracked or untracked."));
-            addOption(new Option(
-                    "ata", "add-tracked-address", true,
-                    "Add an Ethereum address to track.\n" +
-                            "Should be a valid Ethereum address;\n" +
+            addOption(Option.builder("ata")
+                    .longOpt("add-tracked-addresses")
+                    .hasArgs()
+                    .valueSeparator(',')
+                    .desc("Add Ethereum addresses to track.\n" +
+                            "Should be a comma-separated list of valid Ethereum addresses;\n" +
                             "e.g. \"0x884191033518be08616821d7676ca01695698451\".\n" +
                             "See also:\n" +
                             "--track-from-block (mandatory),\n" +
-                            "--comment (optional)."));
+                            "--comment (optional).")
+                    .build());
             addOption(Option.builder("gb")
                     .longOpt("get-balances")
                     .hasArgs()
@@ -179,9 +182,9 @@ public class CherryGardenerCLI {
                 "How to choose a block from which to track the address.\n" +
                         "Values (enter one of):\n" +
                         "* <BLOCK_NUMBER> – integer number of block, e.g. \"4451131\";\n" +
-                        "* LATEST_KNOWN – latest block known to Ethereum node." /* + "\n" +
+                        "* LATEST_KNOWN – latest block known to Ethereum node;\n" +
                         "* LATEST_NODE_SYNCED – latest block fully synced by Ethereum node (available to the Ethereum node);\n" +
-                        "* LATEST_CHERRYGARDEN_SYNCED – latest block fully synced by UniCherryGarden." */
+                        "* LATEST_CHERRYGARDEN_SYNCED – latest block fully synced by UniCherryGarden."
         );
         options.addOption(
                 "from", "sender", true,
@@ -339,7 +342,7 @@ public class CherryGardenerCLI {
             // Fallback to the option in conf file
             return chainIdConf;
         } else {
-            System.err.printf("Note: explicit --chain-id value is missing, will have to autodetect it if it's needed.");
+            System.err.println("Note: explicit --chain-id value is missing, will have to autodetect it if it's needed.");
             return Optional.empty();
         }
     }
@@ -394,6 +397,7 @@ public class CherryGardenerCLI {
      * printing all necessary warnings in the process.
      *
      * @param optionName the name of the option to parse.
+     * @param mandatory  whether the address is mandatory.
      * @return non-empty {@link Optional<>} with the parsed (lowercased) Ethereum address
      * if it has been properly parsed;
      * “empty” optional if parsing failed (and all required warnings were printed).
@@ -421,6 +425,9 @@ public class CherryGardenerCLI {
      * printing all necessary warnings in the process.
      *
      * @param optionName the name of the option to parse.
+     * @param mandatory  whether the option is mandatory
+     *                   (you likely want to use it together with <code>nonEmpty</code>).
+     * @param nonEmpty   whether the “empty” case (the situation if there are no addresses) is treated as failure.
      * @return non-empty {@link Optional<>} with the list of parsed (lowercased) Ethereum addresses
      * if it has been properly parsed;
      * “empty” optional if parsing failed (and all required warnings were printed).
@@ -683,8 +690,8 @@ public class CherryGardenerCLI {
                 handleGetTrackedAddresses(line);
             } else if (line.hasOption("get-address-details")) {
                 handleGetAddressDetails(line);
-            } else if (line.hasOption("add-tracked-address")) {
-                handleAddTrackedAddress(line);
+            } else if (line.hasOption("add-tracked-addresses")) {
+                handleAddTrackedAddresses(line);
             } else if (line.hasOption("get-balances")) {
                 handleGetBalances(line);
             } else if (line.hasOption("get-transfers")) {
@@ -907,7 +914,7 @@ public class CherryGardenerCLI {
         }
     }
 
-    private static void handleAddTrackedAddress(@NonNull CommandLine line) {
+    private static void handleAddTrackedAddresses(@NonNull CommandLine line) {
         assert line != null;
 
         final Logger logger = LoggerFactory.getLogger(CherryGardenerCLI.class);
@@ -915,21 +922,23 @@ public class CherryGardenerCLI {
         printTitle(System.err);
 
         final @NonNull Optional<ConnectionSettings> connectionSettingsOpt = parseConnectionSettings(line);
-        final @NonNull Optional<String> addressOpt = parseEthereumAddressOption(line, "add-tracked-address", true);
+        final @NonNull Optional<List<String>> addressesOpt = parseEthereumAddressesOption(line, "add-tracked-addresses", true, true);
         final @NonNull Optional<TrackFromBlockOption> trackFromBlockOpt = parseTrackFromBlock(line);
         final @NonNull Optional<String> commentOpt = Optional.ofNullable(line.getOptionValue("comment"));
 
         if (true &&
                 connectionSettingsOpt.isPresent() &&
-                addressOpt.isPresent() &&
+                addressesOpt.isPresent() &&
                 trackFromBlockOpt.isPresent()
         ) {
             final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
-            final @NonNull String address = addressOpt.get();
+            final @NonNull Set<String> addressesToAdd = new HashSet<String>(addressesOpt.get().size()) {{
+                addAll(addressesOpt.get());
+            }};
             final @NonNull TrackFromBlockOption trackFromBlock = trackFromBlockOpt.get();
 
-            System.err.printf("Adding tracked address %s with %s; tracking from %s, %s...\n",
-                    address,
+            System.err.printf("Adding tracked addresses %s with %s; tracking from %s, %s...\n",
+                    addressesToAdd,
                     commentOpt.isPresent() ? String.format("comment \"%s\"", commentOpt) : "no comment",
                     trackFromBlock.mode,
                     trackFromBlock.block
@@ -938,26 +947,24 @@ public class CherryGardenerCLI {
             // ChainID is non-essential for AddTrackingAddress, so let it be just the default.
             try (final ClientConnector connector = connectionSettings.createClientConnector(0)) {
                 final Observer observer = connector.getObserver();
+                assert observer != null : observer; // Cannot be null if connection options are present.
 
-                final AddTrackedAddresses.Response response = observer.startTrackingAddress(
-                        address,
+                final AddTrackedAddresses.Response response = observer.startTrackingAddresses(
+                        addressesToAdd,
                         trackFromBlock.mode,
                         trackFromBlock.block,
                         commentOpt.orElse(null));
                 if (response.isFailure()) {
-                    System.err.printf("ERROR: Could not add the tracked address %s! Problem: %s\n",
-                            address, response.getFailure());
+                    System.err.printf("ERROR: Could not add the tracked addresses %s! Problem: %s\n",
+                            addressesToAdd, response.getFailure());
                 } else {
                     final AddTrackedAddresses.AddTrackedAddressesRequestResultPayload payload = response.getPayloadAsSuccessful();
                     final Set<String> addedAddresses = payload.justAdded;
                     final Set<String> presentAddresses = payload.presentAlready;
-                    if (addedAddresses.size() == 1 && addedAddresses.stream().findFirst().get().equals(address)) {
-                        System.err.printf("Address %s successfully added!\n", address);
-                    } else if (presentAddresses.size() == 1 && presentAddresses.stream().findFirst().get().equals(address)) {
-                        System.err.printf("Address %s was already present!\n", address);
+                    if (addedAddresses.size() == 1 && addedAddresses.equals(addressesToAdd)) {
+                        System.err.printf("Addresses %s successfully added!\n", addressesToAdd);
                     } else {
-                        System.err.printf("ERROR: Address %s failed to add (added %s, already present %s)!\n",
-                                address,
+                        System.err.printf("Addresses %s were added; addresses %s were already present!\n",
                                 addedAddresses, presentAddresses);
                     }
                 }
@@ -966,6 +973,7 @@ public class CherryGardenerCLI {
                 logger.error("Execution error", e);
             }
         }
+
     }
 
     private static void handleGetBalances(@NonNull CommandLine line) {

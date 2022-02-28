@@ -5,6 +5,7 @@ import com.myodov.unicherrygarden.ethereum.EthUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.math.BigInteger;
+import java.util.Collection;
 
 /**
  * A convenient set of functions to validate various data and inputs.
@@ -26,13 +27,28 @@ public class Validators {
     /**
      * Ensure that some argument refers to a valid lowercased Ethereum address.
      *
-     * @throws RuntimeException if <code>data</code> is not a valid lowercased Ethereum address;
+     * @throws RuntimeException if <code>data</code> is not a valid lowercased Ethereum address.
      */
     public static void requireValidLowercasedEthereumAddress(@NonNull String argname, @NonNull String address) {
         assert argname != null : argname;
         assert address != null : address;
         if (!EthUtils.Addresses.isValidLowercasedAddress(address)) {
             throw new UniCherryGardenError.NotALowercasedEthereumAddressError(address);
+        }
+    }
+
+    /**
+     * Ensure that some argument refers to a collection of valid lowercased Ethereum addresses.
+     *
+     * @throws RuntimeException if <code>data</code> is not a strictly a valid collection of valid lowercased Ethereum addresses.
+     */
+    public static void requireValidLowercasedEthereumAddress(@NonNull String argname, @NonNull Collection<String> addresses) {
+        assert argname != null : argname;
+        assert addresses != null : addresses;
+        for (final String address : addresses) {
+            if (!EthUtils.Addresses.isValidLowercasedAddress(address)) {
+                throw new UniCherryGardenError.NotALowercasedEthereumAddressError(address);
+            }
         }
     }
 

@@ -16,10 +16,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
 
 /**
  * The default implementation for {@link Observer} interface.
@@ -45,13 +47,12 @@ public final class ObserverImpl implements Observer {
     }
 
     @Override
-    public AddTrackedAddresses.@NonNull Response startTrackingAddress(
-            @NonNull String address,
+    public AddTrackedAddresses.@NonNull Response startTrackingAddresses(
+            @NonNull Collection<String> addresses,
             AddTrackedAddresses.@NonNull StartTrackingAddressMode mode,
             @Nullable Integer blockNumber,
             @Nullable String comment) {
-        assert address != null : address;
-        Validators.requireValidLowercasedEthereumAddress("address", address);
+        Validators.requireValidLowercasedEthereumAddress("addresses", addresses);
         if ((mode == AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK) != (blockNumber != null)) {
             throw new UniCherryGardenError.ArgumentError(String.format(
                     "Tracking mode (%s) should be FROM_BLOCK if and only if blockNumber (%s) is not null!",
@@ -63,8 +64,12 @@ public final class ObserverImpl implements Observer {
                         actorSystem,
                         AddTrackedAddressesCommand.createReplier(
                                 mode,
-                                new ArrayList<AddTrackedAddresses.AddressDataToTrack>() {{
-                                    add(new AddTrackedAddresses.AddressDataToTrack(address, comment));
+                                new ArrayList<AddTrackedAddresses.AddressDataToTrack>(addresses.size()) {{
+                                    addAll(
+                                            addresses
+                                                    .stream()
+                                                    .map(address -> new AddTrackedAddresses.AddressDataToTrack(address, comment))
+                                                    .collect(Collectors.toList()));
                                 }},
                                 blockNumber
                         ),

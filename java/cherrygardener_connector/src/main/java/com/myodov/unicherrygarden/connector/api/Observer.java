@@ -4,6 +4,8 @@ import com.myodov.unicherrygarden.messages.cherrypicker.*;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -11,6 +13,25 @@ import java.util.Set;
  * The client connector part that observes the Ethereum ETH/ERC20 payments.
  */
 public interface Observer {
+
+    /**
+     * Start tracking an Ethereum address, to be overridden in any implementations.
+     * Call the {@link #startTrackingAddressFromBlock(String, int, String)}
+     * or {@link #startTrackingAddress(String, AddTrackedAddresses.StartTrackingAddressMode, String)} for your purposes.
+     *
+     * @param addresses   Ethereum addresses to track; should be lowercased.
+     * @param blockNumber the block number from which to track the address.
+     *                    Should be non-<code>null</code> if mode is <code>FROM_BLOCK</code>,
+     *                    should be <code>null</code> otherwise.
+     * @param comment     (Optional) comment to the tracked address; may freely be <code>null</code>
+     *                    (which is different from <code>""</code>).
+     */
+    @SuppressWarnings("unused")
+    AddTrackedAddresses.@NonNull Response startTrackingAddresses(
+            @NonNull Collection<String> addresses,
+            AddTrackedAddresses.@NonNull StartTrackingAddressMode mode,
+            @Nullable Integer blockNumber,
+            @Nullable String comment);
 
     /**
      * Start tracking an Ethereum address, to be overridden in any implementations.
@@ -25,11 +46,20 @@ public interface Observer {
      *                    (which is different from <code>""</code>).
      */
     @SuppressWarnings("unused")
-    AddTrackedAddresses.@NonNull Response startTrackingAddress(
+    default AddTrackedAddresses.@NonNull Response startTrackingAddress(
             @NonNull String address,
             AddTrackedAddresses.@NonNull StartTrackingAddressMode mode,
             @Nullable Integer blockNumber,
-            @Nullable String comment);
+            @Nullable String comment) {
+        return startTrackingAddresses(
+                new ArrayList<String>(1) {{
+                    add(address);
+                }},
+                mode,
+                blockNumber,
+                comment
+        );
+    }
 
     /**
      * Start tracking an Ethereum address from a specific block number.
