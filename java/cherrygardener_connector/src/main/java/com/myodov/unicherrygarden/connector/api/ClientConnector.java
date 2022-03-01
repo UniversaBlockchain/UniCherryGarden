@@ -65,7 +65,7 @@ public interface ClientConnector extends AutoCloseable {
             @NonNull String currencyKey,
             boolean getVerified,
             boolean getUnverified) {
-        Validators.requireValidCurrencyKey("currencyKey", currencyKey);
+        Validators.requireValidCurrencyKey(currencyKey);
         return getCurrencies(
                 new HashSet<String>(1) {{
                     add(currencyKey);

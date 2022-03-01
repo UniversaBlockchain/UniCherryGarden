@@ -16,34 +16,33 @@ public class Validators {
      *
      * @throws RuntimeException if <code>data</code> is not a valid Ethereum address;
      */
-    public static void requireValidEthereumAddress(@NonNull String argname, @NonNull String address) {
-        assert argname != null : argname;
+    public static void requireValidEthereumAddress(@NonNull String address) {
         assert address != null : address;
         if (!EthUtils.Addresses.isValidAddress(address)) {
             throw new UniCherryGardenError.NotAnEthereumAddressError(address);
         }
     }
 
+
     /**
      * Ensure that some argument refers to a valid lowercased Ethereum address.
      *
      * @throws RuntimeException if <code>data</code> is not a valid lowercased Ethereum address.
      */
-    public static void requireValidLowercasedEthereumAddress(@NonNull String argname, @NonNull String address) {
-        assert argname != null : argname;
+    public static void requireValidLowercasedEthereumAddresses(@NonNull String address) {
         assert address != null : address;
         if (!EthUtils.Addresses.isValidLowercasedAddress(address)) {
             throw new UniCherryGardenError.NotALowercasedEthereumAddressError(address);
         }
     }
 
+
     /**
      * Ensure that some argument refers to a collection of valid lowercased Ethereum addresses.
      *
      * @throws RuntimeException if <code>data</code> is not a strictly a valid collection of valid lowercased Ethereum addresses.
      */
-    public static void requireValidLowercasedEthereumAddress(@NonNull String argname, @NonNull Collection<String> addresses) {
-        assert argname != null : argname;
+    public static void requireValidLowercasedEthereumAddresses(@NonNull Collection<String> addresses) {
         assert addresses != null : addresses;
         for (final String address : addresses) {
             if (!EthUtils.Addresses.isValidLowercasedAddress(address)) {
@@ -52,16 +51,20 @@ public class Validators {
         }
     }
 
+    public static boolean isValidCurrencyKey(@NonNull String currencyKey) {
+        assert currencyKey != null : currencyKey;
+        return currencyKey.isEmpty() || EthUtils.Addresses.isValidLowercasedAddress(currencyKey);
+    }
+
     /**
      * Ensure that some argument refers to a valid Currency Code
      * (either empty string for ETH/ETC base currency, or Ethereum address).
      *
      * @throws RuntimeException if <code>data</code> is not a valid Currency Code.
      */
-    public static void requireValidCurrencyKey(@NonNull String argname, @NonNull String currencyKey) {
-        assert argname != null : argname;
+    public static void requireValidCurrencyKey(@NonNull String currencyKey) {
         assert currencyKey != null : currencyKey;
-        if (!currencyKey.isEmpty() && !EthUtils.Addresses.isValidLowercasedAddress(currencyKey)) {
+        if (!isValidCurrencyKey(currencyKey)) {
             throw new UniCherryGardenError.NotACurrencyKey(currencyKey);
         }
     }
@@ -71,8 +74,7 @@ public class Validators {
      *
      * @throws RuntimeException if <code>data</code> is not a valid block number;
      */
-    public static void requireValidBlockNumber(@NonNull String argname, int blockNumber) {
-        assert argname != null : argname;
+    public static void requireValidBlockNumber(int blockNumber) {
         if (blockNumber < 0) {
             throw new UniCherryGardenError.NotAnBlockNumber(BigInteger.valueOf(blockNumber));
         }
@@ -91,8 +93,7 @@ public class Validators {
      *
      * @throws RuntimeException if <code>data</code> is not a valid block number;
      */
-    public static void requireValidNonce(@NonNull String argname, @NonNull BigInteger nonce) {
-        assert argname != null : argname;
+    public static void requireValidNonce(@NonNull BigInteger nonce) {
         assert nonce != null : nonce;
         if (!(nonce.compareTo(BigInteger.ZERO) >= 0 && nonce.compareTo(MAX_NONCE) <= 0)) {
             throw new UniCherryGardenError.NotAnBlockNumber(nonce);

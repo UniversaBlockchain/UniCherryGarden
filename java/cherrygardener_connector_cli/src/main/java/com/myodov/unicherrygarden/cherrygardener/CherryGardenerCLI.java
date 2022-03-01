@@ -6,6 +6,7 @@ import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.api.types.responseresult.ResponseWithPayload;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.connector.api.Observer;
+import com.myodov.unicherrygarden.connector.impl.Validators;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryGardenResponseWithPayload;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
@@ -20,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -63,7 +65,7 @@ public class CherryGardenerCLI {
                 null, "chain-id", true,
                 "The integer Chain ID of Ethereum network;\n" +
                         "needed to create the compatible transactions for the EIP-155 compatibility.\n" +
-                        "Default: 1 (Ethereum Mainnet).");
+                        "Default: autodetect (when applicable) from the connected CherryGarden.");
         options.addOption(
                 null, "confirmations", true,
                 "The number of confirmations (Ethereum blocks already mined after an event);\n" +
@@ -138,19 +140,20 @@ public class CherryGardenerCLI {
                             "the --confirmations value permit);\n" +
                             "--with-balances (optional; default: omitted)."
             ));
-//            addOption(new Option(
-//                    "cot", "create-outgoing-transfer", true,
-//                    "Build a transaction for outgoing transfer of some currency\n" +
-//                            "from some address to some other address.\n" +
-//                            "The transaction is just built (locally, in memory) but not sent out to the blockchain\n" +
-//                            "and not stored anywhere.\n" +
-//                            "See also:\n" +
-//                            "--sender (mandatory),\n" +
-//                            "--recipient (mandatory),\n" +
-//                            "--chain-id (optional, default: 1 for Ethereum Mainnet),\n" +
-//                            "--currency-key (mandatory),\n" +
-//                            "--amount (mandatory),\n" +
-//                            "--comment (optional)."));
+            addOption(new Option(
+                    "cot", "create-outgoing-transfer", true,
+                    "Build a transaction for outgoing transfer of some currency\n" +
+                            "from some address to some other address.\n" +
+                            "The mandatory argument must contain the amount to transfer (>= 0, may contain decimal point).\n" +
+                            "The transaction is just built (locally, in memory) but not sent out to the blockchain\n" +
+                            "and not stored anywhere.\n" +
+                            "See also:\n" +
+                            "--sender (mandatory),\n" +
+                            "--receiver (mandatory),\n" +
+                            "--chain-id (optional, default: 1 for Ethereum Mainnet),\n" +
+                            "--currency-key (mandatory)\n"
+                    //"--comment (optional)."
+            ));
 //            addOption(new Option(
 //                    "st", "sign-transaction", true,
 //                    "Build a transaction for outgoing transfer of some currency\n" +
@@ -392,6 +395,59 @@ public class CherryGardenerCLI {
     }
 
     /**
+     * Parse some single-argument command line option (printing warnings in the process).
+     *
+     * @param optionName the name of the option to parse.
+     * @param mandatory  whether the address is mandatory.
+     */
+    @NonNull
+    private static Optional<String> preParseArg(@NonNull CommandLine line,
+                                                @NonNull String optionName,
+                                                boolean mandatory) {
+        @Nullable final String candidate = line.getOptionValue(optionName);
+        if (candidate == null) {
+            if (mandatory) {
+                System.err.printf("WARNING: --%s option should be present!\n", optionName);
+            }
+            return Optional.empty();
+        } else {
+            return Optional.of(candidate);
+        }
+    }
+
+    /**
+     * Parse some multi-argument command line option (printing warnings in the process).
+     *
+     * @param optionName the name of the option to parse.
+     * @param mandatory  whether the option is mandatory
+     *                   (you likely want to use it together with <code>nonEmpty</code>).
+     * @param nonEmpty   whether the “empty” case (the situation if there are no addresses) is treated as failure.
+     */
+    @NonNull
+    private static Optional<List<String>> preParseArgs(@NonNull CommandLine line,
+                                                       @NonNull String optionName,
+                                                       boolean mandatory,
+                                                       boolean nonEmpty) {
+        @Nullable final String[] candidatesArr = line.getOptionValues(optionName);
+
+        if (candidatesArr == null) {
+            if (mandatory) {
+                System.err.printf("WARNING: --%s option should be present!\n", optionName);
+            }
+            return Optional.empty();
+        } else {
+            final List<String> candidates = Collections.unmodifiableList(Arrays.asList(candidatesArr));
+            if (nonEmpty && candidates.isEmpty()) {
+                System.err.printf("WARNING: --%s option should contain a valid non-empty comma-separated list!\n",
+                        optionName);
+                return Optional.empty();
+            } else {
+                return Optional.of(candidates);
+            }
+        }
+    }
+
+    /**
      * Parse an option (with the name of the option passed as the "optionName" argument)
      * that should contain an Ethereum address,
      * printing all necessary warnings in the process.
@@ -405,18 +461,14 @@ public class CherryGardenerCLI {
     private static Optional<String> parseEthereumAddressOption(@NonNull CommandLine line,
                                                                @NonNull String optionName,
                                                                boolean mandatory) {
-        @Nullable final String address = line.getOptionValue(optionName);
-        if (address == null) {
-            if (mandatory) {
-                System.err.printf("WARNING: --%s option should be present!\n", optionName);
+        return preParseArg(line, optionName, mandatory).flatMap((final String address) -> {
+            if (!EthUtils.Addresses.isValidAddress(address)) {
+                System.err.printf("WARNING: --%s option should contain a valid Ethereum address!\n", optionName);
+                return Optional.empty();
+            } else {
+                return Optional.of(address.toLowerCase());
             }
-            return Optional.empty();
-        } else if (!EthUtils.Addresses.isValidAddress(address)) {
-            System.err.printf("WARNING: --%s option should contain a valid Ethereum address!\n", optionName);
-            return Optional.empty();
-        } else {
-            return Optional.of(address.toLowerCase());
-        }
+        });
     }
 
     /**
@@ -436,20 +488,8 @@ public class CherryGardenerCLI {
                                                                        @NonNull String optionName,
                                                                        boolean mandatory,
                                                                        boolean nonEmpty) {
-        @Nullable final String[] addressesArr = line.getOptionValues(optionName);
-
-        if (addressesArr == null) {
-            if (mandatory) {
-                System.err.printf("WARNING: --%s option should be present!\n", optionName);
-            }
-            return Optional.empty();
-        } else {
-            final List<String> addresses = Collections.unmodifiableList(Arrays.asList(addressesArr));
-            if (nonEmpty && addresses.isEmpty()) {
-                System.err.printf("WARNING: --%s option should contain a valid non-empty comma-separated list of Ethereum addresses!\n",
-                        optionName);
-                return Optional.empty();
-            } else if (!addresses.stream().allMatch(EthUtils.Addresses::isValidAddress)) {
+        return preParseArgs(line, optionName, mandatory, nonEmpty).flatMap((final List<String> addresses) -> {
+            if (!addresses.stream().allMatch(EthUtils.Addresses::isValidAddress)) {
                 System.err.printf("WARNING: --%s option should contain a valid comma-separated list of Ethereum addresses!\n",
                         optionName);
                 return Optional.empty();
@@ -460,7 +500,7 @@ public class CherryGardenerCLI {
                                 .collect(Collectors.toList())
                 );
             }
-        }
+        });
     }
 
     /**
@@ -476,13 +516,7 @@ public class CherryGardenerCLI {
     private static Optional<Integer> parseBlockNumberOption(@NonNull CommandLine line,
                                                             @NonNull String optionName,
                                                             boolean mandatory) {
-        @Nullable final String blockNumberCandidate = line.getOptionValue(optionName);
-        if (blockNumberCandidate == null) {
-            if (mandatory) {
-                System.err.printf("WARNING: --%s option should be present!\n", optionName);
-            }
-            return Optional.empty();
-        } else {
+        return preParseArg(line, optionName, mandatory).flatMap((final String blockNumberCandidate) -> {
             final int intValue;
             try {
                 intValue = Integer.parseInt(blockNumberCandidate);
@@ -497,7 +531,7 @@ public class CherryGardenerCLI {
             } else {
                 return Optional.of(intValue);
             }
-        }
+        });
     }
 
 
@@ -552,11 +586,7 @@ public class CherryGardenerCLI {
     private static Optional<TrackFromBlockOption> parseTrackFromBlock(@NonNull CommandLine line) {
         assert line != null;
 
-        final @Nullable String trackFromBlockStr = line.getOptionValue("track-from-block");
-        if (trackFromBlockStr == null) {
-            System.err.println("WARNING: --track-from-block option is mandatory!");
-            return Optional.empty();
-        } else {
+        return preParseArg(line, "track-from-block", true).flatMap((final String trackFromBlockStr) -> {
             switch (trackFromBlockStr.toUpperCase()) {
                 case "LATEST_KNOWN":
                     return Optional.of(TrackFromBlockOption.fromAutoDetectedBlock(
@@ -579,7 +609,7 @@ public class CherryGardenerCLI {
                         return Optional.empty();
                     }
             }
-        }
+        });
     }
 
     /**
@@ -601,25 +631,21 @@ public class CherryGardenerCLI {
         assert line != null;
         assert (_default == null) || (_default >= 0) : _default;
 
-        final @Nullable String confirmationsStr = line.getOptionValue("confirmations");
-        if (confirmationsStr == null) {
-            // There is no "--confirmations" option; should we use a default or fail?
-            if (_default == null) {
-                System.err.println("WARNING: --confirmations option is mandatory!");
-                return Optional.empty();
-            } else {
-                return Optional.of(_default);
-            }
-        } else { // confirmationsStr != null
-            try {
-                final int confirmationsCandidate = Integer.parseUnsignedInt(confirmationsStr);
-                assert confirmationsCandidate >= 0 : confirmationsCandidate;
-                return Optional.of(confirmationsCandidate);
-            } catch (NumberFormatException e) {
-                System.err.println("" +
-                        "WARNING: --confirmations option should contain non-negative number of confirmations!");
-                return Optional.empty();
-            }
+        final Optional<String> confirmationsOpt = preParseArg(line, "confirmations", _default == null);
+        if (!confirmationsOpt.isPresent() && _default != null) {
+            return Optional.of(_default);
+        } else {
+            return confirmationsOpt.flatMap((final String confirmationsStr) -> {
+                try {
+                    final int confirmationsCandidate = Integer.parseUnsignedInt(confirmationsStr);
+                    assert confirmationsCandidate >= 0 : confirmationsCandidate;
+                    return Optional.of(confirmationsCandidate);
+                } catch (NumberFormatException e) {
+                    System.err.println("" +
+                            "WARNING: --confirmations option should contain non-negative number of confirmations!");
+                    return Optional.empty();
+                }
+            });
         }
     }
 
@@ -638,6 +664,29 @@ public class CherryGardenerCLI {
 
     /**
      * Parse an option (with the name of the option passed as the "optionName" argument)
+     * that should contain a valid currency key,
+     * printing all necessary warnings in the process.
+     *
+     * @param optionName the name of the option to parse.
+     * @return non-empty {@link Optional<>} with the parsed currency key,
+     * if it has been properly parsed;
+     * “empty” optional if parsing failed (and all required warnings were printed).
+     */
+    private static Optional<String> parseCurrencyKeyOption(@NonNull CommandLine line,
+                                                           @NonNull String optionName,
+                                                           boolean mandatory) {
+        return preParseArg(line, optionName, mandatory).flatMap((final String ckCandidate) -> {
+            if (!Validators.isValidCurrencyKey(ckCandidate)) {
+                System.err.printf("WARNING: --%s is not a valid currency key!\n", ckCandidate);
+                return Optional.empty();
+            } else {
+                return Optional.of(ckCandidate);
+            }
+        });
+    }
+
+    /**
+     * Parse an option (with the name of the option passed as the "optionName" argument)
      * that should contain a list of currency keys,
      * printing all necessary warnings in the process.
      *
@@ -649,18 +698,10 @@ public class CherryGardenerCLI {
     private static Optional<List<String>> parseCurrencyKeysOption(@NonNull CommandLine line,
                                                                   @NonNull String optionName,
                                                                   boolean mandatory) {
-
-        final String[] optionValues = line.getOptionValues(optionName);
-        if (optionValues == null) {
-            if (mandatory) {
-                System.err.printf("WARNING: --%s option should be present!\n", optionName);
-            }
-            return Optional.empty();
-        } else {
-            final List<String> ckCandidates = Arrays.asList(optionValues);
+        return preParseArgs(line, optionName, mandatory, false).flatMap((final List<String> ckCandidates) -> {
             boolean anyBad = false;
             for (final String ckCandidate : ckCandidates) {
-                if (!ckCandidate.isEmpty() && !EthUtils.Addresses.isValidLowercasedAddress(ckCandidate)) {
+                if (!Validators.isValidCurrencyKey(ckCandidate)) {
                     anyBad = true;
                     System.err.printf("WARNING: --%s is not a valid currency key!\n", ckCandidate);
                 }
@@ -670,8 +711,34 @@ public class CherryGardenerCLI {
             } else {
                 return Optional.of(Collections.unmodifiableList(ckCandidates));
             }
-        }
+        });
     }
+
+    /**
+     * Parse an option (with the name of the option passed as the "optionName" argument)
+     * that should contain a decimal amount (probably of some currency)
+     * printing all necessary warnings in the process.
+     *
+     * @param optionName the name of the option to parse.
+     * @return non-empty {@link Optional<>} with the parsed currency key,
+     * if it has been properly parsed;
+     * “empty” optional if parsing failed (and all required warnings were printed).
+     */
+    private static Optional<BigDecimal> parseAmountOption(@NonNull CommandLine line,
+                                                          @NonNull String optionName,
+                                                          boolean mandatory) {
+        return preParseArg(line, optionName, mandatory).flatMap((final String candidate) -> {
+            final BigDecimal amount;
+            try {
+                amount = new BigDecimal(candidate);
+            } catch (NumberFormatException e) {
+                System.err.printf("WARNING: --%s is not a valid amount!\n", candidate);
+                return Optional.empty();
+            }
+            return Optional.of(amount);
+        });
+    }
+
 
     /**
      * Constructor: analyze the CLI arguments and act accordingly.
@@ -696,6 +763,8 @@ public class CherryGardenerCLI {
                 handleGetBalances(line);
             } else if (line.hasOption("get-transfers")) {
                 handleGetTransfers(line);
+            } else if (line.hasOption("create-outgoing-transfer")) {
+                handleCreateOutgoingTransfer(line);
             } else {
                 printHelp();
             }
@@ -1155,6 +1224,43 @@ public class CherryGardenerCLI {
                     logger.error("Execution error", e);
                 }
             }
+        }
+    }
+
+    private static void handleCreateOutgoingTransfer(@NonNull CommandLine line) {
+        assert line != null;
+
+        final Logger logger = LoggerFactory.getLogger(CherryGardenerCLI.class);
+
+        printTitle(System.err);
+
+        final @NonNull Optional<ConnectionSettings> connectionSettingsOpt = parseConnectionSettings(line); // Includes chainId
+        final @NonNull Optional<String> senderOpt = parseEthereumAddressOption(line, "sender", true);
+        final @NonNull Optional<String> receiverOpt = parseEthereumAddressOption(line, "receiver", true);
+        final @NonNull Optional<String> currencyKeyOpt = parseCurrencyKeyOption(line, "currency-key", true);
+        // Comment is too early; should be added at the moment of actual “planting” of the transaction.
+        //final @NonNull Optional<String> commentOpt = Optional.ofNullable(line.getOptionValue("comment"));
+
+        final @NonNull Optional<BigDecimal> amountOpt = parseAmountOption(line, "create-outgoing-transfer", true);
+
+        if (true &&
+                connectionSettingsOpt.isPresent() &&
+                senderOpt.isPresent() &&
+                receiverOpt.isPresent() &&
+                currencyKeyOpt.isPresent() &&
+                amountOpt.isPresent()
+        ) {
+            final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
+            final @NonNull String sender = senderOpt.get();
+            final @NonNull String receiver = receiverOpt.get();
+            final @NonNull String currencyKey = currencyKeyOpt.get();
+            final @NonNull BigDecimal amount = amountOpt.get();
+
+            System.err.printf("Creating outgoing transfer of %s [%s]: " +
+                            "from %s to %s\n",
+                    amount, currencyKey,
+                    sender, receiver);
+
         }
     }
 

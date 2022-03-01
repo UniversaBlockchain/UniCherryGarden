@@ -405,7 +405,7 @@ public final class ClientConnectorImpl implements ClientConnector {
             boolean getUnverified
     ) {
         if (filterCurrencyKeys != null) {
-            filterCurrencyKeys.forEach(ck -> Validators.requireValidCurrencyKey("filterCurrencyKeys item", ck));
+            filterCurrencyKeys.forEach(ck -> Validators.requireValidCurrencyKey(ck));
         }
 
         if (offlineMode) {

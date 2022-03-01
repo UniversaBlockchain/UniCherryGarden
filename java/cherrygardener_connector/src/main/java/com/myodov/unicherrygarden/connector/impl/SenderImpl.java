@@ -123,9 +123,9 @@ public final class SenderImpl implements Sender {
                 @NonNull BigDecimal maxPriorityFee,
                 @NonNull BigDecimal maxFee
         ) {
-            Validators.requireValidEthereumAddress("receiver", receiver);
+            Validators.requireValidEthereumAddress(receiver);
             assert amount != null && amount.compareTo(BigDecimal.ZERO) >= 0 : amount; // amount >= 0
-            Validators.requireValidNonce("nonce", nonce);
+            Validators.requireValidNonce(nonce);
             assert maxPriorityFee != null && maxPriorityFee.compareTo(BigDecimal.ZERO) >= 0 : maxPriorityFee; // maxPriorityFee >= 0
             assert maxFee != null && maxFee.compareTo(BigDecimal.ZERO) >= 0 : maxFee; // maxFee >= 0
 
@@ -172,9 +172,9 @@ public final class SenderImpl implements Sender {
                 long maxPriorityFeeGwei,
                 long maxFeeGwei
         ) {
-            Validators.requireValidEthereumAddress("receiver", receiver);
+            Validators.requireValidEthereumAddress(receiver);
             assert amount != null && amount.compareTo(BigDecimal.ZERO) >= 0 : amount; // amount >= 0
-            Validators.requireValidNonce("nonce", nonce);
+            Validators.requireValidNonce(nonce);
             assert maxPriorityFeeGwei >= 0 : maxPriorityFeeGwei;
             assert maxFeeGwei >= 0 : maxFeeGwei;
 
@@ -280,12 +280,12 @@ public final class SenderImpl implements Sender {
         // 2. Gas limit (hardcoded for ETH; database-stored for ERC20).
         // 3. Gas price estimator
 
-        Validators.requireValidCurrencyKey("currencyKey", currencyKey);
+        Validators.requireValidCurrencyKey(currencyKey);
         // `if amount < 0`
         if (amount.compareTo(BigDecimal.ZERO) < 0) {
             throw new UniCherryGardenError.ArgumentError(String.format("%s is not a valid amount", amount));
         }
-        Validators.requireValidEthereumAddress("receiver", receiver);
+        Validators.requireValidEthereumAddress(receiver);
 
         final UnsignedOutgoingTransaction result;
         if (currencyKey.isEmpty()) {

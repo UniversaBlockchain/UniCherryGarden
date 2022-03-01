@@ -52,7 +52,7 @@ public final class ObserverImpl implements Observer {
             AddTrackedAddresses.@NonNull StartTrackingAddressMode mode,
             @Nullable Integer blockNumber,
             @Nullable String comment) {
-        Validators.requireValidLowercasedEthereumAddress("addresses", addresses);
+        Validators.requireValidLowercasedEthereumAddresses(addresses);
         if ((mode == AddTrackedAddresses.StartTrackingAddressMode.FROM_BLOCK) != (blockNumber != null)) {
             throw new UniCherryGardenError.ArgumentError(String.format(
                     "Tracking mode (%s) should be FROM_BLOCK if and only if blockNumber (%s) is not null!",
@@ -137,8 +137,8 @@ public final class ObserverImpl implements Observer {
         assert confirmations >= 0 && confirmations + mandatoryConfirmations >= 0 :
                 String.format("%s/%s", confirmations, mandatoryConfirmations);
         assert address != null : address;
-        Validators.requireValidLowercasedEthereumAddress("address", address);
-        Validators.requireValidBlockNumber("confirmations", confirmations);
+        Validators.requireValidLowercasedEthereumAddresses(address);
+        Validators.requireValidBlockNumber(confirmations);
 
         final CompletionStage<GetBalancesCommand.Result> stage =
                 AskPattern.ask(
@@ -172,14 +172,14 @@ public final class ObserverImpl implements Observer {
         assert confirmations >= 0 && confirmations + mandatoryConfirmations >= 0 :
                 String.format("%s/%s", confirmations, mandatoryConfirmations);
 
-        if (sender != null) Validators.requireValidLowercasedEthereumAddress("sender", sender);
-        if (receiver != null) Validators.requireValidLowercasedEthereumAddress("receiver", receiver);
+        if (sender != null) Validators.requireValidLowercasedEthereumAddresses(sender);
+        if (receiver != null) Validators.requireValidLowercasedEthereumAddresses(receiver);
         if (sender == null && receiver == null) {
             throw new UniCherryGardenError.ArgumentError("At least sender or receiver must be specified!");
         }
 
-        if (startBlock != null) Validators.requireValidBlockNumber("startBlock", startBlock);
-        if (endBlock != null) Validators.requireValidBlockNumber("endBlock", endBlock);
+        if (startBlock != null) Validators.requireValidBlockNumber(startBlock);
+        if (endBlock != null) Validators.requireValidBlockNumber(endBlock);
         if (startBlock != null && endBlock != null && startBlock > endBlock) {
             throw new UniCherryGardenError.ArgumentError(String.format(
                     "If both are defined, startBlock (%d) must be <= endBlock (%d)!", startBlock, endBlock));
