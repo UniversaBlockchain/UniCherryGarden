@@ -21,6 +21,13 @@ public interface ClientConnector extends AutoCloseable {
     Ping.@NonNull Response ping();
 
     /**
+     * Get the Ethereum Network Chain ID (as per EIP-155) as used by this connector.
+     * If during creating the connector instance, the Chain ID hasn’t been provided and requested to autodiscover –
+     * this will contain the already discovered value.
+     */
+    long getChainId();
+
+    /**
      * Get all the supported currencies, or some subset of them.
      * Depending on the settings, may include verified, unverified currencies, or both;
      * also may select some currencies by their keys, or select all the currencies possible.

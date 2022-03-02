@@ -3,12 +3,11 @@ package com.myodov.unicherrygarden.connector.impl;
 import akka.actor.typed.ActorSystem;
 import com.myodov.unicherrygarden.api.types.PrivateKey;
 import com.myodov.unicherrygarden.api.types.UniCherryGardenError;
+import com.myodov.unicherrygarden.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.connector.api.Sender;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -228,57 +227,71 @@ public final class SenderImpl implements Sender {
         }
     }
 
-    protected final long chainId;
-
     /**
      * Null only if created in “offline mode”.
      */
     @Nullable
     private final ActorSystem<ConnectorActorMessage> actorSystem;
 
+    /**
+     * Null only if created in “offline mode”.
+     */
+    @Nullable
+    private final ClientConnector clientConnector;
+
+    /**
+     * Whether the sender is created in “offline mode”.
+     */
+    private final boolean offlineMode;
+
 
     /**
      * Constructor.
      *
-     * @param actorSystem Akka actor system to use; <code>null</code> if created in offline mode.
-     * @param chainId     Chain ID (EIP-155) which the sender will use to create/sign the transactions.
-     *                    Values from {@link org.web3j.tx.ChainIdLong} (or any other ones) can be used.
-     *                    If <code>null</code>, the default Chain ID configured in the library (Ethereum Mainnet)
-     *                    will be used.
+     * @param actorSystem     Akka actor system to use;
+     *                        <code>null</code> (only) if created in offline mode.
+     * @param clientConnector The instance of Client Connector used for some operations;
+     *                        <code>null</code> (only) if created in offline mode.
      * @see <a href="https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md">EIP-155</a>.
      */
     @SuppressWarnings("unused")
     public SenderImpl(@Nullable ActorSystem<ConnectorActorMessage> actorSystem,
-                      long chainId) {
-        assert chainId >= 1 || chainId == -1 : chainId;
-        this.actorSystem = actorSystem;
-        this.chainId = chainId;
+                      @Nullable ClientConnector clientConnector) {
+        assert (actorSystem == null) == (clientConnector == null) :
+                String.format("%s/%s", actorSystem, clientConnector);
 
-        logger.debug("Starting sender; will use EIP-155 Chain ID {}", this.chainId);
+        this.actorSystem = actorSystem;
+        this.clientConnector = clientConnector;
+
+        this.offlineMode = (actorSystem == null) && (clientConnector == null);
+
+        logger.debug("Starting sender; will use client connector {}", clientConnector);
     }
 
     /**
      * Simple constructor, creating the Sender in “offline mode”.
      */
-    public SenderImpl(long chainId) {
-        this(null, chainId);
+    public SenderImpl() {
+        this(null, null);
     }
 
 
     @Override
     @NonNull
-    public UnsignedOutgoingTransaction buildTransaction(
+    public UnsignedOutgoingTransaction createOutgoingTransfer(
             @NonNull String receiver,
             @NonNull String currencyKey,
-            @NonNull BigDecimal amount) {
+            @NonNull BigDecimal amount,
+            @Nullable Long forceChainId
+    ) {
         assert currencyKey != null : currencyKey;
         assert amount != null : amount;
         assert receiver != null : receiver;
-
-        // TODO:
-        // 1. Nonce calculation
-        // 2. Gas limit (hardcoded for ETH; database-stored for ERC20).
-        // 3. Gas price estimator
+        assert forceChainId == null || forceChainId == -1 || forceChainId >= 1: forceChainId;
+        // Offline mode validations
+        if (!offlineMode) {
+            assert forceChainId != null;
+        }
 
         Validators.requireValidCurrencyKey(currencyKey);
         // `if amount < 0`
@@ -286,6 +299,23 @@ public final class SenderImpl implements Sender {
             throw new UniCherryGardenError.ArgumentError(String.format("%s is not a valid amount", amount));
         }
         Validators.requireValidEthereumAddress(receiver);
+
+        // TODO:
+        // 1. Nonce calculation
+        // 2. Gas limit (hardcoded for ETH; database-stored for ERC20).
+        // 3. Gas price estimator
+
+        logger.debug("Going to create outgoing transfer of {} \"{}\" to {}",
+                amount, currencyKey, receiver);
+
+        final long chainId;
+        if (forceChainId != null) {
+            chainId = forceChainId;
+        } else {
+            chainId = clientConnector.getChainId();
+        }
+
+        logger.debug("Will use Chain ID {}", chainId);
 
         final UnsignedOutgoingTransaction result;
         if (currencyKey.isEmpty()) {
@@ -297,7 +327,7 @@ public final class SenderImpl implements Sender {
             result = UnsignedOutgoingTransactionImpl.createEtherTransaction(
                     receiver,
                     amount,
-                    chainId,
+                    forceChainId,
                     nonce,
                     maxPriorityFee,
                     maxFee

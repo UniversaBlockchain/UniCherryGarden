@@ -65,6 +65,8 @@ public final class ClientConnectorImpl implements ClientConnector {
     @NonNull
     private final String realm;
 
+    private final long chainId;
+
     /**
      * Whether the connector is launched in “offline mode”.
      */
@@ -110,7 +112,7 @@ public final class ClientConnectorImpl implements ClientConnector {
      *                               <li>250, 375, even 500 confirmations – used by most conservative crypto
      *                               exchanges.</li>
      *                               </ul>
-     * @param chainId                the Ethereum network Chain ID.
+     * @param chainIdOpt             the Ethereum network Chain ID.
      *                               Use 1 for Ethereum Mainnet, 3 for Ropsten testnet, 4 for Rinkeby testnet, and other
      *                               standard Chain IDs.
      *                               For reference, see some Chain ID values at
@@ -125,7 +127,7 @@ public final class ClientConnectorImpl implements ClientConnector {
                                @NonNull String realm,
                                int listenPort,
                                int mandatoryConfirmations,
-                               @Nullable Long chainId) throws CompletionException {
+                               @Nullable Long chainIdOpt) throws CompletionException {
         if (gardenerUrls == null) {
             throw new UniCherryGardenError.ArgumentError("gardenerUrls should not be null! " +
                     "Pass an empty list of URLs if you want an offline mode.");
@@ -134,10 +136,10 @@ public final class ClientConnectorImpl implements ClientConnector {
         if (realm == null) {
             throw new UniCherryGardenError.ArgumentError("realm should not be null!");
         }
-        if (chainId != null && chainId < 1 && chainId != -1) {
+        if (chainIdOpt != null && chainIdOpt < 1 && chainIdOpt != -1) {
             throw new UniCherryGardenError.ArgumentError("realm (if defined) should be 1 or higher, or -1 for \"None\"!");
         }
-        if (offlineMode && chainId == null) {
+        if (offlineMode && chainIdOpt == null) {
             throw new UniCherryGardenError.ArgumentError("chainId cannot be null (what means autodetect) in offline mode!");
         }
         if (!gardenerUrls.isEmpty()) {
@@ -164,12 +166,30 @@ public final class ClientConnectorImpl implements ClientConnector {
                 .parseString(String.format("akka.remote.artery.canonical.port=%d", listenPort))
                 .withFallback(ConfigFactory.load());
 
+        // If we don’t have ChainID defined, we do a ping
+
+        if (chainIdOpt == null) {
+            final Ping.Response pingResponse = ping();
+
+            if (pingResponse.isFailure()) {
+                throw new UniCherryGardenError.NetworkError(
+                        "Could not ping UniCherryGarden! Problem: " +
+                                pingResponse.getFailure());
+            } else {
+                final Ping.PingRequestResultPayload payload = pingResponse.getPayloadAsSuccessful();
+                logger.debug("On initial ping, got the Chain ID \"{}\"", payload.chainId);
+                this.chainId = payload.chainId;
+            }
+        } else {
+            this.chainId = chainIdOpt;
+        }
+
         // All Cluster nodes should have the same name of Actor System
         final String actorSystemName = String.format("CherryGarden-%s", realm);
         actorSystem = ActorSystem.create(ConnectorActor.create(realm), actorSystemName, config);
         if (offlineMode) {
             this.observer = null;
-            this.sender = new SenderImpl(chainId);
+            this.sender = new SenderImpl();
             logger.warn("Creating Connector in offline mode!");
         } else {
             final List<Address> seedNodes = gardenerUrls.stream()
@@ -196,29 +216,10 @@ public final class ClientConnectorImpl implements ClientConnector {
             }
             logger.debug("Boot is completed!");
 
-            // If we don’t have ChainID defined, we do a ping
-
-            final long chainIdFinal;
-            if (chainId == null) {
-                final Ping.Response pingResponse = ping();
-
-                if (pingResponse.isFailure()) {
-                    throw new UniCherryGardenError.NetworkError(
-                            "Could not ping UniCherryGarden! Problem: " +
-                                    pingResponse.getFailure());
-                } else {
-                    final Ping.PingRequestResultPayload payload = pingResponse.getPayloadAsSuccessful();
-                    logger.debug("On initial ping, got the Chain ID \"{}\"", payload.chainId);
-                    chainIdFinal = payload.chainId;
-                }
-            } else {
-                chainIdFinal = chainId;
-            }
-
             // Setting up the remaining subsystems
 
             this.observer = new ObserverImpl(actorSystem, mandatoryConfirmations);
-            this.sender = new SenderImpl(actorSystem, chainIdFinal);
+            this.sender = new SenderImpl(actorSystem, this);
         }
     }
 
@@ -376,6 +377,11 @@ public final class ClientConnectorImpl implements ClientConnector {
     //
     // Methods that return the actual business logic data.
     //
+
+    @Override
+    public long getChainId() {
+        return chainId;
+    }
 
     @Override
     public Ping.@NonNull Response ping() {

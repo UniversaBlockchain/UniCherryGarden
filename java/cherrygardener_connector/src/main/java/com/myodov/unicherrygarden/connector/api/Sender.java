@@ -20,7 +20,7 @@ public interface Sender {
     /**
      * How you want your nonce to be configured?
      */
-    interface NonceSpecifier {
+    interface NonceSource {
 
         @SuppressWarnings("unused")
         enum Selector implements Serializable {
@@ -36,7 +36,7 @@ public interface Sender {
          *              Should be 0 <= nonce <= 2^64-1 per EIP-2681; uses `int` type as all existing data
          *              doesn't have any nonces even close to reach the limit of MAXINT.
          */
-        @NonNull NonceSpecifier fromNumber(int nonce);
+        @NonNull NonceSource fromNumber(int nonce);
 
         /**
          * Specify your nonce as next by some data stored in blockchain / pending pool / CherryPlanter.
@@ -44,7 +44,7 @@ public interface Sender {
          *
          * @param selector “next by what data” you want to use to select your Nonce.
          */
-        @NonNull NonceSpecifier nextBy(@NonNull Selector selector);
+        @NonNull NonceSource nextBy(@NonNull Selector selector);
     }
 
     interface PreparedOutgoingTransaction {
@@ -141,7 +141,44 @@ public interface Sender {
      * in {@link #sendTransaction}.
      * The signing could be performed either with connector's provided signature function locally or by
      * remote part using some other signing software/backend we'll develop later.
+     * <p>
+     * This is the most-configurable implementation to be overridden; there are other more convenient ones to use,
+     * like {@link #createOutgoingTransfer(String, String, BigDecimal).}
      *
+     * @param receiver     the address of the receiver; should be lowercased Ethereum address.
+     * @param currencyKey  the key of the currency to send. Should be an empty string,
+     *                     if sending the primary currency of the blockchain
+     *                     (ETH for Ethereum Mainnet, or maybe ETC in case if the backend is used
+     *                     for other Ethereum-compatible forks).
+     * @param amount       amount to transfer.
+     * @param forceChainId Chain ID (EIP-155) to use.
+     *                     If <code>null</code>, will be autodetected
+     *                     (only if the sender is created in non-offline mode).
+     * @return the binary serialized transaction that user can sign on their side,
+     * even using the external software (like MyCrypto/MyEtherWallet).
+     * @apiNote happens directly in the memory space of the process, without ever leaving it.
+     * No network communication is performed. Can be used in the connector launched in “offline” mode.
+     */
+    @NonNull
+    UnsignedOutgoingTransaction createOutgoingTransfer(
+            @NonNull String receiver,
+            @NonNull String currencyKey,
+            @NonNull BigDecimal amount,
+            @Nullable Long forceChainId
+    );
+
+    /**
+     * Prepare outgoing transaction without signing it. User should somehow sign it and use it
+     * in {@link #sendTransaction}.
+     * The signing could be performed either with connector's provided signature function locally or by
+     * remote part using some other signing software/backend we'll develop later.
+     * <p>
+     * This is the simplest version of API:
+     * <ul>
+     * <li>Chain ID will be autodetected from the network (using the realm of the connector).</li>
+     * </ul>
+     *
+     * @param receiver    the address of the receiver; should be lowercased Ethereum address.
      * @param currencyKey the key of the currency to send. Should be an empty string,
      *                    if sending the primary currency of the blockchain
      *                    (ETH for Ethereum Mainnet, or maybe ETC in case if the backend is used
@@ -153,11 +190,13 @@ public interface Sender {
      * No network communication is performed. Can be used in the connector launched in “offline” mode.
      */
     @NonNull
-    UnsignedOutgoingTransaction buildTransaction(
+    default UnsignedOutgoingTransaction createOutgoingTransfer(
             @NonNull String receiver,
             @NonNull String currencyKey,
             @NonNull BigDecimal amount
-    );
+    ) {
+        return createOutgoingTransfer(receiver, currencyKey, amount, null);
+    }
 
     /**
      * Sign the transaction.

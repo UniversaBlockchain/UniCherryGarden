@@ -6,6 +6,7 @@ import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.api.types.responseresult.ResponseWithPayload;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.connector.api.Observer;
+import com.myodov.unicherrygarden.connector.api.Sender;
 import com.myodov.unicherrygarden.connector.impl.Validators;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryGardenResponseWithPayload;
@@ -148,7 +149,7 @@ public class CherryGardenerCLI {
                             "The transaction is just built (locally, in memory) but not sent out to the blockchain\n" +
                             "and not stored anywhere.\n" +
                             "See also:\n" +
-                            "--sender (mandatory),\n" +
+//                            "--sender (mandatory),\n" +
                             "--receiver (mandatory),\n" +
                             "--chain-id (optional, default: 1 for Ethereum Mainnet),\n" +
                             "--currency-key (mandatory)\n"
@@ -1235,7 +1236,7 @@ public class CherryGardenerCLI {
         printTitle(System.err);
 
         final @NonNull Optional<ConnectionSettings> connectionSettingsOpt = parseConnectionSettings(line); // Includes chainId
-        final @NonNull Optional<String> senderOpt = parseEthereumAddressOption(line, "sender", true);
+//        final @NonNull Optional<String> senderOpt = parseEthereumAddressOption(line, "sender", true);
         final @NonNull Optional<String> receiverOpt = parseEthereumAddressOption(line, "receiver", true);
         final @NonNull Optional<String> currencyKeyOpt = parseCurrencyKeyOption(line, "currency-key", true);
         // Comment is too early; should be added at the moment of actual “planting” of the transaction.
@@ -1245,22 +1246,33 @@ public class CherryGardenerCLI {
 
         if (true &&
                 connectionSettingsOpt.isPresent() &&
-                senderOpt.isPresent() &&
+//                senderOpt.isPresent() &&
                 receiverOpt.isPresent() &&
                 currencyKeyOpt.isPresent() &&
                 amountOpt.isPresent()
         ) {
             final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
-            final @NonNull String sender = senderOpt.get();
+//            final @NonNull String sender = senderOpt.get();
             final @NonNull String receiver = receiverOpt.get();
             final @NonNull String currencyKey = currencyKeyOpt.get();
             final @NonNull BigDecimal amount = amountOpt.get();
 
-            System.err.printf("Creating outgoing transfer of %s [%s]: " +
-                            "from %s to %s\n",
-                    amount, currencyKey,
-                    sender, receiver);
+            System.err.printf("Creating outgoing transfer of %s [%s] to %s\n",
+                    amount, currencyKey, receiver);
 
+            // ChainID is VERY essential for createOutgoingTransaction (we detect it upon connecting to the connector);
+            // mandatory confirmations are irrelevant though..
+            try (final ClientConnector connector = connectionSettings.createClientConnector(0)) {
+                final Sender.UnsignedOutgoingTransaction unsignedTx = connector.getSender().createOutgoingTransfer(
+                        receiver,
+                        currencyKey,
+                        amount
+                );
+                System.err.printf("Created the transaction: %s\n", unsignedTx);
+            } catch (Exception e) {
+                System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
+                logger.error("Execution error", e);
+            }
         }
     }
 

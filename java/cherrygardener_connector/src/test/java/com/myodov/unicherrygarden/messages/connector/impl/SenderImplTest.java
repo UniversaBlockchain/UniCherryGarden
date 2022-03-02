@@ -84,27 +84,31 @@ public class SenderImplTest {
 
     @Test
     public void testBuildTransactionMainnet() {
-        final SenderImpl sender = new SenderImpl(ChainIdLong.MAINNET);
+        final SenderImpl sender = new SenderImpl();
 
-        final Sender.UnsignedOutgoingTransaction txTo1AUnsigned = sender.buildTransaction(
+        final Sender.UnsignedOutgoingTransaction txTo1AUnsigned = sender.createOutgoingTransfer(
                 CRED1.addr,
                 "",
-                new BigDecimal("0.0000001")
+                new BigDecimal("0.0000001"),
+                ChainIdLong.MAINNET
         );
-        final Sender.UnsignedOutgoingTransaction txTo1BUnsigned = sender.buildTransaction(
+        final Sender.UnsignedOutgoingTransaction txTo1BUnsigned = sender.createOutgoingTransfer(
                 CRED1.addr,
                 "",
-                new BigDecimal("12931298312")
+                new BigDecimal("12931298312"),
+                ChainIdLong.MAINNET
         );
-        final Sender.UnsignedOutgoingTransaction txTo2AUnsigned = sender.buildTransaction(
+        final Sender.UnsignedOutgoingTransaction txTo2AUnsigned = sender.createOutgoingTransfer(
                 CRED2.addr,
                 "",
-                new BigDecimal("0.0000001")
+                new BigDecimal("0.0000001"),
+                ChainIdLong.MAINNET
         );
-        final Sender.UnsignedOutgoingTransaction txTo2BUnsigned = sender.buildTransaction(
+        final Sender.UnsignedOutgoingTransaction txTo2BUnsigned = sender.createOutgoingTransfer(
                 CRED2.addr,
                 "",
-                new BigDecimal("12931298312")
+                new BigDecimal("12931298312"),
+                ChainIdLong.MAINNET
         );
 
         {
@@ -227,18 +231,19 @@ public class SenderImplTest {
 
     @Test
     public void testBuildTransactionTestnets() {
-        final SenderImpl senderRopsten = new SenderImpl(ChainIdLong.ROPSTEN);
-        final SenderImpl senderRinkeby = new SenderImpl(ChainIdLong.RINKEBY);
+        final SenderImpl sender = new SenderImpl();
 
-        final Sender.UnsignedOutgoingTransaction ropstenTxTo1Unsigned = senderRopsten.buildTransaction(
+        final Sender.UnsignedOutgoingTransaction ropstenTxTo1Unsigned = sender.createOutgoingTransfer(
                 CRED1.addr,
                 "",
-                new BigDecimal("0.0000001")
+                new BigDecimal("0.0000001"),
+                ChainIdLong.ROPSTEN
         );
-        final Sender.UnsignedOutgoingTransaction rinkebyTxTo1Unsigned = senderRinkeby.buildTransaction(
+        final Sender.UnsignedOutgoingTransaction rinkebyTxTo1Unsigned = sender.createOutgoingTransfer(
                 CRED1.addr,
                 "",
-                new BigDecimal("0.0000001")
+                new BigDecimal("0.0000001"),
+                ChainIdLong.RINKEBY
         );
 
         assertEquals(
@@ -295,24 +300,25 @@ public class SenderImplTest {
         // Most of the tests for binary signing correctness are performed in
         // testBuildTransactionMainnet and testBuildTransactionTestnets;
         // Here we just double-check the other path to sign transactions
-        final SenderImpl senderMainnet = new SenderImpl(ChainIdLong.MAINNET);
-        final SenderImpl senderRinkeby = new SenderImpl(ChainIdLong.RINKEBY);
+        final SenderImpl sender = new SenderImpl();
 
-        final Sender.UnsignedOutgoingTransaction mainnetTxTo1AUnsigned = senderMainnet.buildTransaction(
+        final Sender.UnsignedOutgoingTransaction mainnetTxTo1AUnsigned = sender.createOutgoingTransfer(
                 CRED1.addr,
                 "",
-                new BigDecimal("0.0000001")
+                new BigDecimal("0.0000001"),
+                ChainIdLong.MAINNET
         );
-        final Sender.UnsignedOutgoingTransaction rinkebyTxTo1AUnsigned = senderRinkeby.buildTransaction(
+        final Sender.UnsignedOutgoingTransaction rinkebyTxTo1AUnsigned = sender.createOutgoingTransfer(
                 CRED1.addr,
                 "",
-                new BigDecimal("0.0000001")
+                new BigDecimal("0.0000001"),
+                ChainIdLong.RINKEBY
         );
 
         final Sender.SignedOutgoingTransaction mainnetTx2To1ASigned =
-                senderMainnet.signTransaction(mainnetTxTo1AUnsigned, CRED2.bytes);
+                sender.signTransaction(mainnetTxTo1AUnsigned, CRED2.bytes);
         final Sender.SignedOutgoingTransaction rinkebyTx2To1ASigned =
-                senderRinkeby.signTransaction(rinkebyTxTo1AUnsigned, CRED2.bytes);
+                sender.signTransaction(rinkebyTxTo1AUnsigned, CRED2.bytes);
 
         assertEquals(
                 "0x02f86c0180823039830109328252089434e1e4f805fcdc936068a760b2c17bc62135b5ae85174876e80080c001a0d1d3033a3e9e1e61a1bffe4d9a1fb838bed0e00a375ff82ea8fa5726d4e34f39a075adeac52f3c9e78dffe4b2c309bd2b3c8235aaf3b639e6e2d59e1a789454c07",
