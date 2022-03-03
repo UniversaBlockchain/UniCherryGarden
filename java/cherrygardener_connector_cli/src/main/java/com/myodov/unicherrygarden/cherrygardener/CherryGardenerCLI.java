@@ -78,6 +78,13 @@ public class CherryGardenerCLI {
                         "Note the client (at this port) should be reachable to the servers, so if you are using " +
                         "SSH port forwarding, you may need to forward both local and remote ports. " +
                         "Default: 0 (autogenerate).");
+        options.addOption(
+                "ck", "currency-key", true,
+                "Currency key;\n" +
+                        "Should be an empty string, if sending the primary currency of the blockchain " +
+                        "(ETH for Ethereum Mainnet, ETC in case of Ethereum Classic, and so on.\n" +
+                        "Otherwise, it is a lowercased address of dApp token contract.");
+
 
         final OptionGroup commandOptionGroup = new OptionGroup() {{
             addOption(new Option(
@@ -1257,7 +1264,7 @@ public class CherryGardenerCLI {
             final @NonNull String currencyKey = currencyKeyOpt.get();
             final @NonNull BigDecimal amount = amountOpt.get();
 
-            System.err.printf("Creating outgoing transfer of %s [%s] to %s\n",
+            System.err.printf("Creating outgoing transfer of %s \"%s\" to %s...\n",
                     amount, currencyKey, receiver);
 
             // ChainID is VERY essential for createOutgoingTransaction (we detect it upon connecting to the connector);

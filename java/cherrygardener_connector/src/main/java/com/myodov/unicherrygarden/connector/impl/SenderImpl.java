@@ -289,7 +289,7 @@ public final class SenderImpl implements Sender {
         assert receiver != null : receiver;
         assert forceChainId == null || forceChainId == -1 || forceChainId >= 1: forceChainId;
         // Offline mode validations
-        if (!offlineMode) {
+        if (offlineMode) {
             assert forceChainId != null;
         }
 

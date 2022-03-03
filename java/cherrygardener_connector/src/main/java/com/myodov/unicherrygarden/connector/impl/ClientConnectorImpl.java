@@ -166,30 +166,19 @@ public final class ClientConnectorImpl implements ClientConnector {
                 .parseString(String.format("akka.remote.artery.canonical.port=%d", listenPort))
                 .withFallback(ConfigFactory.load());
 
-        // If we don’t have ChainID defined, we do a ping
-
-        if (chainIdOpt == null) {
-            final Ping.Response pingResponse = ping();
-
-            if (pingResponse.isFailure()) {
-                throw new UniCherryGardenError.NetworkError(
-                        "Could not ping UniCherryGarden! Problem: " +
-                                pingResponse.getFailure());
-            } else {
-                final Ping.PingRequestResultPayload payload = pingResponse.getPayloadAsSuccessful();
-                logger.debug("On initial ping, got the Chain ID \"{}\"", payload.chainId);
-                this.chainId = payload.chainId;
-            }
-        } else {
-            this.chainId = chainIdOpt;
-        }
-
         // All Cluster nodes should have the same name of Actor System
         final String actorSystemName = String.format("CherryGarden-%s", realm);
         actorSystem = ActorSystem.create(ConnectorActor.create(realm), actorSystemName, config);
+
+        // Set up observer and sender.
+
         if (offlineMode) {
+            assert chainIdOpt != null;
+            this.chainId = chainIdOpt;
+
             this.observer = null;
             this.sender = new SenderImpl();
+
             logger.warn("Creating Connector in offline mode!");
         } else {
             final List<Address> seedNodes = gardenerUrls.stream()
@@ -216,7 +205,27 @@ public final class ClientConnectorImpl implements ClientConnector {
             }
             logger.debug("Boot is completed!");
 
-            // Setting up the remaining subsystems
+            // If we don’t have ChainID defined, we do a ping.
+            // But this can happen only after setting up Actor System, and after boot/handshake completion.
+
+            if (chainIdOpt == null) {
+                final Ping.Response pingResponse = ping();
+
+                if (pingResponse.isFailure()) {
+                    throw new UniCherryGardenError.NetworkError(
+                            "Could not ping UniCherryGarden! Problem: " +
+                                    pingResponse.getFailure());
+                } else {
+                    final Ping.PingRequestResultPayload payload = pingResponse.getPayloadAsSuccessful();
+                    logger.debug("On initial ping, got the Chain ID \"{}\"", payload.chainId);
+                    this.chainId = payload.chainId;
+                }
+            } else {
+                this.chainId = chainIdOpt;
+            }
+
+            // Setting up the remaining subsystems.
+            // Note that Sender needs us to have chainId discovered already.
 
             this.observer = new ObserverImpl(actorSystem, mandatoryConfirmations);
             this.sender = new SenderImpl(actorSystem, this);

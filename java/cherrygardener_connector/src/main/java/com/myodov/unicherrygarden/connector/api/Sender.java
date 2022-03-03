@@ -146,10 +146,11 @@ public interface Sender {
      * like {@link #createOutgoingTransfer(String, String, BigDecimal).}
      *
      * @param receiver     the address of the receiver; should be lowercased Ethereum address.
-     * @param currencyKey  the key of the currency to send. Should be an empty string,
-     *                     if sending the primary currency of the blockchain
+     * @param currencyKey  the key of the currency to send.
+     *                     Should be an empty string, if sending the primary currency of the blockchain
      *                     (ETH for Ethereum Mainnet, or maybe ETC in case if the backend is used
      *                     for other Ethereum-compatible forks).
+     *                     Otherwise, it is a lowercased address of dApp token contract.
      * @param amount       amount to transfer.
      * @param forceChainId Chain ID (EIP-155) to use.
      *                     If <code>null</code>, will be autodetected
@@ -179,10 +180,11 @@ public interface Sender {
      * </ul>
      *
      * @param receiver    the address of the receiver; should be lowercased Ethereum address.
-     * @param currencyKey the key of the currency to send. Should be an empty string,
-     *                    if sending the primary currency of the blockchain
+     * @param currencyKey the key of the currency to send.
+     *                    Should be an empty string, if sending the primary currency of the blockchain
      *                    (ETH for Ethereum Mainnet, or maybe ETC in case if the backend is used
      *                    for other Ethereum-compatible forks).
+     *                    Otherwise, it is a lowercased address of dApp token contract.
      * @param amount      amount to transfer.
      * @return the binary serialized transaction that user can sign on their side,
      * even using the external software (like MyCrypto/MyEtherWallet).
