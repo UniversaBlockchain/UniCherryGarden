@@ -3,11 +3,14 @@ package com.myodov.unicherrygarden.connector.impl;
 import akka.actor.typed.ActorSystem;
 import com.myodov.unicherrygarden.api.types.PrivateKey;
 import com.myodov.unicherrygarden.api.types.UniCherryGardenError;
+import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.connector.api.Sender;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
+import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
+import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers;
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -302,20 +305,37 @@ public final class SenderImpl implements Sender {
 
         // TODO:
         // 1. Nonce calculation
-        // 2. Gas limit (hardcoded for ETH; database-stored for ERC20).
-        // 3. Gas price estimator
+        // 2. Gas price estimator
 
         logger.debug("Going to create outgoing transfer of {} \"{}\" to {}",
                 amount, currencyKey, receiver);
 
+        // Find Chain ID (EIP-155) if it is not provided.
         final long chainId;
         if (forceChainId != null) {
             chainId = forceChainId;
         } else {
+            assert !offlineMode;
             chainId = clientConnector.getChainId();
         }
 
-        logger.debug("Will use Chain ID {}", chainId);
+        final GetCurrencies.Response currencyResp = clientConnector.getCurrency(currencyKey);
+        if (currencyResp.isFailure()) {
+            logger.error("When getting the details about currency {}, had a problem: {}",
+                    currencyKey, currencyResp.getFailure());
+            throw new UniCherryGardenError.NetworkError(String.format(
+                    "A network problem arised when getting the details about currency \"%s\": %s",
+                    currencyKey, currencyResp.getFailure()));
+        }
+
+        final GetCurrencies.CurrenciesRequestResultPayload currencyPayload = currencyResp.getPayloadAsSuccessful();
+        assert currencyPayload.currencies.size() == 1: currencyPayload.currencies;
+        final Currency currencyDetails = currencyPayload.currencies.iterator().next();
+        assert currencyDetails.getCurrencyKey().equals(currencyKey): String.format("%s/%s", currencyKey, currencyDetails);
+
+        final BigInteger gasLimit = currencyDetails.getTransferGasLimit();
+
+        logger.debug("Will use Chain ID {}, gas limit {}", chainId, gasLimit);
 
         final UnsignedOutgoingTransaction result;
         if (currencyKey.isEmpty()) {

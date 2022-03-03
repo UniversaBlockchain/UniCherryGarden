@@ -208,7 +208,7 @@ public final class Currency implements Serializable {
      */
     @NonNull
     @JsonIgnore
-    public final String getKey() {
+    public String getKey() {
         switch (type) {
             case ETH:
                 return "";
@@ -220,12 +220,21 @@ public final class Currency implements Serializable {
     }
 
     /**
+     * Synonym to {@link #getKey()}.
+     */
+    @NonNull
+    @JsonIgnore
+    public String getCurrencyKey() {
+        return getKey();
+    }
+
+    /**
      * Get the currency type of this currency: is this a top-level blockchain “ETH” coin,
      * or some token, like ERC20 token.
      */
     @JsonGetter("type")
     @NonNull
-    public final CurrencyType getCurrencyType() {
+    public CurrencyType getCurrencyType() {
         return type;
     }
 
@@ -236,7 +245,7 @@ public final class Currency implements Serializable {
      * It can even be missing (and is <code>null</code> in this case).
      */
     @Nullable
-    public final String getName() {
+    public String getName() {
         return name;
     }
 
@@ -247,7 +256,7 @@ public final class Currency implements Serializable {
      * It can even be missing (and is <code>null</code> in this case).
      */
     @Nullable
-    public final String getSymbol() {
+    public String getSymbol() {
         return symbol;
     }
 
@@ -255,7 +264,7 @@ public final class Currency implements Serializable {
     /**
      * Whether this currency is “verified”, i.e. has been confirmed by the system administrator to be properly set up.
      */
-    public final boolean getVerified() { return verified; }
+    public boolean getVerified() { return verified; }
 
     /**
      * Get the Ethereum address for the underlying dApp of this currency.
@@ -266,7 +275,7 @@ public final class Currency implements Serializable {
      */
     @JsonGetter("dAppAddress")
     @Nullable
-    public final String getDAppAddress() {
+    public String getDAppAddress() {
         switch (type) {
             case ETH:
                 return null;
@@ -283,7 +292,7 @@ public final class Currency implements Serializable {
      * Optional, may return <code>null</code>.
      */
     @Nullable
-    public final String getComment() {
+    public String getComment() {
         return comment;
     }
 
@@ -292,7 +301,7 @@ public final class Currency implements Serializable {
      * Optional, may return <code>null</code> (but only if the currency is not verified).
      */
     @Nullable
-    public final BigInteger getTransferGasLimit() {
+    public BigInteger getTransferGasLimit() {
         return transferGasLimit;
     }
 }
