@@ -79,15 +79,6 @@ public class CherryGardenerCLI {
                         "Note the client (at this port) should be reachable to the servers, so if you are using " +
                         "SSH port forwarding, you may need to forward both local and remote ports. " +
                         "Default: 0 (autogenerate).");
-        options.addOption(
-                null, "currency-key", true,
-                "Currency key;\n" +
-                        "Should be an empty string, if sending the primary currency of the blockchain " +
-                        "(ETH for Ethereum Mainnet, ETC in case of Ethereum Classic, and so on.\n" +
-                        "Otherwise, it is a lowercased address of dApp token contract.");
-        options.addOption(
-                null, "nonce", true,
-                "Nonce value to use; must be an integer number, 0 or higher.");
 
 
         final OptionGroup commandOptionGroup = new OptionGroup() {{
@@ -160,11 +151,11 @@ public class CherryGardenerCLI {
                             "The transaction is just built (locally, in memory) but not sent out to the blockchain\n" +
                             "and not stored anywhere.\n" +
                             "See also:\n" +
-                            "--sender (mandatory) – ,\n" +
+                            "--sender or --nonce (mandatory) – either of them is needed to specify or the gas limit,\n" +
                             "--receiver (mandatory),\n" +
                             "--chain-id (optional, default: autodetect from the connected CherryGarden),\n" +
                             "--currency-key (mandatory),\n" +
-                            "--nonce (optional, default: autodetect from CherryGarden).\n"
+                            "--gas-limit (optional) – gas limit for the transfer."
                     //"--comment (optional)."
             ));
 //            addOption(new Option(
@@ -210,6 +201,18 @@ public class CherryGardenerCLI {
                 "to", "receiver", true,
                 "Receiver Ethereum address."
         );
+        options.addOption(
+                null, "currency-key", true,
+                "Currency key;\n" +
+                        "Should be an empty string, if sending the primary currency of the blockchain " +
+                        "(ETH for Ethereum Mainnet, ETC in case of Ethereum Classic, and so on.\n" +
+                        "Otherwise, it is a lowercased address of dApp token contract.");
+        options.addOption(
+                null, "nonce", true,
+                "Nonce value to use; must be an integer number, 0 or higher.");
+        options.addOption(
+                null, "gas-limit", true,
+                "Gas limit (integer number) to use; 21000 or higher.");
         options.addOption(
                 null, "from-block", true,
                 "First block to use (inclusive) for read operations.\n" +
@@ -700,7 +703,7 @@ public class CherryGardenerCLI {
 
     /**
      * Parse an option (with the name of the option passed as the "optionName" argument)
-     * that should contain a valid nonce value,
+     * that should contain a valid integer nonce value,
      * printing all necessary warnings in the process.
      *
      * @param optionName the name of the option to parse.
@@ -715,7 +718,7 @@ public class CherryGardenerCLI {
             try {
                 value = new BigInteger(nonceCandidate);
             } catch (NumberFormatException e) {
-                System.err.printf("WARNING: --%s option should contain a valid nonce!\n", optionName);
+                System.err.printf("WARNING: --%s option should contain a valid nonce value!\n", optionName);
                 return Optional.empty();
             }
 
@@ -728,6 +731,35 @@ public class CherryGardenerCLI {
         });
     }
 
+    /**
+     * Parse an option (with the name of the option passed as the "optionName" argument)
+     * that should contain a valid integer gas limit value (21000 or higher),
+     * printing all necessary warnings in the process.
+     *
+     * @param optionName the name of the option to parse.
+     * @return non-empty {@link Optional<>} with the parsed currency key,
+     * if it has been properly parsed;
+     * “empty” optional if parsing failed (and all required warnings were printed).
+     */
+    private static Optional<BigInteger> parseGasLimit(@NonNull CommandLine line,
+                                                      @NonNull String optionName) {
+        return preParseArg(line, optionName, false).flatMap((final String gasLimitCandidate) -> {
+            final BigInteger value;
+            try {
+                value = new BigInteger(gasLimitCandidate);
+            } catch (NumberFormatException e) {
+                System.err.printf("WARNING: --%s option should contain a valid gas limit value!\n", optionName);
+                return Optional.empty();
+            }
+
+            if (value.compareTo(BigInteger.valueOf(21_000)) < 0) { // value < 21_000
+                System.err.printf("WARNING: --%s option should be 21000 or higher!\n", optionName);
+                return Optional.empty();
+            } else {
+                return Optional.of(value);
+            }
+        });
+    }
 
     /**
      * Parse an option (with the name of the option passed as the "optionName" argument)
@@ -1279,45 +1311,63 @@ public class CherryGardenerCLI {
         printTitle(System.err);
 
         final @NonNull Optional<ConnectionSettings> connectionSettingsOpt = parseConnectionSettings(line); // Includes chainId
-//        final @NonNull Optional<String> senderOpt = parseEthereumAddressOption(line, "sender", true);
+        final @NonNull Optional<String> senderOpt = parseEthereumAddressOption(line, "sender", true);
         final @NonNull Optional<String> receiverOpt = parseEthereumAddressOption(line, "receiver", true);
         final @NonNull Optional<String> currencyKeyOpt = parseCurrencyKeyOption(line, "currency-key", true);
-        // Comment is too early; should be added at the moment of actual “planting” of the transaction.
-        //final @NonNull Optional<String> commentOpt = Optional.ofNullable(line.getOptionValue("comment"));
         final @NonNull Optional<BigInteger> nonceOpt = parseNonce(line, "nonce");
+        final @NonNull Optional<BigInteger> gasLimitOpt = parseGasLimit(line, "gas-limit");
 
         final @NonNull Optional<BigDecimal> amountOpt = parseAmountOption(line, "create-outgoing-transfer", true);
 
         if (true &&
-                connectionSettingsOpt.isPresent() &&
-//                senderOpt.isPresent() &&
+                connectionSettingsOpt.isPresent() && // for now the CLI requires it not to be in offline mode
                 receiverOpt.isPresent() &&
                 currencyKeyOpt.isPresent() &&
                 amountOpt.isPresent()
         ) {
             final @NonNull ConnectionSettings connectionSettings = connectionSettingsOpt.get();
-//            final @NonNull String sender = senderOpt.get();
             final @NonNull String receiver = receiverOpt.get();
             final @NonNull String currencyKey = currencyKeyOpt.get();
             final @NonNull BigDecimal amount = amountOpt.get();
 
-            System.err.printf("Creating outgoing transfer of %s \"%s\" to %s...\n",
-                    amount, currencyKey, receiver);
+            // Extra validations to co-validate the arguments
+            final boolean coValid;
+            {
+                final Supplier<Boolean> coValidator = (() -> {
+                    if (!senderOpt.isPresent() && !nonceOpt.isPresent()) {
+                        System.err.println("ERROR: at least one of --sender or --nonce must be defined!");
+                        return false;
+                    }
 
-            // ChainID is VERY essential for createOutgoingTransaction (we detect it upon connecting to the connector);
-            // mandatory confirmations are irrelevant though..
-            try (final ClientConnector connector = connectionSettings.createClientConnector(0)) {
-                final Sender.UnsignedOutgoingTransaction unsignedTx = connector.getSender().createOutgoingTransfer(
-                        receiver,
-                        currencyKey,
-                        amount,
-                        connectionSettings.chainId, // already Nullable
-                        nonceOpt.orElse(null)
-                );
-                System.err.printf("Created the transaction: %s\n", unsignedTx);
-            } catch (Exception e) {
-                System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
-                logger.error("Execution error", e);
+                    // In any other case, all the arguments are valid together.
+                    return true;
+                });
+                coValid = coValidator.get();
+            }
+
+            // All error messages were printed already by coValidator, so we don’t handle the `if !coValid` case at all
+            if (coValid) {
+                System.err.printf("Creating outgoing transfer of %s \"%s\" from %s to %s...\n",
+                        amount, currencyKey, senderOpt.orElse("undefined sender"), receiver);
+
+                // ChainID is VERY essential for createOutgoingTransaction
+                // (we may need to detect it upon connecting to the connector);
+                // mandatory confirmations are irrelevant though..
+                try (final ClientConnector connector = connectionSettings.createClientConnector(0)) {
+                    final Sender.UnsignedOutgoingTransaction unsignedTx = connector.getSender().createOutgoingTransfer(
+                            senderOpt.orElse(null),
+                            receiver,
+                            currencyKey,
+                            amount,
+                            connectionSettings.chainId, // already Nullable
+                            gasLimitOpt.orElse(null),
+                            nonceOpt.orElse(null)
+                    );
+                    System.err.printf("Created the transaction: %s\n", unsignedTx);
+                } catch (Exception e) {
+                    System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
+                    logger.error("Execution error", e);
+                }
             }
         }
     }

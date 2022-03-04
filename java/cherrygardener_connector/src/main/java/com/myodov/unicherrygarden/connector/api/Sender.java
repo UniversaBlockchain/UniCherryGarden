@@ -143,21 +143,27 @@ public interface Sender {
      * remote part using some other signing software/backend we'll develop later.
      * <p>
      * This is the most-configurable implementation to be overridden; there are other more convenient ones to use,
-     * like {@link #createOutgoingTransfer(String, String, BigDecimal).}
+     * like {@link #createOutgoingTransfer(String, String, String, BigDecimal).}
      *
-     * @param receiver     the address of the receiver; should be lowercased Ethereum address.
-     * @param currencyKey  the key of the currency to send.
-     *                     Should be an empty string, if sending the primary currency of the blockchain
-     *                     (ETH for Ethereum Mainnet, or maybe ETC in case if the backend is used
-     *                     for other Ethereum-compatible forks).
-     *                     Otherwise, it is a lowercased address of dApp token contract.
-     * @param amount       amount to transfer.
-     * @param forceChainId Chain ID (EIP-155) to use.
-     *                     If <code>null</code>, will be autodetected
-     *                     (only if the sender is created in non-offline mode).
-     * @param forceNonce   force Nonce value to use.
-     *                     If <code>null</code>, will be autodetected
-     *                     (only if the sender is created in non-offline mode).
+     * @param sender        the address of the sender;
+     *                      if present, should be lowercased Ethereum address
+     *                      (will be used to autodetect the nonce).
+     * @param receiver      the address of the receiver; should be lowercased Ethereum address.
+     * @param currencyKey   the key of the currency to send.
+     *                      Should be an empty string, if sending the primary currency of the blockchain
+     *                      (ETH for Ethereum Mainnet, or maybe ETC in case if the backend is used
+     *                      for other Ethereum-compatible forks).
+     *                      Otherwise, it is a lowercased address of dApp token contract.
+     * @param amount        amount to transfer.
+     * @param forceChainId  Chain ID (EIP-155) to use.
+     *                      If <code>null</code>, will be autodetected
+     *                      (only if the sender is created in non-offline mode).
+     * @param forceGasLimit gas limit to use.
+     *                      If <code>null</code>, will be autodetected
+     *                      (only if the sender is created in non-offline mode).
+     * @param forceNonce    force Nonce value to use.
+     *                      If <code>null</code>, will be autodetected
+     *                      (only if the sender is created in non-offline mode).
      * @return the binary serialized transaction that user can sign on their side,
      * even using the external software (like MyCrypto/MyEtherWallet).
      * @apiNote happens directly in the memory space of the process, without ever leaving it.
@@ -165,10 +171,12 @@ public interface Sender {
      */
     @NonNull
     UnsignedOutgoingTransaction createOutgoingTransfer(
+            @Nullable String sender,
             @NonNull String receiver,
             @NonNull String currencyKey,
             @NonNull BigDecimal amount,
             @Nullable Long forceChainId,
+            @Nullable BigInteger forceGasLimit,
             @Nullable BigInteger forceNonce
     );
 
@@ -180,9 +188,13 @@ public interface Sender {
      * <p>
      * This is the simplest version of API:
      * <ul>
-     * <li>Chain ID will be autodetected from the network (using the realm of the connector).</li>
+     * <li>Chain ID will be autodetected from the network (using the realm of the connector);</li>
+     * <li>gas limit will be autodetected from the network for the specified currency;</li>
+     * <li>nonce will be autodetected from the network (next unused nonce will be taken).</li>
      * </ul>
      *
+     * @param sender      the address of the sender; should be lowercased Ethereum address
+     *                    (will be used to autodetect the nonce).
      * @param receiver    the address of the receiver; should be lowercased Ethereum address.
      * @param currencyKey the key of the currency to send.
      *                    Should be an empty string, if sending the primary currency of the blockchain
@@ -197,13 +209,14 @@ public interface Sender {
      */
     @NonNull
     default UnsignedOutgoingTransaction createOutgoingTransfer(
+            @NonNull String sender,
             @NonNull String receiver,
             @NonNull String currencyKey,
             @NonNull BigDecimal amount
     ) {
         return createOutgoingTransfer(
-                receiver, currencyKey, amount,
-                null, null);
+                sender, receiver, currencyKey, amount,
+                null, null, null);
     }
 
     /**

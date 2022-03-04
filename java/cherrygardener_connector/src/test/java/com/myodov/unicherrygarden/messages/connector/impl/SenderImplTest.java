@@ -83,36 +83,46 @@ public class SenderImplTest {
             config.getString("unicherrygarden.tests.ethereum_testnet.private_key"));
 
 
+    private static final BigInteger ethTransferGasLimit = BigInteger.valueOf(21_000);
+
     @Test
     public void testBuildTransactionMainnet() {
         final SenderImpl sender = new SenderImpl();
 
         final Sender.UnsignedOutgoingTransaction txTo1AUnsigned = sender.createOutgoingTransfer(
+                null,
                 CRED1.addr,
                 "",
                 new BigDecimal("0.0000001"),
                 ChainIdLong.MAINNET,
+                ethTransferGasLimit,
                 BigInteger.valueOf(0)
         );
         final Sender.UnsignedOutgoingTransaction txTo1BUnsigned = sender.createOutgoingTransfer(
+                null,
                 CRED1.addr,
                 "",
                 new BigDecimal("12931298312"),
                 ChainIdLong.MAINNET,
+                ethTransferGasLimit,
                 BigInteger.valueOf(0)
         );
         final Sender.UnsignedOutgoingTransaction txTo2AUnsigned = sender.createOutgoingTransfer(
+                null,
                 CRED2.addr,
                 "",
                 new BigDecimal("0.0000001"),
                 ChainIdLong.MAINNET,
+                ethTransferGasLimit,
                 BigInteger.valueOf(0)
         );
         final Sender.UnsignedOutgoingTransaction txTo2BUnsigned = sender.createOutgoingTransfer(
+                null,
                 CRED2.addr,
                 "",
                 new BigDecimal("12931298312"),
                 ChainIdLong.MAINNET,
+                ethTransferGasLimit,
                 BigInteger.valueOf(0)
         );
 
@@ -239,17 +249,21 @@ public class SenderImplTest {
         final SenderImpl sender = new SenderImpl();
 
         final Sender.UnsignedOutgoingTransaction ropstenTxTo1Unsigned = sender.createOutgoingTransfer(
+                null,
                 CRED1.addr,
                 "",
                 new BigDecimal("0.0000001"),
                 ChainIdLong.ROPSTEN,
+                ethTransferGasLimit,
                 BigInteger.valueOf(0)
         );
         final Sender.UnsignedOutgoingTransaction rinkebyTxTo1Unsigned = sender.createOutgoingTransfer(
+                null,
                 CRED1.addr,
                 "",
                 new BigDecimal("0.0000001"),
                 ChainIdLong.RINKEBY,
+                ethTransferGasLimit,
                 BigInteger.valueOf(0)
         );
 
@@ -310,17 +324,21 @@ public class SenderImplTest {
         final SenderImpl sender = new SenderImpl();
 
         final Sender.UnsignedOutgoingTransaction mainnetTxTo1AUnsigned = sender.createOutgoingTransfer(
+                null,
                 CRED1.addr,
                 "",
                 new BigDecimal("0.0000001"),
                 ChainIdLong.MAINNET,
+                ethTransferGasLimit,
                 BigInteger.valueOf(0)
         );
         final Sender.UnsignedOutgoingTransaction rinkebyTxTo1AUnsigned = sender.createOutgoingTransfer(
+                null,
                 CRED1.addr,
                 "",
                 new BigDecimal("0.0000001"),
                 ChainIdLong.RINKEBY,
+                ethTransferGasLimit,
                 BigInteger.valueOf(0)
         );
 

@@ -10,7 +10,6 @@ import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers;
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -282,16 +281,29 @@ public final class SenderImpl implements Sender {
     @Override
     @NonNull
     public UnsignedOutgoingTransaction createOutgoingTransfer(
+            @Nullable String sender,
             @NonNull String receiver,
             @NonNull String currencyKey,
             @NonNull BigDecimal amount,
             @Nullable Long forceChainId,
+            @Nullable BigInteger forceGasLimit,
             @Nullable BigInteger forceNonce
     ) {
         assert currencyKey != null : currencyKey;
         assert amount != null : amount;
         assert receiver != null : receiver;
-        assert forceChainId == null || forceChainId == -1 || forceChainId >= 1: forceChainId;
+        assert forceChainId == null || forceChainId == -1 || forceChainId >= 1 : forceChainId;
+        assert forceGasLimit == null || forceGasLimit.compareTo(BigInteger.valueOf(21_000)) >= 0 : forceGasLimit;
+
+        if (sender != null) {
+            Validators.requireValidEthereumAddress(sender);
+        }
+        Validators.requireValidEthereumAddress(receiver);
+        Validators.requireValidCurrencyKey(currencyKey);
+        if (forceNonce != null) {
+            Validators.requireValidNonce(forceNonce);
+        }
+
         // Offline mode validations
         if (offlineMode) {
             if (forceChainId == null) {
@@ -300,61 +312,78 @@ public final class SenderImpl implements Sender {
             if (forceNonce == null) {
                 throw new UniCherryGardenError.NotAvailableInOfflineModeError("forceNonce cannot be null!");
             }
+            if (forceGasLimit == null) {
+                throw new UniCherryGardenError.NotAvailableInOfflineModeError("forceGasLimit cannot be null!");
+            }
         }
 
-        Validators.requireValidCurrencyKey(currencyKey);
-        Validators.requireValidNonce(forceNonce);
         // `if amount < 0`
         if (amount.compareTo(BigDecimal.ZERO) < 0) {
             throw new UniCherryGardenError.ArgumentError(String.format("%s is not a valid amount", amount));
         }
-        Validators.requireValidEthereumAddress(receiver);
 
         // TODO:
         // 1. Nonce calculation
         // 2. Gas price estimator
 
-        logger.debug("Going to create outgoing transfer of {} \"{}\" to {}",
-                amount, currencyKey, receiver);
+        logger.debug("Going to create outgoing transfer of {} \"{}\" from {} to {}",
+                amount, currencyKey, sender, receiver);
 
-        // Find Chain ID (EIP-155) if it is not provided.
+        // Detect Chain ID (EIP-155) if it is not provided.
         final long chainId;
-        if (forceChainId != null) {
-            chainId = forceChainId;
-        } else {
-            assert !offlineMode;
-            chainId = clientConnector.getChainId();
+        {
+            if (forceChainId != null) {
+                chainId = forceChainId;
+            } else {
+                assert !offlineMode;
+                chainId = clientConnector.getChainId();
+            }
         }
 
-        final GetCurrencies.Response currencyResp = clientConnector.getCurrency(currencyKey);
-        if (currencyResp.isFailure()) {
-            logger.error("When getting the details about currency {}, had a problem: {}",
-                    currencyKey, currencyResp.getFailure());
-            throw new UniCherryGardenError.NetworkError(String.format(
-                    "A network problem arisen when getting the details about currency \"%s\": %s",
-                    currencyKey, currencyResp.getFailure()));
+        // Detect gas limit
+        final BigInteger gasLimit;
+        {
+            if (forceGasLimit != null) {
+                gasLimit = forceGasLimit;
+            } else {
+                assert !offlineMode;
+
+                final GetCurrencies.Response currencyResp = clientConnector.getCurrency(currencyKey);
+                if (currencyResp.isFailure()) {
+                    logger.error("When getting the details about currency {}, had a problem: {}",
+                            currencyKey, currencyResp.getFailure());
+                    throw new UniCherryGardenError.NetworkError(String.format(
+                            "A network problem arisen when getting the details about currency \"%s\": %s",
+                            currencyKey, currencyResp.getFailure()));
+                }
+
+                final GetCurrencies.CurrenciesRequestResultPayload currencyPayload = currencyResp.getPayloadAsSuccessful();
+                assert currencyPayload.currencies.size() == 1 : currencyPayload.currencies;
+                final Currency currencyDetails = currencyPayload.currencies.iterator().next();
+                assert currencyDetails.getCurrencyKey().equals(currencyKey) : String.format("%s/%s", currencyKey, currencyDetails);
+
+                gasLimit = currencyDetails.getTransferGasLimit();
+            }
         }
 
-        final GetCurrencies.CurrenciesRequestResultPayload currencyPayload = currencyResp.getPayloadAsSuccessful();
-        assert currencyPayload.currencies.size() == 1: currencyPayload.currencies;
-        final Currency currencyDetails = currencyPayload.currencies.iterator().next();
-        assert currencyDetails.getCurrencyKey().equals(currencyKey): String.format("%s/%s", currencyKey, currencyDetails);
+        // Detect nonce
+        final BigInteger nonce = BigInteger.valueOf(-1); // TODO
+        {
+        }
 
-        final BigInteger gasLimit = currencyDetails.getTransferGasLimit();
 
-        logger.debug("Will use Chain ID {}, gas limit {}", chainId, gasLimit);
+        logger.debug("Will use Chain ID {}, gas limit {}, nonce {}", chainId, gasLimit, nonce);
 
         final UnsignedOutgoingTransaction result;
         if (currencyKey.isEmpty()) {
             // ETH or other base currency
-            final BigInteger nonce = BigInteger.ZERO;
             final BigDecimal maxPriorityFee = new BigDecimal("1.2345E-14");
             final BigDecimal maxFee = new BigDecimal("6.789E-14");
 
             result = UnsignedOutgoingTransactionImpl.createEtherTransaction(
                     receiver,
                     amount,
-                    forceChainId,
+                    chainId,
                     nonce,
                     maxPriorityFee,
                     maxFee
