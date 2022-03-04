@@ -74,11 +74,6 @@ public class GetBalances_ResponseTest extends AbstractJacksonSerializationTest {
         );
 
         assertEquals(
-                "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.api.types.responseresult.FailurePayload$NotAvailableInOfflineMode\"}}",
-                makeJson(GetBalances.Response.fromCommonFailure(FailurePayload.CommonFailurePayload.NOT_AVAILABLE_IN_OFFLINE_MODE))
-        );
-
-        assertEquals(
                 "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetBalances$BalanceRequestResultFailure\"}}",
                 makeJson(new GetBalances.Response(new GetBalances.BalanceRequestResultFailure()))
         );

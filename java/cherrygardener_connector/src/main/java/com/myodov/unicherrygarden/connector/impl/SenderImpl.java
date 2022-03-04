@@ -285,7 +285,8 @@ public final class SenderImpl implements Sender {
             @NonNull String receiver,
             @NonNull String currencyKey,
             @NonNull BigDecimal amount,
-            @Nullable Long forceChainId
+            @Nullable Long forceChainId,
+            @Nullable BigInteger forceNonce
     ) {
         assert currencyKey != null : currencyKey;
         assert amount != null : amount;
@@ -293,10 +294,16 @@ public final class SenderImpl implements Sender {
         assert forceChainId == null || forceChainId == -1 || forceChainId >= 1: forceChainId;
         // Offline mode validations
         if (offlineMode) {
-            assert forceChainId != null;
+            if (forceChainId == null) {
+                throw new UniCherryGardenError.NotAvailableInOfflineModeError("forceChainId cannot be null!");
+            }
+            if (forceNonce == null) {
+                throw new UniCherryGardenError.NotAvailableInOfflineModeError("forceNonce cannot be null!");
+            }
         }
 
         Validators.requireValidCurrencyKey(currencyKey);
+        Validators.requireValidNonce(forceNonce);
         // `if amount < 0`
         if (amount.compareTo(BigDecimal.ZERO) < 0) {
             throw new UniCherryGardenError.ArgumentError(String.format("%s is not a valid amount", amount));
@@ -324,7 +331,7 @@ public final class SenderImpl implements Sender {
             logger.error("When getting the details about currency {}, had a problem: {}",
                     currencyKey, currencyResp.getFailure());
             throw new UniCherryGardenError.NetworkError(String.format(
-                    "A network problem arised when getting the details about currency \"%s\": %s",
+                    "A network problem arisen when getting the details about currency \"%s\": %s",
                     currencyKey, currencyResp.getFailure()));
         }
 

@@ -131,11 +131,6 @@ public class GetTransfers_ResponseTest extends AbstractJacksonSerializationTest 
         );
 
         assertEquals(
-                "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.api.types.responseresult.FailurePayload$NotAvailableInOfflineMode\"}}",
-                makeJson(GetTransfers.Response.fromCommonFailure(FailurePayload.CommonFailurePayload.NOT_AVAILABLE_IN_OFFLINE_MODE))
-        );
-
-        assertEquals(
                 "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetTransfers$TransfersRequestResultFailure\"}}",
                 makeJson(new GetTransfers.Response(new GetTransfers.TransfersRequestResultFailure()))
         );

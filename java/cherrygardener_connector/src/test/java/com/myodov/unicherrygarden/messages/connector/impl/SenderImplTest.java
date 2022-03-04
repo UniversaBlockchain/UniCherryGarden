@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.web3j.tx.ChainIdLong;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
 import static com.myodov.unicherrygarden.SampleCredentials.CRED1;
 import static com.myodov.unicherrygarden.SampleCredentials.CRED2;
@@ -90,25 +91,29 @@ public class SenderImplTest {
                 CRED1.addr,
                 "",
                 new BigDecimal("0.0000001"),
-                ChainIdLong.MAINNET
+                ChainIdLong.MAINNET,
+                BigInteger.valueOf(0)
         );
         final Sender.UnsignedOutgoingTransaction txTo1BUnsigned = sender.createOutgoingTransfer(
                 CRED1.addr,
                 "",
                 new BigDecimal("12931298312"),
-                ChainIdLong.MAINNET
+                ChainIdLong.MAINNET,
+                BigInteger.valueOf(0)
         );
         final Sender.UnsignedOutgoingTransaction txTo2AUnsigned = sender.createOutgoingTransfer(
                 CRED2.addr,
                 "",
                 new BigDecimal("0.0000001"),
-                ChainIdLong.MAINNET
+                ChainIdLong.MAINNET,
+                BigInteger.valueOf(0)
         );
         final Sender.UnsignedOutgoingTransaction txTo2BUnsigned = sender.createOutgoingTransfer(
                 CRED2.addr,
                 "",
                 new BigDecimal("12931298312"),
-                ChainIdLong.MAINNET
+                ChainIdLong.MAINNET,
+                BigInteger.valueOf(0)
         );
 
         {
@@ -237,13 +242,15 @@ public class SenderImplTest {
                 CRED1.addr,
                 "",
                 new BigDecimal("0.0000001"),
-                ChainIdLong.ROPSTEN
+                ChainIdLong.ROPSTEN,
+                BigInteger.valueOf(0)
         );
         final Sender.UnsignedOutgoingTransaction rinkebyTxTo1Unsigned = sender.createOutgoingTransfer(
                 CRED1.addr,
                 "",
                 new BigDecimal("0.0000001"),
-                ChainIdLong.RINKEBY
+                ChainIdLong.RINKEBY,
+                BigInteger.valueOf(0)
         );
 
         assertEquals(
@@ -306,13 +313,15 @@ public class SenderImplTest {
                 CRED1.addr,
                 "",
                 new BigDecimal("0.0000001"),
-                ChainIdLong.MAINNET
+                ChainIdLong.MAINNET,
+                BigInteger.valueOf(0)
         );
         final Sender.UnsignedOutgoingTransaction rinkebyTxTo1AUnsigned = sender.createOutgoingTransfer(
                 CRED1.addr,
                 "",
                 new BigDecimal("0.0000001"),
-                ChainIdLong.RINKEBY
+                ChainIdLong.RINKEBY,
+                BigInteger.valueOf(0)
         );
 
         final Sender.SignedOutgoingTransaction mainnetTx2To1ASigned =

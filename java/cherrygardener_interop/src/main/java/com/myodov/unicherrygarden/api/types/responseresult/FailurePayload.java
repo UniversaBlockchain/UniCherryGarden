@@ -29,7 +29,6 @@ public interface FailurePayload extends ResponsePayload {
         enum CommonFailureType {
             //            SPECIFIC, // This is not a common failure, but a request-specific one
             UNSPECIFIED_FAILURE,
-            NOT_AVAILABLE_IN_OFFLINE_MODE,
             NO_RESPONSE_FROM_CHERRYGARDEN,
             CANCELLATION_COMPLETION_FAILURE,
             NODE_REQUEST_FAILURE
@@ -72,17 +71,6 @@ public interface FailurePayload extends ResponsePayload {
             return CommonFailureType.UNSPECIFIED_FAILURE;
         }
     }
-
-    final class NotAvailableInOfflineMode extends CommonFailurePayload {
-        @Override
-        @NonNull
-        public CommonFailureType getCommonFailureType() {
-            return CommonFailureType.NOT_AVAILABLE_IN_OFFLINE_MODE;
-        }
-    }
-
-    @NonNull
-    NotAvailableInOfflineMode NOT_AVAILABLE_IN_OFFLINE_MODE = new NotAvailableInOfflineMode();
 
     final class NoResponseFromCherryGarden extends CommonFailurePayload {
         @Override

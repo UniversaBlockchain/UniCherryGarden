@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -79,11 +80,14 @@ public class CherryGardenerCLI {
                         "SSH port forwarding, you may need to forward both local and remote ports. " +
                         "Default: 0 (autogenerate).");
         options.addOption(
-                "ck", "currency-key", true,
+                null, "currency-key", true,
                 "Currency key;\n" +
                         "Should be an empty string, if sending the primary currency of the blockchain " +
                         "(ETH for Ethereum Mainnet, ETC in case of Ethereum Classic, and so on.\n" +
                         "Otherwise, it is a lowercased address of dApp token contract.");
+        options.addOption(
+                null, "nonce", true,
+                "Nonce value to use; must be an integer number, 0 or higher.");
 
 
         final OptionGroup commandOptionGroup = new OptionGroup() {{
@@ -156,10 +160,11 @@ public class CherryGardenerCLI {
                             "The transaction is just built (locally, in memory) but not sent out to the blockchain\n" +
                             "and not stored anywhere.\n" +
                             "See also:\n" +
-//                            "--sender (mandatory),\n" +
+                            "--sender (mandatory) – ,\n" +
                             "--receiver (mandatory),\n" +
-                            "--chain-id (optional, default: 1 for Ethereum Mainnet),\n" +
-                            "--currency-key (mandatory)\n"
+                            "--chain-id (optional, default: autodetect from the connected CherryGarden),\n" +
+                            "--currency-key (mandatory),\n" +
+                            "--nonce (optional, default: autodetect from CherryGarden).\n"
                     //"--comment (optional)."
             ));
 //            addOption(new Option(
@@ -692,6 +697,37 @@ public class CherryGardenerCLI {
             }
         });
     }
+
+    /**
+     * Parse an option (with the name of the option passed as the "optionName" argument)
+     * that should contain a valid nonce value,
+     * printing all necessary warnings in the process.
+     *
+     * @param optionName the name of the option to parse.
+     * @return non-empty {@link Optional<>} with the parsed currency key,
+     * if it has been properly parsed;
+     * “empty” optional if parsing failed (and all required warnings were printed).
+     */
+    private static Optional<BigInteger> parseNonce(@NonNull CommandLine line,
+                                                   @NonNull String optionName) {
+        return preParseArg(line, optionName, false).flatMap((final String nonceCandidate) -> {
+            final BigInteger value;
+            try {
+                value = new BigInteger(nonceCandidate);
+            } catch (NumberFormatException e) {
+                System.err.printf("WARNING: --%s option should contain a valid nonce!\n", optionName);
+                return Optional.empty();
+            }
+
+            if (value.compareTo(BigInteger.ZERO) < 0) { // value < 0
+                System.err.printf("WARNING: --%s option should be 0 or higher!\n", optionName);
+                return Optional.empty();
+            } else {
+                return Optional.of(value);
+            }
+        });
+    }
+
 
     /**
      * Parse an option (with the name of the option passed as the "optionName" argument)
@@ -1248,6 +1284,7 @@ public class CherryGardenerCLI {
         final @NonNull Optional<String> currencyKeyOpt = parseCurrencyKeyOption(line, "currency-key", true);
         // Comment is too early; should be added at the moment of actual “planting” of the transaction.
         //final @NonNull Optional<String> commentOpt = Optional.ofNullable(line.getOptionValue("comment"));
+        final @NonNull Optional<BigInteger> nonceOpt = parseNonce(line, "nonce");
 
         final @NonNull Optional<BigDecimal> amountOpt = parseAmountOption(line, "create-outgoing-transfer", true);
 
@@ -1273,7 +1310,9 @@ public class CherryGardenerCLI {
                 final Sender.UnsignedOutgoingTransaction unsignedTx = connector.getSender().createOutgoingTransfer(
                         receiver,
                         currencyKey,
-                        amount
+                        amount,
+                        connectionSettings.chainId, // already Nullable
+                        nonceOpt.orElse(null)
                 );
                 System.err.printf("Created the transaction: %s\n", unsignedTx);
             } catch (Exception e) {

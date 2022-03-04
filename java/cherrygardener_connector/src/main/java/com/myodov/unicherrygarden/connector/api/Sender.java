@@ -155,6 +155,9 @@ public interface Sender {
      * @param forceChainId Chain ID (EIP-155) to use.
      *                     If <code>null</code>, will be autodetected
      *                     (only if the sender is created in non-offline mode).
+     * @param forceNonce   force Nonce value to use.
+     *                     If <code>null</code>, will be autodetected
+     *                     (only if the sender is created in non-offline mode).
      * @return the binary serialized transaction that user can sign on their side,
      * even using the external software (like MyCrypto/MyEtherWallet).
      * @apiNote happens directly in the memory space of the process, without ever leaving it.
@@ -165,7 +168,8 @@ public interface Sender {
             @NonNull String receiver,
             @NonNull String currencyKey,
             @NonNull BigDecimal amount,
-            @Nullable Long forceChainId
+            @Nullable Long forceChainId,
+            @Nullable BigInteger forceNonce
     );
 
     /**
@@ -197,7 +201,9 @@ public interface Sender {
             @NonNull String currencyKey,
             @NonNull BigDecimal amount
     ) {
-        return createOutgoingTransfer(receiver, currencyKey, amount, null);
+        return createOutgoingTransfer(
+                receiver, currencyKey, amount,
+                null, null);
     }
 
     /**

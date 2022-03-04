@@ -92,12 +92,6 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
         );
 
         assertJsonDeserialization(
-                GetCurrencies.Response.fromCommonFailure(FailurePayload.CommonFailurePayload.NOT_AVAILABLE_IN_OFFLINE_MODE),
-                "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.api.types.responseresult.FailurePayload$NotAvailableInOfflineMode\"}}",
-                GetCurrencies.Response.class
-        );
-
-        assertJsonDeserialization(
                 new GetCurrencies.Response(new GetCurrencies.CurrenciesRequestResultFailure()),
                 "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies$CurrenciesRequestResultFailure\"}}",
                 GetCurrencies.Response.class

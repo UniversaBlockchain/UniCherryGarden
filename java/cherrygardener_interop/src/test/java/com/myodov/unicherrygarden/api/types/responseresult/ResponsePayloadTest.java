@@ -22,12 +22,6 @@ public class ResponsePayloadTest extends AbstractJacksonSerializationTest {
         );
 
         assertJsonDeserialization(
-                FailurePayload.CommonFailurePayload.NOT_AVAILABLE_IN_OFFLINE_MODE,
-                "{\"@class\":\"com.myodov.unicherrygarden.api.types.responseresult.FailurePayload$NotAvailableInOfflineMode\"}",
-                FailurePayload.NotAvailableInOfflineMode.class
-        );
-
-        assertJsonDeserialization(
                 FailurePayload.CommonFailurePayload.NO_RESPONSE_FROM_CHERRYGARDEN,
                 "{\"@class\":\"com.myodov.unicherrygarden.api.types.responseresult.FailurePayload$NoResponseFromCherryGarden\"}",
                 FailurePayload.CommonFailurePayload.class

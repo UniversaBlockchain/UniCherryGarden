@@ -23,6 +23,15 @@ public class UniCherryGardenError extends Error {
     }
 
     /**
+     * Some features are unavailable in offline mode.
+     */
+    public static class NotAvailableInOfflineModeError extends ArgumentError {
+        public NotAvailableInOfflineModeError(@NonNull String message) {
+            super(message);
+        }
+    }
+
+    /**
      * One of arguments that should contain a valid Ethereum address, contains wrong data.
      */
     public static class NotAnEthereumAddressError extends ArgumentError {

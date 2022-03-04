@@ -395,7 +395,7 @@ public final class ClientConnectorImpl implements ClientConnector {
     @Override
     public Ping.@NonNull Response ping() {
         if (offlineMode) {
-            return Ping.Response.fromCommonFailure(FailurePayload.NOT_AVAILABLE_IN_OFFLINE_MODE);
+            throw new UniCherryGardenError.NotAvailableInOfflineModeError("cannot ping!");
         } else {
             final CompletionStage<PingCommand.Result> stage =
                     AskPattern.ask(
@@ -424,7 +424,7 @@ public final class ClientConnectorImpl implements ClientConnector {
         }
 
         if (offlineMode) {
-            return GetCurrencies.Response.fromCommonFailure(FailurePayload.NOT_AVAILABLE_IN_OFFLINE_MODE);
+            throw new UniCherryGardenError.NotAvailableInOfflineModeError("cannot get currencies!");
         } else {
             final CompletionStage<GetCurrenciesCommand.Result> stage =
                     AskPattern.ask(
