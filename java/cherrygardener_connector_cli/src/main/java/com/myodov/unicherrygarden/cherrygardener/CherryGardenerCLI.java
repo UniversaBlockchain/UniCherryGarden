@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static com.myodov.unicherrygarden.StringTools.withOffset;
+import static com.myodov.unicherrygarden.NullTools.withOffset;
 
 
 /**

@@ -10,6 +10,7 @@ import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
+import com.myodov.unicherrygarden.messages.cherrypicker.GetAddressDetails;
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -23,6 +24,8 @@ import org.web3j.utils.Numeric;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+
+import static com.myodov.unicherrygarden.NullTools.coalesce;
 
 /**
  * The default implementation for {@link Sender} interface.
@@ -317,14 +320,18 @@ public final class SenderImpl implements Sender {
             }
         }
 
+        // Co-validations
+        if (sender == null && forceNonce == null) {
+            throw new UniCherryGardenError.ArgumentError("At least one of sender and forceNonce must be provided!");
+        }
+
         // `if amount < 0`
         if (amount.compareTo(BigDecimal.ZERO) < 0) {
             throw new UniCherryGardenError.ArgumentError(String.format("%s is not a valid amount", amount));
         }
 
         // TODO:
-        // 1. Nonce calculation
-        // 2. Gas price estimator
+        // Gas price estimator
 
         logger.debug("Going to create outgoing transfer of {} \"{}\" from {} to {}",
                 amount, currencyKey, sender, receiver);
@@ -348,6 +355,8 @@ public final class SenderImpl implements Sender {
             } else {
                 assert !offlineMode;
 
+                logger.debug("Need to discover gas limit for currency \"{}\"", currencyKey);
+
                 final GetCurrencies.Response currencyResp = clientConnector.getCurrency(currencyKey);
                 if (currencyResp.isFailure()) {
                     logger.error("When getting the details about currency {}, had a problem: {}",
@@ -355,22 +364,47 @@ public final class SenderImpl implements Sender {
                     throw new UniCherryGardenError.NetworkError(String.format(
                             "A network problem arisen when getting the details about currency \"%s\": %s",
                             currencyKey, currencyResp.getFailure()));
+                } else {
+                    final GetCurrencies.CurrenciesRequestResultPayload currencyPayload = currencyResp.getPayloadAsSuccessful();
+                    assert currencyPayload.currencies.size() == 1 : currencyPayload.currencies;
+                    final Currency currencyDetails = currencyPayload.currencies.iterator().next();
+                    assert currencyDetails.getCurrencyKey().equals(currencyKey) : String.format("%s/%s", currencyKey, currencyDetails);
+
+                    gasLimit = currencyDetails.getTransferGasLimit();
                 }
-
-                final GetCurrencies.CurrenciesRequestResultPayload currencyPayload = currencyResp.getPayloadAsSuccessful();
-                assert currencyPayload.currencies.size() == 1 : currencyPayload.currencies;
-                final Currency currencyDetails = currencyPayload.currencies.iterator().next();
-                assert currencyDetails.getCurrencyKey().equals(currencyKey) : String.format("%s/%s", currencyKey, currencyDetails);
-
-                gasLimit = currencyDetails.getTransferGasLimit();
             }
         }
 
         // Detect nonce
-        final BigInteger nonce = BigInteger.valueOf(-1); // TODO
+        final BigInteger nonce;
         {
-        }
+            if (forceNonce != null) {
+                nonce = forceNonce;
+            } else {
+                assert !offlineMode;
+                assert sender != null;
 
+                logger.debug("Need to discover nonce for address {}", sender);
+
+                final GetAddressDetails.Response addrDetailsResp = clientConnector.getObserver().getAddressDetails(sender);
+                if (addrDetailsResp.isFailure()) {
+                    logger.error("When getting the details about address {}, had a problem: {}",
+                            sender, addrDetailsResp.getFailure());
+                    throw new UniCherryGardenError.NetworkError(String.format(
+                            "A network problem arisen when getting the details about address %s: %s",
+                            sender, addrDetailsResp.getFailure()));
+                } else {
+                    final GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails addrDetails =
+                            addrDetailsResp.getPayloadAsSuccessful().details;
+
+                    nonce = BigInteger.valueOf(coalesce(
+                            addrDetails.nonces.nextPlanting,
+                            addrDetails.nonces.nextInPendingPool,
+                            addrDetails.nonces.nextInBlockchain
+                    ));
+                }
+            }
+        }
 
         logger.debug("Will use Chain ID {}, gas limit {}, nonce {}", chainId, gasLimit, nonce);
 

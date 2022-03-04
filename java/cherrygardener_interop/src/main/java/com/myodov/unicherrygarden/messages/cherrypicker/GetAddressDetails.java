@@ -17,7 +17,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.Objects;
 
-import static com.myodov.unicherrygarden.StringTools.naIfNull;
+import static com.myodov.unicherrygarden.NullTools.naIfNull;
 
 public class GetAddressDetails {
     @NonNull
