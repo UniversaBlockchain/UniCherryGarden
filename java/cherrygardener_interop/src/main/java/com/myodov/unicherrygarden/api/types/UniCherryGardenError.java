@@ -25,7 +25,7 @@ public class UniCherryGardenError extends Error {
     /**
      * Some features are unavailable in offline mode.
      */
-    public static class NotAvailableInOfflineModeError extends ArgumentError {
+    public static final class NotAvailableInOfflineModeError extends ArgumentError {
         public NotAvailableInOfflineModeError(@NonNull String message) {
             super(message);
         }
@@ -34,7 +34,7 @@ public class UniCherryGardenError extends Error {
     /**
      * One of arguments that should contain a valid Ethereum address, contains wrong data.
      */
-    public static class NotAnEthereumAddressError extends ArgumentError {
+    public static class NotAnEthereumAddressError extends ArgumentError { // TODO: can be made sealed when minimal Java increased to Java15
         public NotAnEthereumAddressError(@NonNull String badValue) {
             super(String.format("%s is not a valid Ethereum address", badValue));
         }
@@ -44,7 +44,7 @@ public class UniCherryGardenError extends Error {
      * One of arguments that should contain a valid Ethereum address (it is required to be lowercased),
      * contains wrong data.
      */
-    public static class NotALowercasedEthereumAddressError extends NotAnEthereumAddressError {
+    public static final class NotALowercasedEthereumAddressError extends NotAnEthereumAddressError {
         public NotALowercasedEthereumAddressError(@NonNull String badValue) {
             super(String.format("%s is not a valid lowercased Ethereum address", badValue));
         }
@@ -54,7 +54,7 @@ public class UniCherryGardenError extends Error {
      * One of arguments that should contain a valid Currency Code (either a valid lowercased Ethereum address,
      * or empty string), contains wrong data.
      */
-    public static class NotACurrencyKey extends NotAnEthereumAddressError {
+    public static final class NotACurrencyKey extends NotAnEthereumAddressError {
         public NotACurrencyKey(@NonNull String badValue) {
             super(String.format("%s is not a valid Currency Code", badValue));
         }
@@ -63,7 +63,7 @@ public class UniCherryGardenError extends Error {
     /**
      * One of arguments that should contain a valid block number, contains wrong data.
      */
-    public static class NotAnBlockNumber extends ArgumentError {
+    public static final class NotAnBlockNumber extends ArgumentError {
         public NotAnBlockNumber(@NonNull BigInteger badValue) {
             super(String.format("%s is not a valid block number (should be >= 0)", badValue));
         }
@@ -72,7 +72,7 @@ public class UniCherryGardenError extends Error {
     /**
      * One of arguments that should contain a valid nonce, contains wrong data.
      */
-    public static class NotAnValidNonce extends ArgumentError {
+    public static final class NotAnValidNonce extends ArgumentError {
         public NotAnValidNonce(@NonNull BigInteger badValue) {
             super(String.format("%s is not a valid block number (should be 0 <= nonce <= 2^64-1 per EIP-2681)",
                     badValue));
@@ -82,7 +82,7 @@ public class UniCherryGardenError extends Error {
     /**
      * Some network problem occurred during the operation.
      */
-    public static class NetworkError extends UniCherryGardenError {
+    public static final class NetworkError extends UniCherryGardenError {
         public NetworkError(String message) {
             super(message);
         }

@@ -19,7 +19,7 @@ public class GetAddressDetailsCommand
      * about available service providing this command; this class is the response adapted
      * to handle the command.
      */
-    public static class ReceptionistResponse
+    public static final class ReceptionistResponse
             extends ReceptionistResponseImpl<GetAddressDetails.@NonNull GADRequestPayload, Result> {
         public ReceptionistResponse(Receptionist.@NonNull Listing listing,
                                     GetAddressDetails.@NonNull GADRequestPayload payload,
@@ -29,7 +29,7 @@ public class GetAddressDetailsCommand
     }
 
 
-    public static class InternalResult
+    public static final class InternalResult
             extends InternalResultImpl<GetAddressDetails.@NonNull Response, Result> {
         public InternalResult(GetAddressDetails.@NonNull Response response,
                               @NonNull ActorRef<Result> replyTo) {
@@ -38,7 +38,7 @@ public class GetAddressDetailsCommand
     }
 
 
-    public static class Result
+    public static final class Result
             extends ConnectorActorCommandImpl.ResultImpl<GetAddressDetails.@NonNull Response> {
         public Result(GetAddressDetails.@NonNull Response response) {
             super(response);

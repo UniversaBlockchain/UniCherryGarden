@@ -61,7 +61,7 @@ public class GetAddressDetails {
     }
 
 
-    public static class AddressDetailsRequestResultPayload extends SuccessPayload {
+    public static final class AddressDetailsRequestResultPayload extends SuccessPayload {
 
         public static final class AddressDetails {
 
@@ -202,10 +202,10 @@ public class GetAddressDetails {
         }
     }
 
-    public static class AddressDetailsRequestResultFailure extends SpecificFailurePayload {
+    public static final class AddressDetailsRequestResultFailure extends SpecificFailurePayload {
     }
 
-    public static class Response
+    public static final class Response
             extends CherryGardenResponseWithPayload<AddressDetailsRequestResultPayload, AddressDetailsRequestResultFailure> {
 
         @JsonCreator

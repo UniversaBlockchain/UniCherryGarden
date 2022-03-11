@@ -71,7 +71,7 @@ public class GetTrackedAddresses {
         }
     }
 
-    public static class TrackedAddressesRequestResultPayload extends SuccessPayload {
+    public static final class TrackedAddressesRequestResultPayload extends SuccessPayload {
 
         public static final class TrackedAddressInformation {
             @NonNull
@@ -152,10 +152,10 @@ public class GetTrackedAddresses {
         }
     }
 
-    public static class TrackedAddressesRequestResultFailure extends SpecificFailurePayload {
+    public static final class TrackedAddressesRequestResultFailure extends SpecificFailurePayload {
     }
 
-    public static class Response
+    public static final class Response
             extends CherryGardenResponseWithPayload<TrackedAddressesRequestResultPayload, TrackedAddressesRequestResultFailure> {
 
         @JsonCreator

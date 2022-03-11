@@ -24,7 +24,7 @@ public class PingCommand
      * about available service providing this command; this class is the response adapted
      * to handle the command.
      */
-    public static class ReceptionistResponse
+    public static final class ReceptionistResponse
             extends ReceptionistResponseImpl<Ping.@NonNull PRequestPayload, Result> {
         @JsonCreator
         public ReceptionistResponse(Receptionist.@NonNull Listing listing,
@@ -35,7 +35,7 @@ public class PingCommand
     }
 
 
-    public static class InternalResult
+    public static final class InternalResult
             extends InternalResultImpl<Ping.@NonNull Response, Result> {
         public InternalResult(Ping.@NonNull Response response,
                               @NonNull ActorRef<Result> replyTo) {
@@ -44,7 +44,7 @@ public class PingCommand
     }
 
 
-    public static class Result
+    public static final class Result
             extends ConnectorActorCommandImpl.ResultImpl<Ping.@NonNull Response> {
         public Result(Ping.@NonNull Response response) {
             super(response);

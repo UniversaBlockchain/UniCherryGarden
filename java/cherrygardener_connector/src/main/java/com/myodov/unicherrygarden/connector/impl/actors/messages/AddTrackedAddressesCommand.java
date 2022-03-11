@@ -22,7 +22,7 @@ public class AddTrackedAddressesCommand
      * about available service providing this command; this class is the response adapted
      * to handle the command.
      */
-    public static class ReceptionistResponse
+    public static final class ReceptionistResponse
             extends ReceptionistResponseImpl<AddTrackedAddresses.@NonNull ATARequestPayload, Result> {
         public ReceptionistResponse(Receptionist.@NonNull Listing listing,
                                     AddTrackedAddresses.@NonNull ATARequestPayload payload,
@@ -32,7 +32,7 @@ public class AddTrackedAddressesCommand
     }
 
 
-    public static class InternalResult
+    public static final class InternalResult
             extends InternalResultImpl<AddTrackedAddresses.@NonNull Response, Result> {
         public InternalResult(AddTrackedAddresses.@NonNull Response response,
                               @NonNull ActorRef<Result> replyTo) {
@@ -41,7 +41,7 @@ public class AddTrackedAddressesCommand
     }
 
 
-    public static class Result
+    public static final class Result
             extends ConnectorActorCommandImpl.ResultImpl<AddTrackedAddresses.@NonNull Response> {
         public Result(AddTrackedAddresses.@NonNull Response response) {
             super(response);

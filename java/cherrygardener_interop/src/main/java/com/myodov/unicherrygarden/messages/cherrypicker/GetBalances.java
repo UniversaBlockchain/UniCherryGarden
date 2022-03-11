@@ -86,9 +86,9 @@ public class GetBalances {
     }
 
 
-    public static class BalanceRequestResultPayload extends SuccessPayload {
+    public static final class BalanceRequestResultPayload extends SuccessPayload {
 
-        public static class CurrencyBalanceFact {
+        public static final class CurrencyBalanceFact {
             /**
              * The currency for which the balance is retrieved.
              */
@@ -162,7 +162,7 @@ public class GetBalances {
     }
 
 
-    public static class BalanceRequestResultFailure extends SpecificFailurePayload {
+    public static final class BalanceRequestResultFailure extends SpecificFailurePayload {
     }
 
 

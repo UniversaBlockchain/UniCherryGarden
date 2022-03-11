@@ -50,7 +50,7 @@ import static org.junit.Assert.*;
 public class SenderImplTest {
     final Logger logger = LoggerFactory.getLogger(SenderImplTest.class);
 
-    public static class TestnetSettings {
+    public static final class TestnetSettings {
         public final long chainId;
         @NonNull
         public final String rpcServer;

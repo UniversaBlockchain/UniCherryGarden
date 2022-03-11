@@ -10,7 +10,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
  */
 public class SampleCredentials {
 
-    public static class CredentialsSet {
+    public static final class CredentialsSet {
         /**
          * Private key, in a string form.
          */

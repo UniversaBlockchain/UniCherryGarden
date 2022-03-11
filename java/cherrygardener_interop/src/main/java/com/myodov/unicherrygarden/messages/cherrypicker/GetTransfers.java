@@ -97,7 +97,7 @@ public class GetTransfers {
     }
 
 
-    public static class TransfersRequestResultPayload extends SuccessPayload {
+    public static final class TransfersRequestResultPayload extends SuccessPayload {
         /**
          * The total status of blockchain synchronization.
          */
@@ -329,7 +329,7 @@ public class GetTransfers {
         }
     }
 
-    public static class TransfersRequestResultFailure extends SpecificFailurePayload {
+    public static final class TransfersRequestResultFailure extends SpecificFailurePayload {
     }
 
     public static final class Response

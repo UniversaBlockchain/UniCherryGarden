@@ -44,7 +44,7 @@ public class EthUtils {
     /**
      * Helpers to deal with Ethereum-style addresses
      */
-    public static class Addresses {
+    public static final class Addresses {
         /**
          * Whether the argument is a valid Ethereum address
          * (starts from 0x, then goes the hexadecimal number of proper length in any case).
@@ -83,7 +83,7 @@ public class EthUtils {
     /**
      * Helpers to deal with Ethereum-style hashes.
      */
-    public static class Hashes {
+    public static final class Hashes {
         /**
          * Whether the argument is a valid Ethereum block hash.
          */
@@ -103,7 +103,7 @@ public class EthUtils {
      * Helpers to deal with Ethereum-style `Uint256` data, when it is written as a text string
      * (e.g. in Ethereum node RPC responses).
      */
-    public static class Uint256Str {
+    public static final class Uint256Str {
         /**
          * Convert the value stored in Ethereum-style `Uint256` string
          * to a regular address string.
@@ -155,7 +155,7 @@ public class EthUtils {
     /**
      * Helpers to deal with Ethereum-style `Uint256`-based storage of decimal values.
      */
-    public static class Uint256 {
+    public static final class Uint256 {
         /**
          * Convert the value stored in Ethereum-style `Uint256`
          * (assuming we know the `decimals` amount) to proper `BigDecimal`.
@@ -183,7 +183,7 @@ public class EthUtils {
     /**
      * Helpers to deal with Wei/Gwei/Ether conversion.
      */
-    public static class Wei {
+    public static final class Wei {
         /**
          * “Decimals” value for analyzing the raw BigInt Ethereum values.
          */

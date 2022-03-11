@@ -47,7 +47,7 @@ public class Ping {
     }
 
 
-    public static class Request
+    public static final class Request
             extends RequestWithReplyTo<PRequestPayload, Ping.Response>
             implements CherryGardenerRequest {
 
@@ -59,7 +59,7 @@ public class Ping {
     }
 
 
-    public static class PingRequestResultPayload extends SuccessPayload {
+    public static final class PingRequestResultPayload extends SuccessPayload {
         @NonNull
         public final SystemStatus systemStatus;
 
@@ -101,10 +101,10 @@ public class Ping {
         }
     }
 
-    public static class PingRequestResultFailure extends SpecificFailurePayload {
+    public static final class PingRequestResultFailure extends SpecificFailurePayload {
     }
 
-    public static class Response
+    public static final class Response
             extends CherryGardenResponseWithPayload<PingRequestResultPayload, PingRequestResultFailure> {
 
         @JsonCreator

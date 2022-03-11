@@ -24,7 +24,7 @@ public class GetCurrenciesCommand
      * about available service providing this command; this class is the response adapted
      * to handle the command.
      */
-    public static class ReceptionistResponse
+    public static final class ReceptionistResponse
             extends ReceptionistResponseImpl<GetCurrencies.@NonNull GCRequestPayload, Result> {
         @JsonCreator
         public ReceptionistResponse(Receptionist.@NonNull Listing listing,
@@ -35,7 +35,7 @@ public class GetCurrenciesCommand
     }
 
 
-    public static class InternalResult
+    public static final class InternalResult
             extends InternalResultImpl<GetCurrencies.@NonNull Response, Result> {
         public InternalResult(GetCurrencies.@NonNull Response response,
                               @NonNull ActorRef<Result> replyTo) {
@@ -44,7 +44,7 @@ public class GetCurrenciesCommand
     }
 
 
-    public static class Result
+    public static final class Result
             extends ConnectorActorCommandImpl.ResultImpl<GetCurrencies.@NonNull Response> {
         public Result(GetCurrencies.@NonNull Response response) {
             super(response);

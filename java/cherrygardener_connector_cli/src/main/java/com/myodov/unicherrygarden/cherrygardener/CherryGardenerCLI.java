@@ -551,7 +551,7 @@ public class CherryGardenerCLI {
     }
 
 
-    static class TrackFromBlockOption {
+    static final class TrackFromBlockOption {
         final AddTrackedAddresses.@NonNull StartTrackingAddressMode mode;
         @Nullable
         final Integer block;

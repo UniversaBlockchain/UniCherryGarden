@@ -22,7 +22,7 @@ public class GetTrackedAddressesCommand
      * about available service providing this command; this class is the response adapted
      * to handle the command.
      */
-    public static class ReceptionistResponse
+    public static final class ReceptionistResponse
             extends ReceptionistResponseImpl<GetTrackedAddresses.@NonNull GTARequestPayload, Result> {
         public ReceptionistResponse(Receptionist.@NonNull Listing listing,
                                     GetTrackedAddresses.@NonNull GTARequestPayload payload,
@@ -32,7 +32,7 @@ public class GetTrackedAddressesCommand
     }
 
 
-    public static class InternalResult
+    public static final class InternalResult
             extends InternalResultImpl<GetTrackedAddresses.@NonNull Response, Result> {
         public InternalResult(GetTrackedAddresses.@NonNull Response response,
                               @NonNull ActorRef<Result> replyTo) {
@@ -41,7 +41,7 @@ public class GetTrackedAddressesCommand
     }
 
 
-    public static class Result
+    public static final class Result
             extends ConnectorActorCommandImpl.ResultImpl<GetTrackedAddresses.@NonNull Response> {
         public Result(GetTrackedAddresses.@NonNull Response response) {
             super(response);

@@ -10,7 +10,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
  */
 public class WaitForBootCommand implements ConnectorActorCommand {
 
-    public static class BootCompleted {
+    public static final class BootCompleted {
         public BootCompleted() {
         }
 

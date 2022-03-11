@@ -81,7 +81,7 @@ public class GetCurrencies {
     }
 
 
-    public static class CurrenciesRequestResultPayload extends SuccessPayload {
+    public static final class CurrenciesRequestResultPayload extends SuccessPayload {
         /**
          * The total status of blockchain synchronization/blockchain/Ethereum node/UniCherryGarden node.
          */
@@ -109,7 +109,7 @@ public class GetCurrencies {
         }
     }
 
-    public static class CurrenciesRequestResultFailure extends SpecificFailurePayload {
+    public static final class CurrenciesRequestResultFailure extends SpecificFailurePayload {
     }
 
     public static final class Response

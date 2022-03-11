@@ -33,7 +33,7 @@ import static com.myodov.unicherrygarden.NullTools.coalesce;
 public final class SenderImpl implements Sender {
     final Logger logger = LoggerFactory.getLogger(SenderImpl.class);
 
-    static class ByteBasedOutgoingTransactionImpl implements PreparedOutgoingTransaction {
+    static class ByteBasedOutgoingTransactionImpl implements PreparedOutgoingTransaction { // TODO: can be made sealed when minimal Java increased to Java15
 
         protected final byte[] bytes;
 
@@ -76,7 +76,7 @@ public final class SenderImpl implements Sender {
     /**
      * The default implementation for {@link UnsignedOutgoingTransaction} interface.
      */
-    static class UnsignedOutgoingTransactionImpl
+    static final class UnsignedOutgoingTransactionImpl
             extends ByteBasedOutgoingTransactionImpl
             implements UnsignedOutgoingTransaction {
 
@@ -95,6 +95,12 @@ public final class SenderImpl implements Sender {
         @SuppressWarnings("unused")
         UnsignedOutgoingTransactionImpl(@NonNull RawTransaction rawTransaction) {
             this(TransactionEncoder.encode(rawTransaction));
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s(bytes=\"%s\")",
+                    getClass().getSimpleName(), getBytesHexString());
         }
 
         /**
@@ -204,7 +210,7 @@ public final class SenderImpl implements Sender {
     /**
      * The default implementation for {@link SignedOutgoingTransaction} interface.
      */
-    static class SignedOutgoingTransactionImpl
+    static final class SignedOutgoingTransactionImpl
             extends ByteBasedOutgoingTransactionImpl
             implements SignedOutgoingTransaction {
 
@@ -223,6 +229,12 @@ public final class SenderImpl implements Sender {
         @SuppressWarnings("unused")
         SignedOutgoingTransactionImpl(@NonNull SignedRawTransaction signedRawTransaction) {
             this(TransactionEncoder.encode(signedRawTransaction));
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s(bytes=\"%s\")",
+                    getClass().getSimpleName(), getBytesHexString());
         }
 
         @Override

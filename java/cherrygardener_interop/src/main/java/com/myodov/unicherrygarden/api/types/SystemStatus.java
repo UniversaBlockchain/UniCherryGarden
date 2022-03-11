@@ -17,12 +17,12 @@ public class SystemStatus {
      * The details about the the syncing status of Ethereum node
      * (how well the node is synced to the blockchain).
      */
-    public static class Blockchain {
+    public static final class Blockchain {
         /**
          * The information about the status of blockchain syncing;
          * contains the data normally available through `eth.syncing` and `eth.blockNumber` calls.
          */
-        public static class SyncingData {
+        public static final class SyncingData {
             /**
              * The number of the latest block the Ethereum node is synced to.
              * Analog of calling <code>eth.syncing.currentBlock</code>.
@@ -68,7 +68,7 @@ public class SystemStatus {
          * (note - if the node is not yet fully synced, its number may be different from both `syncing.currentBlock`
          * and `syncing.highestBlock`!).
          */
-        public static class LatestBlock {
+        public static final class LatestBlock {
             /**
              * Block number in the blockchain.
              */
@@ -232,7 +232,7 @@ public class SystemStatus {
      * The details about the the syncing status of UniCherryPicker
      * (how well UniCherryPicker is synced to the Ethereum node).
      */
-    public static class CherryPicker {
+    public static final class CherryPicker {
         /**
          * The number of the latest block known to UniCherryPicker (for which it has the overall block data).
          * <p>

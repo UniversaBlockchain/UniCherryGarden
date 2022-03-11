@@ -23,7 +23,7 @@ public class GetBalancesCommand
      * about available service providing this command; this class is the response adapted
      * to handle the command.
      */
-    public static class ReceptionistResponse
+    public static final class ReceptionistResponse
             extends ReceptionistResponseImpl<GetBalances.@NonNull GBRequestPayload, Result> {
         public ReceptionistResponse(Receptionist.@NonNull Listing listing,
                                     GetBalances.@NonNull GBRequestPayload payload,
@@ -33,7 +33,7 @@ public class GetBalancesCommand
     }
 
 
-    public static class InternalResult
+    public static final class InternalResult
             extends InternalResultImpl<GetBalances.@NonNull Response, Result> {
         public InternalResult(GetBalances.@NonNull Response response,
                               @NonNull ActorRef<Result> replyTo) {
@@ -42,7 +42,7 @@ public class GetBalancesCommand
     }
 
 
-    public static class Result
+    public static final class Result
             extends ConnectorActorCommandImpl.ResultImpl<GetBalances.@NonNull Response> {
         public Result(GetBalances.@NonNull Response response) {
             super(response);
