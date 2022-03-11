@@ -95,7 +95,8 @@ public class SenderImplTest {
     private static final BigInteger ethTransferGasLimit = BigInteger.valueOf(21_000);
 
     private static final String ethCurrencyKey = "";
-
+    private static final BigDecimal maxPriorityFee = new BigDecimal("1.2345E-14");
+    private static final BigDecimal maxFee = new BigDecimal("6.789E-14");
 
     @Test
     public void testBuildEthTransactionMainnet() {
@@ -108,7 +109,9 @@ public class SenderImplTest {
                 new BigDecimal("0.0000001"),
                 ChainIdLong.MAINNET,
                 ethTransferGasLimit,
-                BigInteger.valueOf(0)
+                BigInteger.valueOf(0),
+                maxPriorityFee,
+                maxFee
         );
         final Sender.UnsignedOutgoingTransaction txTo1BUnsigned = sender.createOutgoingTransfer(
                 null,
@@ -117,7 +120,9 @@ public class SenderImplTest {
                 new BigDecimal("12931298312"),
                 ChainIdLong.MAINNET,
                 ethTransferGasLimit,
-                BigInteger.valueOf(0)
+                BigInteger.valueOf(0),
+                maxPriorityFee,
+                maxFee
         );
         final Sender.UnsignedOutgoingTransaction txTo2AUnsigned = sender.createOutgoingTransfer(
                 null,
@@ -126,7 +131,9 @@ public class SenderImplTest {
                 new BigDecimal("0.0000001"),
                 ChainIdLong.MAINNET,
                 ethTransferGasLimit,
-                BigInteger.valueOf(0)
+                BigInteger.valueOf(0),
+                maxPriorityFee,
+                maxFee
         );
         final Sender.UnsignedOutgoingTransaction txTo2BUnsigned = sender.createOutgoingTransfer(
                 null,
@@ -135,7 +142,9 @@ public class SenderImplTest {
                 new BigDecimal("12931298312"),
                 ChainIdLong.MAINNET,
                 ethTransferGasLimit,
-                BigInteger.valueOf(0)
+                BigInteger.valueOf(0),
+                maxPriorityFee,
+                maxFee
         );
 
         {
@@ -267,7 +276,9 @@ public class SenderImplTest {
                 new BigDecimal("0.0000001"),
                 ChainIdLong.ROPSTEN,
                 ethTransferGasLimit,
-                BigInteger.valueOf(0)
+                BigInteger.valueOf(0),
+                maxPriorityFee,
+                maxFee
         );
         final Sender.UnsignedOutgoingTransaction rinkebyTxTo1Unsigned = sender.createOutgoingTransfer(
                 null,
@@ -276,7 +287,9 @@ public class SenderImplTest {
                 new BigDecimal("0.0000001"),
                 ChainIdLong.RINKEBY,
                 ethTransferGasLimit,
-                BigInteger.valueOf(0)
+                BigInteger.valueOf(0),
+                maxPriorityFee,
+                maxFee
         );
 
         assertEquals(
@@ -344,7 +357,9 @@ public class SenderImplTest {
                 new BigDecimal("0.0000001"),
                 ChainIdLong.MAINNET,
                 ethTransferGasLimit,
-                BigInteger.valueOf(0)
+                BigInteger.valueOf(0),
+                maxPriorityFee,
+                maxFee
         );
         final Sender.UnsignedOutgoingTransaction rinkebyTxTo1AUnsigned = sender.createOutgoingTransfer(
                 null,
@@ -353,7 +368,9 @@ public class SenderImplTest {
                 new BigDecimal("0.0000001"),
                 ChainIdLong.RINKEBY,
                 ethTransferGasLimit,
-                BigInteger.valueOf(0)
+                BigInteger.valueOf(0),
+                maxPriorityFee,
+                maxFee
         );
 
         final Sender.SignedOutgoingTransaction mainnetTx2To1ASigned =

@@ -295,7 +295,9 @@ public final class SenderImpl implements Sender {
             @NonNull BigDecimal amount,
             @Nullable Long forceChainId,
             @Nullable BigInteger forceGasLimit,
-            @Nullable BigInteger forceNonce
+            @Nullable BigInteger forceNonce,
+            @Nullable BigDecimal forceMaxPriorityFee,
+            @Nullable BigDecimal forceMaxFee
     ) {
         assert currencyKey != null : currencyKey;
         assert amount != null : amount;
@@ -416,8 +418,16 @@ public final class SenderImpl implements Sender {
         final UnsignedOutgoingTransaction result;
         if (currencyKey.isEmpty()) {
             // ETH or other base currency
-            final BigDecimal maxPriorityFee = new BigDecimal("1.2345E-14");
-            final BigDecimal maxFee = new BigDecimal("6.789E-14");
+
+            // TODO: calculation/estimation
+            final BigDecimal maxPriorityFee =
+                    (forceMaxPriorityFee != null)?
+                            forceMaxPriorityFee:
+                            EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(2));
+            final BigDecimal maxFee =
+                    (forceMaxFee != null)?
+                            forceMaxFee:
+                            EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(2));
 
             result = UnsignedOutgoingTransactionImpl.createEtherTransaction(
                     receiver,

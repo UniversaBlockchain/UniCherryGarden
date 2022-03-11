@@ -1361,7 +1361,9 @@ public class CherryGardenerCLI {
                             amount,
                             connectionSettings.chainId, // already Nullable
                             gasLimitOpt.orElse(null),
-                            nonceOpt.orElse(null)
+                            nonceOpt.orElse(null),
+                            null,
+                            null
                     );
                     System.err.printf("Created the transaction: %s\n", unsignedTx.getBytesHexString());
                 } catch (Exception e) {
