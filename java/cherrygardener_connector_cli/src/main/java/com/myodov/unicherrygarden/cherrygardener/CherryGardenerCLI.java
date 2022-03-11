@@ -1363,7 +1363,7 @@ public class CherryGardenerCLI {
                             gasLimitOpt.orElse(null),
                             nonceOpt.orElse(null)
                     );
-                    System.err.printf("Created the transaction: %s\n", unsignedTx);
+                    System.err.printf("Created the transaction: %s\n", unsignedTx.getBytesHexString());
                 } catch (Exception e) {
                     System.err.printf("ERROR: Could not connect to UniCherryGarden! Exception %s\n", e);
                     logger.error("Execution error", e);

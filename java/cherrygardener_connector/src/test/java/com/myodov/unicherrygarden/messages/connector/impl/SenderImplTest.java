@@ -15,6 +15,8 @@ import org.web3j.tx.ChainIdLong;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.myodov.unicherrygarden.SampleCredentials.CRED1;
 import static com.myodov.unicherrygarden.SampleCredentials.CRED2;
@@ -37,13 +39,16 @@ import static org.junit.Assert.*;
  *     ethereum_testnet {
  *       chain_id = 4 // Rinkeby
  *       rpc_server = "http://localhost:8548" // Rinkeby
- *       private_key = "f6e28eb945e0835f7ac0f0ccdaaf717f5700554e42ed21fc23580450f5243540"
+ *       private_keys = [
+ *           "f6e28eb945e0835f7ac0f0ccdaaf717f5700554e42ed21fc23580450f5243540",
+ *           "24004f4f7f73ef95152ab338f04ff89fecc36529ac827aaff779e65f8669f8f5"
+ *       ]
  *     }
  *   }
  * }
  * </pre>
  * <p>
- * The address related to the `unicherrygarden.tests.ethereum_testnet.private_key` should have some non-zero
+ * The first address in `unicherrygarden.tests.ethereum_testnet.private_keys` should have some non-zero
  * amount of primary currency in this network (ETH/ETHRINKEBY/RIN/whatever), typically the one provided
  * by MyEtherWallet faucet or other faucets.
  */
@@ -55,24 +60,27 @@ public class SenderImplTest {
         @NonNull
         public final String rpcServer;
         @NonNull
-        public final PrivateKey privateKey;
+        public final List<PrivateKey> privateKeys;
 
         TestnetSettings(long chainId,
                         @NonNull String rpcServer,
-                        @NonNull String privateKeyStr) {
+                        @NonNull List<String> privateKeysStr) {
             assert rpcServer != null : rpcServer;
-            assert privateKeyStr != null : privateKeyStr;
+            assert privateKeysStr != null : privateKeysStr;
 
             this.chainId = chainId;
             this.rpcServer = rpcServer;
-            this.privateKey = new PrivateKeyImpl(Hex.decode(privateKeyStr));
+            this.privateKeys = privateKeysStr
+                    .stream()
+                    .map(s -> new PrivateKeyImpl(Hex.decode(s)))
+                    .collect(Collectors.toList());
         }
 
         @Override
         public String toString() {
             return String.format(
-                    "TestnetSettings(chainId=%s, rpcServer=%s, privateKey=%s)",
-                    chainId, rpcServer, privateKey);
+                    "TestnetSettings(chainId=%s, rpcServer=%s, privateKeys=%s)",
+                    chainId, rpcServer, privateKeys);
         }
     }
 
@@ -80,19 +88,23 @@ public class SenderImplTest {
     private static final TestnetSettings testnetSettings = new TestnetSettings(
             config.getLong("unicherrygarden.tests.ethereum_testnet.chain_id"),
             config.getString("unicherrygarden.tests.ethereum_testnet.rpc_server"),
-            config.getString("unicherrygarden.tests.ethereum_testnet.private_key"));
+            config.getStringList("unicherrygarden.tests.ethereum_testnet.private_keys")
+    );
 
 
     private static final BigInteger ethTransferGasLimit = BigInteger.valueOf(21_000);
 
+    private static final String ethCurrencyKey = "";
+
+
     @Test
-    public void testBuildTransactionMainnet() {
+    public void testBuildEthTransactionMainnet() {
         final SenderImpl sender = new SenderImpl();
 
         final Sender.UnsignedOutgoingTransaction txTo1AUnsigned = sender.createOutgoingTransfer(
                 null,
                 CRED1.addr,
-                "",
+                ethCurrencyKey,
                 new BigDecimal("0.0000001"),
                 ChainIdLong.MAINNET,
                 ethTransferGasLimit,
@@ -101,7 +113,7 @@ public class SenderImplTest {
         final Sender.UnsignedOutgoingTransaction txTo1BUnsigned = sender.createOutgoingTransfer(
                 null,
                 CRED1.addr,
-                "",
+                ethCurrencyKey,
                 new BigDecimal("12931298312"),
                 ChainIdLong.MAINNET,
                 ethTransferGasLimit,
@@ -110,7 +122,7 @@ public class SenderImplTest {
         final Sender.UnsignedOutgoingTransaction txTo2AUnsigned = sender.createOutgoingTransfer(
                 null,
                 CRED2.addr,
-                "",
+                ethCurrencyKey,
                 new BigDecimal("0.0000001"),
                 ChainIdLong.MAINNET,
                 ethTransferGasLimit,
@@ -119,7 +131,7 @@ public class SenderImplTest {
         final Sender.UnsignedOutgoingTransaction txTo2BUnsigned = sender.createOutgoingTransfer(
                 null,
                 CRED2.addr,
-                "",
+                ethCurrencyKey,
                 new BigDecimal("12931298312"),
                 ChainIdLong.MAINNET,
                 ethTransferGasLimit,
@@ -245,13 +257,13 @@ public class SenderImplTest {
     }
 
     @Test
-    public void testBuildTransactionTestnets() {
+    public void testBuildEthTransactionTestnets() {
         final SenderImpl sender = new SenderImpl();
 
         final Sender.UnsignedOutgoingTransaction ropstenTxTo1Unsigned = sender.createOutgoingTransfer(
                 null,
                 CRED1.addr,
-                "",
+                ethCurrencyKey,
                 new BigDecimal("0.0000001"),
                 ChainIdLong.ROPSTEN,
                 ethTransferGasLimit,
@@ -260,7 +272,7 @@ public class SenderImplTest {
         final Sender.UnsignedOutgoingTransaction rinkebyTxTo1Unsigned = sender.createOutgoingTransfer(
                 null,
                 CRED1.addr,
-                "",
+                ethCurrencyKey,
                 new BigDecimal("0.0000001"),
                 ChainIdLong.RINKEBY,
                 ethTransferGasLimit,
@@ -280,6 +292,8 @@ public class SenderImplTest {
         final Sender.SignedOutgoingTransaction ropstenTx2To1Signed = ropstenTxTo1Unsigned.sign(CRED2.privateKey);
         final Sender.SignedOutgoingTransaction rinkebyTx1To1Signed = rinkebyTxTo1Unsigned.sign(CRED1.privateKey);
         final Sender.SignedOutgoingTransaction rinkebyTx2To1Signed = rinkebyTxTo1Unsigned.sign(CRED2.privateKey);
+        logger.debug("Created transactions:\n  {},\n  {},\n  {},\n  {}",
+                ropstenTx1To1Signed, ropstenTx2To1Signed, rinkebyTx1To1Signed, rinkebyTx2To1Signed);
 
         assertEquals(
                 "0x02f86c0380823039830109328252089434e1e4f805fcdc936068a760b2c17bc62135b5ae85174876e80080c001a0c745d7ba023123d358d462d6915ad1af84545a626d08d2b82df5fc5ef166d715a065f68d46a47c5035f5b3f29c6174fc920636c3aee348e38e8b764ae08180f1b3",
@@ -326,7 +340,7 @@ public class SenderImplTest {
         final Sender.UnsignedOutgoingTransaction mainnetTxTo1AUnsigned = sender.createOutgoingTransfer(
                 null,
                 CRED1.addr,
-                "",
+                ethCurrencyKey,
                 new BigDecimal("0.0000001"),
                 ChainIdLong.MAINNET,
                 ethTransferGasLimit,
@@ -335,7 +349,7 @@ public class SenderImplTest {
         final Sender.UnsignedOutgoingTransaction rinkebyTxTo1AUnsigned = sender.createOutgoingTransfer(
                 null,
                 CRED1.addr,
-                "",
+                ethCurrencyKey,
                 new BigDecimal("0.0000001"),
                 ChainIdLong.RINKEBY,
                 ethTransferGasLimit,

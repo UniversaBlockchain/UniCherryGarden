@@ -226,9 +226,8 @@ public final class ClientConnectorImpl implements ClientConnector {
 
             // Setting up the remaining subsystems.
             // Note that Sender needs us to have chainId discovered already.
-
             this.observer = new ObserverImpl(actorSystem, mandatoryConfirmations);
-            this.sender = new SenderImpl(actorSystem, this);
+            this.sender = new SenderImpl(this);
         }
     }
 
@@ -352,6 +351,11 @@ public final class ClientConnectorImpl implements ClientConnector {
     //
     // Methods that return the engines/subsystems
     //
+
+    @NonNull
+    public ActorSystem<ConnectorActorMessage> getActorSystem() {
+        return actorSystem;
+    }
 
     @Override
     @NonNull

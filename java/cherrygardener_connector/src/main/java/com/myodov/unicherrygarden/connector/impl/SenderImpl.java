@@ -265,22 +265,15 @@ public final class SenderImpl implements Sender {
     /**
      * Constructor.
      *
-     * @param actorSystem     Akka actor system to use;
-     *                        <code>null</code> (only) if created in offline mode.
      * @param clientConnector The instance of Client Connector used for some operations;
      *                        <code>null</code> (only) if created in offline mode.
      * @see <a href="https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md">EIP-155</a>.
      */
     @SuppressWarnings("unused")
-    public SenderImpl(@Nullable ActorSystem<ConnectorActorMessage> actorSystem,
-                      @Nullable ClientConnector clientConnector) {
-        assert (actorSystem == null) == (clientConnector == null) :
-                String.format("%s/%s", actorSystem, clientConnector);
-
-        this.actorSystem = actorSystem;
+    public SenderImpl(@Nullable ClientConnectorImpl clientConnector) {
         this.clientConnector = clientConnector;
-
-        this.offlineMode = (actorSystem == null) && (clientConnector == null);
+        this.actorSystem = (clientConnector == null) ? null : clientConnector.getActorSystem();
+        this.offlineMode = clientConnector == null;
 
         logger.debug("Starting sender; will use client connector {}", clientConnector);
     }
@@ -289,7 +282,7 @@ public final class SenderImpl implements Sender {
      * Simple constructor, creating the Sender in “offline mode”.
      */
     public SenderImpl() {
-        this(null, null);
+        this(null);
     }
 
 
