@@ -165,6 +165,7 @@ public final class SenderImpl implements Sender {
          * @param amountUint256  amount of token (not corrected for decimals) to be transferred.
          *                       This is low-level uint256-based number to be recorded.
          * @param nonce          nonce for the transaction.
+         * @param gasLimit       gas limit to use.
          * @param maxPriorityFee (EIP-1559) Max Priority Fee; measured in ETH, but in real scenarios
          *                       it is often measured in Gweis.
          * @param maxFee         (EIP-1559) Max Fee; measured in ETH, but in real scenarios
@@ -180,31 +181,30 @@ public final class SenderImpl implements Sender {
                 @NonNull String erc20TokenAddress,
                 long chainId,
                 @NonNull BigInteger nonce,
+                @NonNull BigInteger gasLimit,
                 @NonNull BigDecimal maxPriorityFee,
                 @NonNull BigDecimal maxFee
         ) {
-            Validators.requireValidEthereumAddress(receiver);
+            Validators.requireValidLowercasedEthereumAddresses(receiver);
             assert amountUint256 != null && amountUint256.compareTo(BigInteger.ZERO) >= 0 : amountUint256; // amountUint256 >= 0
-            Validators.requireValidEthereumAddress(erc20TokenAddress);
+            Validators.requireValidLowercasedEthereumAddresses(erc20TokenAddress);
             Validators.requireValidNonce(nonce);
             assert maxPriorityFee != null && maxPriorityFee.compareTo(BigDecimal.ZERO) >= 0 : maxPriorityFee; // maxPriorityFee >= 0
             assert maxFee != null && maxFee.compareTo(BigDecimal.ZERO) >= 0 : maxFee; // maxFee >= 0
 
-            final Function function = new Function(
+            final Function transferFunction = new Function(
                     ERC20.FUNC_TRANSFER,
                     Arrays.<Type>asList(new org.web3j.abi.datatypes.Address(receiver),
                             new org.web3j.abi.datatypes.generated.Uint256(amountUint256)),
                     Collections.<TypeReference<?>>emptyList());
 
-            final String encoded = FunctionEncoder.encode(function);
-
-
-            return new UnsignedOutgoingTransactionImpl(RawTransaction.createEtherTransaction(
+            return new UnsignedOutgoingTransactionImpl(RawTransaction.createTransaction(
                     chainId,
                     nonce,
-                    EthUtils.ETH_TRANSFER_GAS_LIMIT_BIGINTEGER,
-                    receiver.toLowerCase(),
-                    amountUint256,
+                    gasLimit,
+                    erc20TokenAddress,
+                    BigInteger.ZERO,
+                    FunctionEncoder.encode(transferFunction),
                     EthUtils.Wei.valueToWeis(maxPriorityFee),
                     EthUtils.Wei.valueToWeis(maxFee)
             ));
@@ -237,6 +237,7 @@ public final class SenderImpl implements Sender {
                 @NonNull String erc20TokenAddress,
                 long chainId,
                 @NonNull BigInteger nonce,
+                @NonNull BigInteger gasLimit,
                 @NonNull BigDecimal maxPriorityFee,
                 @NonNull BigDecimal maxFee
         ) {
@@ -247,6 +248,7 @@ public final class SenderImpl implements Sender {
                     erc20TokenAddress,
                     chainId,
                     nonce,
+                    gasLimit,
                     maxPriorityFee,
                     maxFee
             );
@@ -491,7 +493,8 @@ public final class SenderImpl implements Sender {
             }
         }
 
-        logger.debug("Will use Chain ID {}, gas limit {}, nonce {}", chainId, gasLimit, nonce);
+        logger.debug("Will use Chain ID {}, gas limit {}, nonce {}, decimals {}",
+                chainId, gasLimit, nonce, decimals);
 
         // TODO: calculation/estimation
         final BigDecimal maxPriorityFee =
@@ -515,6 +518,8 @@ public final class SenderImpl implements Sender {
                     maxFee
             );
         } else {
+            assert gasLimit != null : gasLimit;
+
             // Currently the only other option is ERC20
             result = UnsignedOutgoingTransactionImpl.createERC20Transfer(
                     receiver,
@@ -523,6 +528,7 @@ public final class SenderImpl implements Sender {
                     currencyKey,
                     chainId,
                     nonce,
+                    gasLimit,
                     maxPriorityFee,
                     maxFee
             );
