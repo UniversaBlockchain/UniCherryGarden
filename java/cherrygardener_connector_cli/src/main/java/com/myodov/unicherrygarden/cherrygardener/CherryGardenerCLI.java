@@ -1359,6 +1359,7 @@ public class CherryGardenerCLI {
                             receiver,
                             currencyKey,
                             amount,
+                            null, // let’s detect the decimals automatically
                             connectionSettings.chainId, // already Nullable
                             gasLimitOpt.orElse(null),
                             nonceOpt.orElse(null),

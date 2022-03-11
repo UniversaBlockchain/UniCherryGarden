@@ -155,6 +155,11 @@ public interface Sender {
      *                            for other Ethereum-compatible forks).
      *                            Otherwise, it is a lowercased address of dApp token contract.
      * @param amount              amount to transfer.
+     * @param forceDecimals       amount of decimals to use.
+     *                            <code>18</code> for ETH/ERC/other primary currency (
+     *                            i.e. if currencyKey is <code>""</code>) and may be omitted;
+     *                            if omitted for ERC20 token, it is assumed the token is verified,
+     *                            and the decimals value will be auto-detected.
      * @param forceChainId        Chain ID (EIP-155) to use.
      *                            If <code>null</code>, will be autodetected
      *                            (only if the sender is created in non-offline mode).
@@ -179,6 +184,7 @@ public interface Sender {
             @NonNull String receiver,
             @NonNull String currencyKey,
             @NonNull BigDecimal amount,
+            @Nullable Integer forceDecimals,
             @Nullable Long forceChainId,
             @Nullable BigInteger forceGasLimit,
             @Nullable BigInteger forceNonce,
@@ -194,6 +200,7 @@ public interface Sender {
      * <p>
      * This is the simplest version of API:
      * <ul>
+     * <li>decimals value will be detected for the currency (assuming the currency is verified);</li>
      * <li>Chain ID will be autodetected from the network (using the realm of the connector);</li>
      * <li>gas limit will be autodetected from the network for the specified currency;</li>
      * <li>nonce will be autodetected from the network (next unused nonce will be taken);</li>
@@ -215,6 +222,7 @@ public interface Sender {
      * @apiNote happens directly in the memory space of the process, without ever leaving it.
      * No network communication is performed. Can be used in the connector launched in “offline” mode.
      */
+    @SuppressWarnings("unused")
     @NonNull
     default UnsignedOutgoingTransaction createOutgoingTransfer(
             @NonNull String sender,
@@ -223,7 +231,7 @@ public interface Sender {
             @NonNull BigDecimal amount
     ) {
         return createOutgoingTransfer(
-                sender, receiver, currencyKey, amount,
+                sender, receiver, currencyKey, amount, null,
                 null, null, null, null, null);
     }
 

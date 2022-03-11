@@ -93,6 +93,7 @@ public class SenderImplTest {
 
 
     private static final BigInteger ethTransferGasLimit = BigInteger.valueOf(21_000);
+    private static final int ethDecimals = 18;
 
     private static final String ethCurrencyKey = "";
     private static final BigDecimal maxPriorityFee = new BigDecimal("1.2345E-14");
@@ -107,6 +108,7 @@ public class SenderImplTest {
                 CRED1.addr,
                 ethCurrencyKey,
                 new BigDecimal("0.0000001"),
+                ethDecimals,
                 ChainIdLong.MAINNET,
                 ethTransferGasLimit,
                 BigInteger.valueOf(0),
@@ -118,6 +120,7 @@ public class SenderImplTest {
                 CRED1.addr,
                 ethCurrencyKey,
                 new BigDecimal("12931298312"),
+                null, // testing that it may be omitted for ETH
                 ChainIdLong.MAINNET,
                 ethTransferGasLimit,
                 BigInteger.valueOf(0),
@@ -129,6 +132,7 @@ public class SenderImplTest {
                 CRED2.addr,
                 ethCurrencyKey,
                 new BigDecimal("0.0000001"),
+                null,
                 ChainIdLong.MAINNET,
                 ethTransferGasLimit,
                 BigInteger.valueOf(0),
@@ -140,6 +144,7 @@ public class SenderImplTest {
                 CRED2.addr,
                 ethCurrencyKey,
                 new BigDecimal("12931298312"),
+                ethDecimals,
                 ChainIdLong.MAINNET,
                 ethTransferGasLimit,
                 BigInteger.valueOf(0),
@@ -274,6 +279,7 @@ public class SenderImplTest {
                 CRED1.addr,
                 ethCurrencyKey,
                 new BigDecimal("0.0000001"),
+                ethDecimals,
                 ChainIdLong.ROPSTEN,
                 ethTransferGasLimit,
                 BigInteger.valueOf(0),
@@ -285,6 +291,7 @@ public class SenderImplTest {
                 CRED1.addr,
                 ethCurrencyKey,
                 new BigDecimal("0.0000001"),
+                ethDecimals,
                 ChainIdLong.RINKEBY,
                 ethTransferGasLimit,
                 BigInteger.valueOf(0),
@@ -355,6 +362,7 @@ public class SenderImplTest {
                 CRED1.addr,
                 ethCurrencyKey,
                 new BigDecimal("0.0000001"),
+                ethDecimals,
                 ChainIdLong.MAINNET,
                 ethTransferGasLimit,
                 BigInteger.valueOf(0),
@@ -366,6 +374,7 @@ public class SenderImplTest {
                 CRED1.addr,
                 ethCurrencyKey,
                 new BigDecimal("0.0000001"),
+                ethDecimals,
                 ChainIdLong.RINKEBY,
                 ethTransferGasLimit,
                 BigInteger.valueOf(0),

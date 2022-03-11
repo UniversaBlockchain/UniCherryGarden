@@ -297,6 +297,15 @@ public final class Currency implements Serializable {
     }
 
     /**
+     * Get the decimals value for the currency.
+     * Optional, may return <code>null</code> (but only if the currency is not verified).
+     */
+    @Nullable
+    public Integer getDecimals() {
+        return decimals;
+    }
+
+    /**
      * Get a gas limit for transfer operation.
      * Optional, may return <code>null</code> (but only if the currency is not verified).
      */

@@ -16,6 +16,11 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.web3j.abi.FunctionEncoder;
+import org.web3j.abi.TypeReference;
+import org.web3j.abi.datatypes.Function;
+import org.web3j.abi.datatypes.Type;
+import org.web3j.contracts.eip20.generated.ERC20;
 import org.web3j.crypto.Hash;
 import org.web3j.crypto.RawTransaction;
 import org.web3j.crypto.SignedRawTransaction;
@@ -24,6 +29,8 @@ import org.web3j.utils.Numeric;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.Collections;
 
 import static com.myodov.unicherrygarden.NullTools.coalesce;
 
@@ -124,8 +131,7 @@ public final class SenderImpl implements Sender {
          * Also, see the <a href="https://notes.ethereum.org/@vbuterin/eip-1559-faq">EIP-1559 FAQ</a>
          * for practical explanation.
          */
-        @SuppressWarnings("unused")
-        static UnsignedOutgoingTransactionImpl createEtherTransaction(
+        static UnsignedOutgoingTransactionImpl createEtherTransfer(
                 @NonNull String receiver,
                 @NonNull BigDecimal amount,
                 long chainId,
@@ -151,50 +157,98 @@ public final class SenderImpl implements Sender {
         }
 
         /**
-         * Create a transaction to transfer the base currency of the blockchain
-         * (in case of Ethereum Mainnet, this is ETH; may be different for other blockchains,
-         * but for simplicity of referring to it let's call it “Ether Transaction”).
+         * Create a transaction to transfer the ERC20-formed token.
          *
-         * @param receiver           the receiver of the transaction; i.e. the “to” field.
-         *                           Should be a valid Ethereum address, upper or lower case,
-         *                           e.g. <code>"0x34e1E4F805fCdC936068A760b2C17BC62135b5AE"</code>.
-         * @param amount             amount of currency (ETH in case of Ethereum Mainnet) to be transferred.
-         *                           This is the “end-user-interpretation” of the amount, i.e. the real number of ETH
-         *                           with decimal point, rather than internal uint256-based number of weis.
-         * @param nonce              nonce for the transaction.
-         * @param maxPriorityFeeGwei (EIP-1559) Max Priority Fee; measured in Gwei (conveniently for end user);
-         *                           see the counterpart method if you want to measure it precisely in ETH
-         *                           (or other base currency).
-         * @param maxFeeGwei         (EIP-1559) Max Fee; measured in Gwei (conveniently for end user);
-         *                           see the counterpart method if you want to measure it precisely in ETH
-         *                           (or other base currency).
+         * @param receiver       the receiver of the transaction; i.e. the “to” field.
+         *                       Should be a valid Ethereum address, upper or lower case,
+         *                       e.g. <code>"0x34e1E4F805fCdC936068A760b2C17BC62135b5AE"</code>.
+         * @param amountUint256  amount of token (not corrected for decimals) to be transferred.
+         *                       This is low-level uint256-based number to be recorded.
+         * @param nonce          nonce for the transaction.
+         * @param maxPriorityFee (EIP-1559) Max Priority Fee; measured in ETH, but in real scenarios
+         *                       it is often measured in Gweis.
+         * @param maxFee         (EIP-1559) Max Fee; measured in ETH, but in real scenarios
+         *                       it is often measured in Gweis.
          * @apiNote Read <a href="https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1559.md">EIP-1559</a>
          * to get more details about Max Priority Fee and Max Fee.
          * Also, see the <a href="https://notes.ethereum.org/@vbuterin/eip-1559-faq">EIP-1559 FAQ</a>
          * for practical explanation.
          */
-        @SuppressWarnings("unused")
-        static UnsignedOutgoingTransactionImpl createEtherTransaction(
+        static UnsignedOutgoingTransactionImpl createERC20Transfer(
                 @NonNull String receiver,
-                @NonNull BigDecimal amount,
+                @NonNull BigInteger amountUint256,
+                @NonNull String erc20TokenAddress,
                 long chainId,
                 @NonNull BigInteger nonce,
-                long maxPriorityFeeGwei,
-                long maxFeeGwei
+                @NonNull BigDecimal maxPriorityFee,
+                @NonNull BigDecimal maxFee
         ) {
             Validators.requireValidEthereumAddress(receiver);
-            assert amount != null && amount.compareTo(BigDecimal.ZERO) >= 0 : amount; // amount >= 0
+            assert amountUint256 != null && amountUint256.compareTo(BigInteger.ZERO) >= 0 : amountUint256; // amountUint256 >= 0
+            Validators.requireValidEthereumAddress(erc20TokenAddress);
             Validators.requireValidNonce(nonce);
-            assert maxPriorityFeeGwei >= 0 : maxPriorityFeeGwei;
-            assert maxFeeGwei >= 0 : maxFeeGwei;
+            assert maxPriorityFee != null && maxPriorityFee.compareTo(BigDecimal.ZERO) >= 0 : maxPriorityFee; // maxPriorityFee >= 0
+            assert maxFee != null && maxFee.compareTo(BigDecimal.ZERO) >= 0 : maxFee; // maxFee >= 0
 
-            return createEtherTransaction(
-                    receiver,
-                    amount,
+            final Function function = new Function(
+                    ERC20.FUNC_TRANSFER,
+                    Arrays.<Type>asList(new org.web3j.abi.datatypes.Address(receiver),
+                            new org.web3j.abi.datatypes.generated.Uint256(amountUint256)),
+                    Collections.<TypeReference<?>>emptyList());
+
+            final String encoded = FunctionEncoder.encode(function);
+
+
+            return new UnsignedOutgoingTransactionImpl(RawTransaction.createEtherTransaction(
                     chainId,
                     nonce,
-                    EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(maxPriorityFeeGwei)),
-                    EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(maxFeeGwei))
+                    EthUtils.ETH_TRANSFER_GAS_LIMIT_BIGINTEGER,
+                    receiver.toLowerCase(),
+                    amountUint256,
+                    EthUtils.Wei.valueToWeis(maxPriorityFee),
+                    EthUtils.Wei.valueToWeis(maxFee)
+            ));
+        }
+
+        /**
+         * Create a transaction to transfer the ERC20-formed token.
+         *
+         * @param receiver       the receiver of the transaction; i.e. the “to” field.
+         *                       Should be a valid Ethereum address, upper or lower case,
+         *                       e.g. <code>"0x34e1E4F805fCdC936068A760b2C17BC62135b5AE"</code>.
+         * @param amount         amount of token (not corrected for decimals) to be transferred.
+         *                       This is “end-user-interpretation” of the amount, i.e. the real number of token
+         *                       with decimal point.
+         * @param decimals       number of “decimals” for amount decimal point correction.
+         * @param nonce          nonce for the transaction.
+         * @param maxPriorityFee (EIP-1559) Max Priority Fee; measured in ETH, but in real scenarios
+         *                       it is often measured in Gweis.
+         * @param maxFee         (EIP-1559) Max Fee; measured in ETH, but in real scenarios
+         *                       it is often measured in Gweis.
+         * @apiNote Read <a href="https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1559.md">EIP-1559</a>
+         * to get more details about Max Priority Fee and Max Fee.
+         * Also, see the <a href="https://notes.ethereum.org/@vbuterin/eip-1559-faq">EIP-1559 FAQ</a>
+         * for practical explanation.
+         */
+        static UnsignedOutgoingTransactionImpl createERC20Transfer(
+                @NonNull String receiver,
+                @NonNull BigDecimal amount,
+                int decimals,
+                @NonNull String erc20TokenAddress,
+                long chainId,
+                @NonNull BigInteger nonce,
+                @NonNull BigDecimal maxPriorityFee,
+                @NonNull BigDecimal maxFee
+        ) {
+            assert decimals >= 0 : decimals;
+            return createERC20Transfer(
+                    receiver,
+                    EthUtils.Uint256.valueToUint256(amount, decimals),
+                    erc20TokenAddress,
+                    chainId,
+                    nonce,
+                    maxPriorityFee,
+                    maxFee
             );
         }
 
@@ -293,6 +347,7 @@ public final class SenderImpl implements Sender {
             @NonNull String receiver,
             @NonNull String currencyKey,
             @NonNull BigDecimal amount,
+            @Nullable Integer forceDecimals,
             @Nullable Long forceChainId,
             @Nullable BigInteger forceGasLimit,
             @Nullable BigInteger forceNonce,
@@ -301,6 +356,13 @@ public final class SenderImpl implements Sender {
     ) {
         assert currencyKey != null : currencyKey;
         assert amount != null : amount;
+        if (currencyKey.isEmpty()) {
+            // for ETH, decimals may be either omitted or 18
+            assert forceDecimals == null || forceDecimals == 18 : forceDecimals;
+        } else {
+            // for ERC20, forceDecimals may be either omitted/autodetected, or positive
+            assert forceDecimals == null || forceDecimals > 0 : forceDecimals;
+        }
         assert receiver != null : receiver;
         assert forceChainId == null || forceChainId == -1 || forceChainId >= 1 : forceChainId;
         assert forceGasLimit == null || forceGasLimit.compareTo(BigInteger.valueOf(21_000)) >= 0 : forceGasLimit;
@@ -354,15 +416,26 @@ public final class SenderImpl implements Sender {
             }
         }
 
-        // Detect gas limit
+        // Detect gas limit / decimals at once
+        final int decimals;
         final BigInteger gasLimit;
         {
-            if (forceGasLimit != null) {
+            // Can we guess decimals?
+            @Nullable Integer guessDecimals;
+            if (currencyKey.isEmpty()) {
+                // For ETH, decimals is 18, definitely
+                guessDecimals = 18;
+            } else {
+                guessDecimals = forceDecimals;
+            }
+
+            if (guessDecimals != null && forceGasLimit != null) {
+                decimals = guessDecimals;
                 gasLimit = forceGasLimit;
             } else {
                 assert !offlineMode;
 
-                logger.debug("Need to discover gas limit for currency \"{}\"", currencyKey);
+                logger.debug("Need to discover gas limit/decimals for currency \"{}\"", currencyKey);
 
                 final GetCurrencies.Response currencyResp = clientConnector.getCurrency(currencyKey);
                 if (currencyResp.isFailure()) {
@@ -377,7 +450,12 @@ public final class SenderImpl implements Sender {
                     final Currency currencyDetails = currencyPayload.currencies.iterator().next();
                     assert currencyDetails.getCurrencyKey().equals(currencyKey) : String.format("%s/%s", currencyKey, currencyDetails);
 
-                    gasLimit = currencyDetails.getTransferGasLimit();
+                    // We've read the currency details; we know know the currency decimals and gas limit values
+                    // which are defined on the server.
+                    // If “force” values were requested, we use them; otherwise we use the received values.
+
+                    decimals = (guessDecimals != null) ? guessDecimals : currencyDetails.getDecimals();
+                    gasLimit = (forceGasLimit != null) ? forceGasLimit : currencyDetails.getTransferGasLimit();
                 }
             }
         }
@@ -415,21 +493,20 @@ public final class SenderImpl implements Sender {
 
         logger.debug("Will use Chain ID {}, gas limit {}, nonce {}", chainId, gasLimit, nonce);
 
+        // TODO: calculation/estimation
+        final BigDecimal maxPriorityFee =
+                (forceMaxPriorityFee != null) ?
+                        forceMaxPriorityFee :
+                        EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(2));
+        final BigDecimal maxFee =
+                (forceMaxFee != null) ?
+                        forceMaxFee :
+                        EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(2));
+
         final UnsignedOutgoingTransaction result;
         if (currencyKey.isEmpty()) {
             // ETH or other base currency
-
-            // TODO: calculation/estimation
-            final BigDecimal maxPriorityFee =
-                    (forceMaxPriorityFee != null)?
-                            forceMaxPriorityFee:
-                            EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(2));
-            final BigDecimal maxFee =
-                    (forceMaxFee != null)?
-                            forceMaxFee:
-                            EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(2));
-
-            result = UnsignedOutgoingTransactionImpl.createEtherTransaction(
+            result = UnsignedOutgoingTransactionImpl.createEtherTransfer(
                     receiver,
                     amount,
                     chainId,
@@ -439,7 +516,16 @@ public final class SenderImpl implements Sender {
             );
         } else {
             // Currently the only other option is ERC20
-            result = new UnsignedOutgoingTransactionImpl(new byte[0]);
+            result = UnsignedOutgoingTransactionImpl.createERC20Transfer(
+                    receiver,
+                    amount,
+                    decimals,
+                    currencyKey,
+                    chainId,
+                    nonce,
+                    maxPriorityFee,
+                    maxFee
+            );
         }
 
         return result;

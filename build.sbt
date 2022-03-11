@@ -194,7 +194,7 @@ lazy val cherryGardenerConnector = (project in file("java/cherrygardener_connect
     description := "UniCherryGarden: primary Java API to access the UniCherryGarden system from Java/Scala/Kotlin code",
     libraryDependencies ++= Seq(
       "org.web3j" % "core" % web3jVersion,
-      //      "org.web3j" % "contracts" % web3jVersion,
+      "org.web3j" % "contracts" % web3jVersion,
       // Jackson used to parse JSON structures
       "com.fasterxml.jackson.core" % "jackson-core" % jacksonCoreVersion,
       "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonCoreVersion,

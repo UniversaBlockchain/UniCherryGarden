@@ -3,6 +3,7 @@ package com.myodov.unicherrygarden.connector.impl;
 import com.myodov.unicherrygarden.api.types.UniCherryGardenError;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.math.BigInteger;
 import java.util.Collection;
@@ -60,7 +61,7 @@ public class Validators {
      * Ensure that some argument refers to a valid Currency Code
      * (either empty string for ETH/ETC base currency, or Ethereum address).
      *
-     * @throws RuntimeException if <code>data</code> is not a valid Currency Code.
+     * @throws RuntimeException if <code>currencyKey</code> is not a valid Currency Key.
      */
     public static void requireValidCurrencyKey(@NonNull String currencyKey) {
         assert currencyKey != null : currencyKey;
