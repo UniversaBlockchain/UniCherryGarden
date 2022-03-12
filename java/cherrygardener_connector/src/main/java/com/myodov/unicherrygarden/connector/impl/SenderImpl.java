@@ -185,7 +185,7 @@ public final class SenderImpl implements Sender {
                 @NonNull BigDecimal maxPriorityFee,
                 @NonNull BigDecimal maxFee
         ) {
-            Validators.requireValidLowercasedEthereumAddresses(receiver);
+            Validators.requireValidEthereumAddress(receiver);
             assert amountUint256 != null && amountUint256.compareTo(BigInteger.ZERO) >= 0 : amountUint256; // amountUint256 >= 0
             Validators.requireValidLowercasedEthereumAddresses(erc20TokenAddress);
             Validators.requireValidNonce(nonce);
@@ -194,7 +194,7 @@ public final class SenderImpl implements Sender {
 
             final Function transferFunction = new Function(
                     ERC20.FUNC_TRANSFER,
-                    Arrays.<Type>asList(new org.web3j.abi.datatypes.Address(receiver),
+                    Arrays.<Type>asList(new org.web3j.abi.datatypes.Address(receiver.toLowerCase()),
                             new org.web3j.abi.datatypes.generated.Uint256(amountUint256)),
                     Collections.<TypeReference<?>>emptyList());
 
