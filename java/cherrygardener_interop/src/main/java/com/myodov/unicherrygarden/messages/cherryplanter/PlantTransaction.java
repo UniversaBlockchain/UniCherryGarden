@@ -59,37 +59,61 @@ public class PlantTransaction {
 
 
     public static final class PlantTransactionRequestResultPayload extends SuccessPayload {
+        /**
+         * Whether a new transaction has been just planted. If <code>False</code>,
+         * means that the transaction with such contents exists already.
+         */
+        public final boolean newlyAdded;
 
         /**
          * The key which can be used to look up specifically this planted transaction;
          * essentially the id in the table of planted transactions.
          */
-        @NonNull
         public final long plantKey;
 
         /**
          * Constructor.
          */
         @JsonCreator
-        public PlantTransactionRequestResultPayload(long plantKey) {
+        public PlantTransactionRequestResultPayload(boolean newlyAdded,
+                                                    long plantKey) {
             assert plantKey > 0 : plantKey;
 
+            this.newlyAdded = newlyAdded;
             this.plantKey = plantKey;
+        }
+
+        @Override
+        public final String toString() {
+            return String.format("%s(%s, %s)",
+                    getClass().getSimpleName(),
+                    newlyAdded, plantKey);
+        }
+    }
+
+    public static final class PlantTransactionRequestResultFailure extends SpecificFailurePayload {
+        @NonNull
+        public final String message;
+
+        /**
+         * Constructor.
+         */
+        @JsonCreator
+        public PlantTransactionRequestResultFailure(@NonNull String message) {
+            assert message != null : message;
+            this.message = message;
         }
 
         @Override
         public final String toString() {
             return String.format("%s(%s)",
                     getClass().getSimpleName(),
-                    plantKey);
+                    message);
         }
     }
 
-    public static final class AddressDetailsRequestResultFailure extends SpecificFailurePayload {
-    }
-
     public static final class Response
-            extends CherryGardenResponseWithPayload<PlantTransactionRequestResultPayload, AddressDetailsRequestResultFailure> {
+            extends CherryGardenResponseWithPayload<PlantTransactionRequestResultPayload, PlantTransactionRequestResultFailure> {
 
         @JsonCreator
         private Response(@NonNull ResponsePayload payload) {
@@ -104,7 +128,7 @@ public class PlantTransaction {
             this((ResponsePayload) commonFailure);
         }
 
-        public Response(@NonNull AddressDetailsRequestResultFailure specificFailure) {
+        public Response(@NonNull PlantTransactionRequestResultFailure specificFailure) {
             this((ResponsePayload) specificFailure);
         }
 

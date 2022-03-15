@@ -740,7 +740,8 @@ class PostgreSQLStorage(jdbcUrl: String,
                   INNER JOIN ucg_eth_transfer_tr_addr_w_balance AS eth_transfer
                              USING (currency_id, address)
                   INNER JOIN ucg_latest_block_with_eth_transfer_for_address(
-                          currencies.currency_id, vars.address, vars.end_block) USING(block_number)
+                          currencies.currency_id, vars.address, vars.end_block)
+                             USING(block_number)
           ),
           -- Only the latest ETH transfer in the block.
           latest_eth_transfer AS (
@@ -954,6 +955,17 @@ class PostgreSQLStorage(jdbcUrl: String,
       )).list.apply()
   }
 
+  object plants extends DBStorageAPI.Plants {
+    override final def addTransactionToPlant(
+                                              txhash: String,
+                                              bytes: Array[Byte]
+                                            )(
+                                              implicit session: DBSession
+                                            ): (Boolean, Long) = {
+      (false, 5)
+    }
+  }
+
 }
 
 object PostgreSQLStorage {
@@ -963,9 +975,13 @@ object PostgreSQLStorage {
                           wipeOnStart: Boolean,
                           migrationPaths: List[String]
                          ): PostgreSQLStorage = {
-    // Initial size is 6:
-    // 2 for TailSyncer, 2 for HeadSyncer, 1 for CherryGardener, 1 reserved for any incoming connection
-    val poolSettings = ConnectionPoolSettings(initialSize = 6, maxSize = 16)
+    // Initial size is 7:
+    // 2 for TailSyncer,
+    // 2 for HeadSyncer,
+    // 1 for CherryGardener,
+    // 1 for CherryPlanter,
+    // 1 reserved for any incoming connection
+    val poolSettings = ConnectionPoolSettings(initialSize = 7, maxSize = 16)
     ConnectionPool.singleton(jdbcUrl, dbUser, dbPassword, poolSettings)
     new PostgreSQLStorage(jdbcUrl, dbUser, dbPassword, wipeOnStart, migrationPaths)
   }

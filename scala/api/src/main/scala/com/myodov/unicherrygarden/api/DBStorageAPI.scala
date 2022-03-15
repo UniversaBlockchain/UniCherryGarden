@@ -38,6 +38,10 @@ trait DBStorageAPI {
 
   /** Access overall information about transfers. */
   val transfers: DBStorageAPI.Transfers
+
+  /** Access the information about transactions to be planted (i.e. outgoing transactions). */
+  val plants: DBStorageAPI.Plants
+
 }
 
 object DBStorageAPI {
@@ -192,6 +196,25 @@ object DBStorageAPI {
                       endBlock: Int,
                       currencyKeys: Option[Set[String]]
                     )(implicit session: DBSession = ReadOnlyAutoSession): List[MinedTransfer]
+  }
+
+  trait Plants {
+    /** Get information about ETH/ERC20 balances at some address `address` and no newer than at some block `maxBlock`,
+     * optionally filtered by currency keys `currencyKeys`.
+     *
+     * @return a tuple with the following components:
+     *         <ul>
+     *         <li>`new: Boolean` – whether a new tuple has been added successfully.
+     *         If `True`, new one was added;
+     *         if `False`, a tuple with the following `bytes` contents exists already.</li>
+     *         <li>`plantKey: Long`</li> – “plant key”, essentially a database PK for the record;
+     *         can be used for future reference of this plant.
+     *         </ul>
+     */
+    def addTransactionToPlant(
+                               txhash: String,
+                               bytes: Array[Byte]
+                             )(implicit session: DBSession = AutoSession): (Boolean, Long)
   }
 
 }

@@ -6,10 +6,14 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import com.myodov.unicherrygarden.api.DBStorageAPI
 import com.myodov.unicherrygarden.api.GardenMessages.EthereumNodeStatus
 import com.myodov.unicherrygarden.api.types.SystemStatus
+import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload
 import com.myodov.unicherrygarden.messages.CherryPlanterRequest
 import com.myodov.unicherrygarden.messages.cherryplanter.PlantTransaction
-import com.myodov.unicherrygarden.messages.cherryplanter.PlantTransaction.PlantTransactionRequestResultPayload
+import com.myodov.unicherrygarden.messages.cherryplanter.PlantTransaction.{PlantTransactionRequestResultFailure, PlantTransactionRequestResultPayload}
 import com.typesafe.scalalogging.LazyLogging
+import org.web3j.crypto.Hash
+import org.web3j.utils.Numeric
+import scalikejdbc.DB
 
 import scala.language.postfixOps
 
@@ -43,25 +47,65 @@ class CherryPlanter(
           Behaviors.same
         case message: PlantTransaction.Request =>
           context.log.debug(s"Received PlantTransaction($message) command")
-
-          val plantKey = 42
-
-          val response = new PlantTransaction.Response(
-            CherryGardenComponent.whenStateAndProgressAllow[PlantTransactionRequestResultPayload](
-              state.ethereumStatus,
-              dbStorage.progress.getProgress,
-              "PlantTransaction",
-              null
-            ) { (ethereumNodeStatus, progress) =>
-              new PlantTransactionRequestResultPayload(plantKey)
-            }
-          )
+          // TODO: probably, should happen in a child Actor, similarly to `requestHandlerActor`
+          val response = handlePlantTransaction(message.payload)
           context.log.debug(s"Replying with $response")
           message.replyTo ! response
           Behaviors.same
         case message: CherryPlanterRequest =>
           logger.debug(s"Receiving CherryPlanter message: $message")
           Behaviors.same
+      }
+    }
+
+  /** Reply to [[PlantTransaction]] request. */
+  private[this] def handlePlantTransaction(payload: PlantTransaction.PTRequestPayload): PlantTransaction.Response =
+  // Construct all the response in a single atomic readonly DB transaction
+    DB readOnly { implicit session =>
+
+      CherryGardenComponent.whenStateAndProgressAllow[PlantTransaction.Response](
+        state.ethereumStatus,
+        dbStorage.progress.getProgress,
+        "PlantTransaction",
+        PlantTransaction.Response.fromCommonFailure(FailurePayload.CHERRY_GARDEN_NOT_READY)
+      ) { (ethereumNodeStatus, progress) =>
+        // Real use-case handling
+
+        val expectedTxhash = Numeric.toHexString(Hash.sha3(payload.bytes))
+        logger.debug(s"Planting tx $expectedTxhash with bytes ${payload.bytes}")
+
+        // 1. Add the record to the DB.
+        // Switch into read-write transaction for this.
+        val (newlyPlanted, plantKey) = DB localTx { implicit session =>
+          dbStorage.plants.addTransactionToPlant(expectedTxhash, payload.bytes)
+        }
+
+        // 2. Try planting it into blockchain
+        ethereumConnector.ethSendRawTransaction(payload.bytes) match {
+          case Left(errorMessage) =>
+            // 3.1. Error happened: update the planting status after the first attempt.
+            // Switch into read-write transaction for this.
+            DB localTx { implicit session =>
+              logger.debug(s"Failed to plant: $errorMessage")
+            }
+            new PlantTransaction.Response(
+              new PlantTransactionRequestResultFailure(errorMessage)
+            )
+          case Right(txhash) =>
+            // 3.2. Successful attempt to plant: update the planting status after the first attempt.
+            // Switch into read-write transaction for this.
+            if (txhash != expectedTxhash) {
+              logger.warn(s"When planting, expected txhash \"$expectedTxhash\" but result was \"$txhash\"")
+            }
+
+            DB localTx { implicit session =>
+              logger.debug(s"Planting attempt success for $txhash");
+            }
+
+            new PlantTransaction.Response(
+              new PlantTransactionRequestResultPayload(newlyPlanted, plantKey)
+            )
+        }
       }
     }
 }

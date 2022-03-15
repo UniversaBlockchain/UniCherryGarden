@@ -152,8 +152,12 @@ trait Web3ReadOperations extends LazyLogging {
 /** What operations can be supported by some Ethereum node connector: blockchain-write operations. */
 trait Web3WriteOperations extends LazyLogging {
 
-  /** Send the raw byte contents of the transaction. */
-  def ethSendRawTransaction(bytes: Array[Byte]): Unit
+  /**
+   * Send the raw byte contents of the transaction.
+   *
+   * @return Either a `Left(errorMessage)` or `Right(txid)`
+   */
+  def ethSendRawTransaction(bytes: Array[Byte]): Either[String, String]
 }
 
 object AbstractEthereumNodeConnector extends LazyLogging {
