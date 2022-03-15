@@ -15,6 +15,7 @@ import com.myodov.unicherrygarden.connector.impl.actors.messages.*;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import com.myodov.unicherrygarden.messages.cherrygardener.Ping;
 import com.myodov.unicherrygarden.messages.cherrypicker.*;
+import com.myodov.unicherrygarden.messages.cherryplanter.PlantTransaction;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +67,9 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
     private final ServiceKey<GetBalances.Request> skGetBalances;
     @NonNull
     private final ServiceKey<GetTransfers.Request> skGetTransfers;
+    // CherryPlanter
+    @NonNull
+    private final ServiceKey<PlantTransaction.Request> skPlantTransaction;
 
 
     // -----------------------------------------------------------------------------------------------------------------
@@ -94,6 +98,9 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         skGetTrackedAddresses = GetTrackedAddresses.makeServiceKey(realm);
         skGetAddressDetails = GetAddressDetails.makeServiceKey(realm);
         skGetTransfers = GetTransfers.makeServiceKey(realm);
+        // 3. CherryPlanter service keys
+        skPlantTransaction = PlantTransaction.makeServiceKey(realm);
+
 
         // On launch, we want to subscribe to Receptionist’s changes in CherryGardener (clustered) availability.
         // Each time when CherryGardener availability (by Ping.SERVICE_KEY) changes,
@@ -172,13 +179,16 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                         makeMsgResultHandler(
                                 GetTransfers.Response.class,
                                 GetTransfersCommand.Result.class))
+                // PlantTransaction
+                .onMessage(PlantTransactionCommand.class, this::onPlantTransaction)
+                .onMessage(PlantTransactionCommand.ReceptionistResponse.class, this::onPlantTransactionReceptionistResponse)
+                .onMessage(
+                        PlantTransactionCommand.InternalResult.class,
+                        makeMsgResultHandler(
+                                PlantTransaction.Response.class,
+                                PlantTransactionCommand.Result.class))
                 .build();
     }
-
-//    @NonNull
-//    private ExecutionContextExecutor getBlockingDispatcher() {
-//        return getContext().getSystem().dispatchers().lookup(DispatcherSelector.blocking());
-//    }
 
     private Behavior<ConnectorActorMessage> onReceptionistSubscribeCherryGardenResponse(
             @NonNull ReceptionistSubscribeCherryGardenResponse msg) {
@@ -447,6 +457,37 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
         return this;
     }
 
+    /**
+     * When someone (like ClientConnector) has sent the {@link PlantTransactionCommand} message to the actor system
+     * and expect it to be processed and return the result.
+     */
+    private Behavior<ConnectorActorMessage> onPlantTransaction(@NonNull PlantTransactionCommand msg) {
+        assert msg != null;
+        logger.debug("onPlantTransaction: Received message {}", msg);
+
+        final ActorContext<ConnectorActorMessage> context = getContext();
+        final ActorRef<Receptionist.Command> receptionist = context.getSystem().receptionist();
+        final ServiceKey<PlantTransaction.Request> serviceKey = skPlantTransaction;
+
+        context.ask(
+                Receptionist.Listing.class,
+                receptionist,
+                DEFAULT_CALL_TIMEOUT,
+                // Construct the outgoing message
+                (ActorRef<Receptionist.Listing> replyTo) ->
+                        Receptionist.find(serviceKey, replyTo),
+                // Adapt the incoming response into `PlantTransactionCommand.ReceptionistResponse`
+                (Receptionist.Listing response, Throwable throwable) -> {
+                    logger.debug("Returned listing response: {}", response);
+                    final Set<ActorRef<PlantTransaction.Request>> serviceInstances =
+                            response.getServiceInstances(serviceKey);
+                    logger.debug("Service instances for {}: {}", response.getKey(), serviceInstances);
+                    return new PlantTransactionCommand.ReceptionistResponse(response, msg.payload, msg.replyTo);
+                }
+        );
+
+        return this;
+    }
 
     private Behavior<ConnectorActorMessage> onPingReceptionistResponse(
             PingCommand.@NonNull ReceptionistResponse msg) {
@@ -665,6 +706,37 @@ public class ConnectorActor extends AbstractBehavior<ConnectorActorMessage> {
                     (GetTransfers.Response response, Throwable throwable) -> {
                         logger.debug("Returned GetTransfers response: {}", response);
                         return new GetTransfersCommand.InternalResult(response, msg.replyTo);
+                    }
+            );
+        }
+        return this;
+    }
+
+    private Behavior<ConnectorActorMessage> onPlantTransactionReceptionistResponse(
+            PlantTransactionCommand.@NonNull ReceptionistResponse msg) {
+        assert msg != null;
+
+        final ActorContext<ConnectorActorMessage> context = getContext();
+
+        final Set<ActorRef<PlantTransaction.Request>> reachableInstances =
+                msg.listing.getServiceInstances(skPlantTransaction);
+
+        logger.debug("Received PlantTransactionReceptionistResponse with reachable instances {}",
+                reachableInstances);
+        if (!reachableInstances.isEmpty()) {
+            // There may be multiple instance, but we take only one, on random
+            final ActorRef<PlantTransaction.Request> gclProvider = reachableInstances.iterator().next();
+
+            context.ask(
+                    PlantTransaction.Response.class,
+                    gclProvider,
+                    DEFAULT_CALL_TIMEOUT,
+                    // Construct the outgoing message
+                    (replyTo) -> new PlantTransaction.Request(replyTo, msg.payload),
+                    // Adapt the incoming response
+                    (PlantTransaction.Response response, Throwable throwable) -> {
+                        logger.debug("Returned PlantTransaction response: {}", response);
+                        return new PlantTransactionCommand.InternalResult(response, msg.replyTo);
                     }
             );
         }

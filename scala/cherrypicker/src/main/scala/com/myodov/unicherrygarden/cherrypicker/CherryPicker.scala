@@ -348,7 +348,8 @@ object CherryPicker extends LazyLogging {
                           maxReorg: Int,
                           headSyncerBatchSize: Int,
                           tailSyncerBatchSize: Int,
-                          catchUpBrakeMaxLeadSetting: Int): Behavior[CherryPickerRequest] =
+                          catchUpBrakeMaxLeadSetting: Int
+                         ): Behavior[CherryPickerRequest] =
     new CherryPicker(
       realm,
       dbStorage,

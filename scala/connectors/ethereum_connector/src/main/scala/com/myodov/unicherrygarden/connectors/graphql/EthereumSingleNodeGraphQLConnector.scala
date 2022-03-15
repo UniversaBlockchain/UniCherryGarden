@@ -12,7 +12,7 @@ import com.myodov.unicherrygarden.api.dlt
 import com.myodov.unicherrygarden.api.types.SystemStatus
 import com.myodov.unicherrygarden.connectors.graphql.types._
 import com.myodov.unicherrygarden.ethereum.EthUtils
-import com.myodov.unicherrygarden.{AbstractEthereumNodeConnector, Web3ReadOperations}
+import com.myodov.unicherrygarden.{AbstractEthereumNodeConnector, Web3ReadOperations, Web3WriteOperations}
 import com.typesafe.scalalogging.LazyLogging
 import sttp.capabilities
 import sttp.capabilities.akka.AkkaStreams
@@ -31,6 +31,7 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
                                          preferredActorSystem: Option[ClassicActorSystem])
   extends AbstractEthereumNodeConnector(nodeUrl)
     with Web3ReadOperations
+    with Web3WriteOperations
     with LazyLogging {
 
   override def toString: String = s"EthereumSingleNodeGraphQLConnector($nodeUrl)"
@@ -269,6 +270,8 @@ class EthereumSingleNodeGraphQLConnector(nodeUrl: String,
         }
     }
   }
+
+  override def ethSendRawTransaction(bytes: Array[Byte]): Unit = ???
 }
 
 /** Connector that handles a connection to single Ethereum node via RPC, and communicates with it. */

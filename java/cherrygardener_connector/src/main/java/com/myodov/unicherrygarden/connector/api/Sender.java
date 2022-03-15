@@ -2,6 +2,7 @@ package com.myodov.unicherrygarden.connector.api;
 
 import com.myodov.unicherrygarden.api.types.PrivateKey;
 import com.myodov.unicherrygarden.messages.Serializable;
+import com.myodov.unicherrygarden.messages.cherryplanter.PlantTransaction;
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -116,7 +117,7 @@ public interface Sender {
     /**
      * The transaction that has been sent to the Ethereum blockchain, or at least attempted.
      */
-    interface SentOutgoingTransaction extends SignedOutgoingTransaction {
+    interface PlantedOutgoingTransaction extends SignedOutgoingTransaction {
         /**
          * Get the number of confirmation for the transaction.
          *
@@ -241,6 +242,7 @@ public interface Sender {
      * @apiNote happens directly in the memory space of the process, without ever leaving it.
      * No network communication is performed. Can be used in the connector launched in “offline” mode.
      */
+    @SuppressWarnings("unused")
     @NonNull
     SignedOutgoingTransaction signTransaction(
             @NonNull UnsignedOutgoingTransaction tx,
@@ -249,7 +251,9 @@ public interface Sender {
 
     /**
      * Enqueue the transaction for sending (try to send it to the blockchain, etc).
+     *
+     * @return the typical network-related response as a result of network communication with CherryPlanter.
      */
-    @NonNull
-    SentOutgoingTransaction sendTransaction(@NonNull SignedOutgoingTransaction tx);
+    @SuppressWarnings("unused")
+    PlantTransaction.@NonNull Response sendTransaction(@NonNull SignedOutgoingTransaction tx);
 }

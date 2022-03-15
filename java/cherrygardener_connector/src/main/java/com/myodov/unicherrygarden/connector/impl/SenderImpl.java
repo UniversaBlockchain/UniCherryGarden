@@ -1,16 +1,21 @@
 package com.myodov.unicherrygarden.connector.impl;
 
 import akka.actor.typed.ActorSystem;
+import akka.actor.typed.javadsl.AskPattern;
 import com.myodov.unicherrygarden.api.types.PrivateKey;
 import com.myodov.unicherrygarden.api.types.UniCherryGardenError;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
+import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.connector.api.Sender;
+import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActor;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
+import com.myodov.unicherrygarden.connector.impl.actors.messages.PlantTransactionCommand;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetAddressDetails;
+import com.myodov.unicherrygarden.messages.cherryplanter.PlantTransaction;
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -31,6 +36,9 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 
 import static com.myodov.unicherrygarden.NullTools.coalesce;
 
@@ -40,7 +48,9 @@ import static com.myodov.unicherrygarden.NullTools.coalesce;
 public final class SenderImpl implements Sender {
     final Logger logger = LoggerFactory.getLogger(SenderImpl.class);
 
-    static class ByteBasedOutgoingTransactionImpl implements PreparedOutgoingTransaction { // TODO: can be made sealed when minimal Java increased to Java15
+    // TODO: can be made sealed when minimal Java increased to Java15
+    static class ByteBasedOutgoingTransactionImpl
+            implements PreparedOutgoingTransaction {
 
         protected final byte[] bytes;
 
@@ -105,7 +115,7 @@ public final class SenderImpl implements Sender {
         }
 
         @Override
-        public String toString() {
+        public final String toString() {
             return String.format("%s(bytes=\"%s\")",
                     getClass().getSimpleName(), getBytesHexString());
         }
@@ -256,7 +266,7 @@ public final class SenderImpl implements Sender {
 
         @Override
         @NonNull
-        public final SignedOutgoingTransaction sign(@NonNull PrivateKey privateKey) {
+        public SignedOutgoingTransaction sign(@NonNull PrivateKey privateKey) {
             final byte[] signed = TransactionEncoder.signMessage(
                     getRawTransaction(), privateKey.getCredentials());
             return new SignedOutgoingTransactionImpl(signed);
@@ -266,7 +276,7 @@ public final class SenderImpl implements Sender {
     /**
      * The default implementation for {@link SignedOutgoingTransaction} interface.
      */
-    static final class SignedOutgoingTransactionImpl
+    static class SignedOutgoingTransactionImpl
             extends ByteBasedOutgoingTransactionImpl
             implements SignedOutgoingTransaction {
 
@@ -295,8 +305,36 @@ public final class SenderImpl implements Sender {
 
         @Override
         @NonNull
-        public final String getHash() {
+        public String getHash() {
             return Numeric.toHexString(Hash.sha3(bytes));
+        }
+    }
+
+    // TODO: can be made sealed when minimal Java increased to Java15
+    static final class PlantedOutgoingTransactionImpl
+            extends SignedOutgoingTransactionImpl
+            implements PlantedOutgoingTransaction {
+        /**
+         * Primary constructor (from byte array).
+         *
+         * @param bytes
+         */
+        PlantedOutgoingTransactionImpl(byte[] bytes) {
+            super(bytes);
+        }
+
+        @Nullable
+        @Override
+        public BigInteger getNumberOfConfirmations() {
+            // TODO
+            throw new Error("getNumberOfConfirmations: not implemented yet!");
+        }
+
+        @Nullable
+        @Override
+        public BigInteger getBlockNumber() {
+            // TODO
+            throw new Error("getNumberOfConfirmations: not implemented yet!");
         }
     }
 
@@ -546,9 +584,23 @@ public final class SenderImpl implements Sender {
     }
 
     @Override
-    @NonNull
-    public SentOutgoingTransaction sendTransaction(@NonNull SignedOutgoingTransaction tx) {
-        // TODO
-        return null;
+    public PlantTransaction.@NonNull Response sendTransaction(@NonNull SignedOutgoingTransaction tx) {
+        if (offlineMode) {
+            throw new UniCherryGardenError.NotAvailableInOfflineModeError("Cannot execute sendTransaction!");
+        }
+
+        final CompletionStage<PlantTransactionCommand.Result> stage =
+                AskPattern.ask(
+                        actorSystem,
+                        PlantTransactionCommand.createReplier(tx.getBytes()),
+                        ConnectorActor.DEFAULT_CALL_TIMEOUT,
+                        actorSystem.scheduler());
+
+        try {
+            return stage.toCompletableFuture().join().response;
+        } catch (CancellationException | CompletionException exc) {
+            logger.error("Could not complete GetAddressDetailsCommand command", exc);
+            return PlantTransaction.Response.fromCommonFailure(FailurePayload.CANCELLATION_COMPLETION_FAILURE);
+        }
     }
 }

@@ -18,7 +18,7 @@ import scala.language.postfixOps
 abstract class AbstractEthereumNodeConnector(protected[this] val nodeUrl: String)
 
 
-/** What operations can be supported by some Ethereum node connector: read-only operations. */
+/** What operations can be supported by some Ethereum node connector: blockchain-read-only operations. */
 trait Web3ReadOperations extends LazyLogging {
 
   import Web3ReadOperations.filterSingleBlock
@@ -147,6 +147,13 @@ trait Web3ReadOperations extends LazyLogging {
    * 2. next in pending pool (may be missing if no extra data in pending pool).
    */
   def getAddressNonces(address: String): Option[(Int, Option[Int])]
+}
+
+/** What operations can be supported by some Ethereum node connector: blockchain-write operations. */
+trait Web3WriteOperations extends LazyLogging {
+
+  /** Send the raw byte contents of the transaction. */
+  def ethSendRawTransaction(bytes: Array[Byte]): Unit
 }
 
 object AbstractEthereumNodeConnector extends LazyLogging {

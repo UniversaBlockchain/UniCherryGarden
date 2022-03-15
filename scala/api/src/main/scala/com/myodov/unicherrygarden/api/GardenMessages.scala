@@ -1,7 +1,7 @@
 package com.myodov.unicherrygarden.api
 
 import com.myodov.unicherrygarden.api.types.SystemStatus
-import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryPickerRequest}
+import com.myodov.unicherrygarden.messages.{CherryGardenerRequest, CherryPickerRequest, CherryPlanterRequest}
 
 object GardenMessages {
 
@@ -19,7 +19,11 @@ object GardenMessages {
 
   /** The message to inform about the new Ethereum node sync status (equivalent to `eth.syncing`). */
   final case class EthereumNodeStatus(nodeStatus: SystemStatus.Blockchain)
-    extends HeadSyncerMessage with TailSyncerMessage with CherryPickerRequest with CherryGardenerRequest
+    extends HeadSyncerMessage
+      with TailSyncerMessage
+      with CherryPickerRequest
+      with CherryGardenerRequest
+      with CherryPlanterRequest
 
   sealed trait IterateSyncer[M <: Message] extends Message
 

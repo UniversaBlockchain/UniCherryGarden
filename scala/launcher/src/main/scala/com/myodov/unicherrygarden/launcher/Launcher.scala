@@ -79,7 +79,10 @@ You can choose a different HOCON configuration file instead of the regular appli
   /** Create an instance of [[AbstractEthereumNodeConnector]],
    * according to the application configuration.
    */
-  private[launcher] lazy val ethereumConnector: AbstractEthereumNodeConnector with Web3ReadOperations = {
+  private[launcher] lazy val ethereumConnector:
+    AbstractEthereumNodeConnector
+      with Web3ReadOperations
+      with Web3WriteOperations = {
     val nodeUrls = config.getStringList("unicherrygarden.ethereum.rpc_servers")
     if (nodeUrls.size > 1) {
       logger.warn(s"There are ${nodeUrls.size} Ethereum node URLs listed; only 1 is supported yet")
@@ -267,7 +270,7 @@ object LauncherActor extends LazyLogging {
               "CherryGardener")
 
           val ethereumStatePoller = context.spawn(
-            EthereumStatePoller(ethereumConnector, Seq(cherryGardener, cherryPicker)),
+            EthereumStatePoller(ethereumConnector, Seq(cherryGardener, cherryPicker, cherryPlanter)),
             "EthereumStatePoller")
 
           val clusterSubscriber = context.spawn(ClusterSubscriber(), "ClusterSubscriber")

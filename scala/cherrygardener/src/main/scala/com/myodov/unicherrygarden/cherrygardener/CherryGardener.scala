@@ -30,11 +30,11 @@ class CherryGardener(
 
   import CherryPicker.{logger => _, _}
 
-  private def launch(): Behavior[CherryGardenerRequest] = {
+  private def launch(): Behavior[CherryGardenerRequest] =
     Behaviors.setup { context: ActorContext[CherryGardenerRequest] =>
       context.log.info(
         s"Launching CherryGardener in realm \"$realm\" for Chain ID $chainId: " +
-        s"v. $propVersionStr, built at $propBuildTimestampStr")
+          s"v. $propVersionStr, built at $propBuildTimestampStr")
 
       context.system.receptionist ! Receptionist.Register(Ping.makeServiceKey(realm), context.self)
       context.system.receptionist ! Receptionist.Register(GetCurrencies.makeServiceKey(realm), context.self)
@@ -84,7 +84,6 @@ class CherryGardener(
         }
       }
     }
-  }
 
   /** Reply to [[GetCurrencies]] request. */
   def getCurrencies(
