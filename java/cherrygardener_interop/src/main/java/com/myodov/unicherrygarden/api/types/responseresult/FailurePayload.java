@@ -1,6 +1,8 @@
 package com.myodov.unicherrygarden.api.types.responseresult;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 /**
@@ -29,6 +31,7 @@ public interface FailurePayload extends ResponsePayload {
         enum CommonFailureType {
             //            SPECIFIC, // This is not a common failure, but a request-specific one
             UNSPECIFIED_FAILURE,
+            CHERRYGARDEN_NOT_READY,
             NO_RESPONSE_FROM_CHERRYGARDEN,
             CANCELLATION_COMPLETION_FAILURE,
             NODE_REQUEST_FAILURE
@@ -52,6 +55,7 @@ public interface FailurePayload extends ResponsePayload {
         @NonNull
         public final String msg;
 
+        @JsonCreator
         public UnspecifiedFailure(@NonNull String msg) {
             this.msg = msg;
         }
@@ -72,6 +76,28 @@ public interface FailurePayload extends ResponsePayload {
         }
     }
 
+    // We want to be able to serialize this, no matter the class is empty.
+    // Otherwise Jackson fails with a error like
+    // "No serializer found for class ... and no properties discovered to create BeanSerializer
+    // (to avoid exception, disable SerializationFeature.FAIL_ON_EMPTY_BEANS)".
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    final class CherryGardenNotReadyFailure extends CommonFailurePayload {
+        @Override
+        @NonNull
+        public CommonFailureType getCommonFailureType() {
+            return CommonFailureType.CHERRYGARDEN_NOT_READY;
+        }
+    }
+
+    @NonNull
+    CherryGardenNotReadyFailure CHERRY_GARDEN_NOT_READY = new CherryGardenNotReadyFailure();
+
+
+    // We want to be able to serialize this, no matter the class is empty.
+    // Otherwise Jackson fails with a error like
+    // "No serializer found for class ... and no properties discovered to create BeanSerializer
+    // (to avoid exception, disable SerializationFeature.FAIL_ON_EMPTY_BEANS)".
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     final class NoResponseFromCherryGarden extends CommonFailurePayload {
         @Override
         @NonNull
@@ -87,6 +113,11 @@ public interface FailurePayload extends ResponsePayload {
      * There was a failure that caused either {@link java.util.concurrent.CancellationException}
      * or {@link java.util.concurrent.CompletionException} to be thrown.
      */
+    // We want to be able to serialize this, no matter the class is empty.
+    // Otherwise Jackson fails with a error like
+    // "No serializer found for class ... and no properties discovered to create BeanSerializer
+    // (to avoid exception, disable SerializationFeature.FAIL_ON_EMPTY_BEANS)".
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     final class CancellationCompletionFailure extends CommonFailurePayload {
         @Override
         @NonNull
@@ -102,6 +133,11 @@ public interface FailurePayload extends ResponsePayload {
     /**
      * There was a failure in connecting to the Ethereum node for the result.
      */
+    // We want to be able to serialize this, no matter the class is empty.
+    // Otherwise Jackson fails with a error like
+    // "No serializer found for class ... and no properties discovered to create BeanSerializer
+    // (to avoid exception, disable SerializationFeature.FAIL_ON_EMPTY_BEANS)".
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     final class NodeRequestFailure extends CommonFailurePayload {
         @Override
         @NonNull

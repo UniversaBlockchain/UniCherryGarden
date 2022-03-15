@@ -82,7 +82,7 @@ public class Ping {
                                         @NonNull String buildTs) {
             assert systemStatus != null;
             assert realm != null;
-            assert chainId == -1 || chainId >= 1: chainId;
+            assert chainId == -1 || chainId >= 1 : chainId;
             assert version != null;
             assert buildTs != null;
 

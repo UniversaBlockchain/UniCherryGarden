@@ -542,7 +542,7 @@ public final class SenderImpl implements Sender {
         final BigDecimal maxFee =
                 (forceMaxFee != null) ?
                         forceMaxFee :
-                        EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(2));
+                        EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(100));
 
         final UnsignedOutgoingTransaction result;
         if (currencyKey.isEmpty()) {

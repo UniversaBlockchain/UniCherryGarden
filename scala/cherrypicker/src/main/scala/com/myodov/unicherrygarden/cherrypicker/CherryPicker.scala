@@ -8,7 +8,7 @@ import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.api.DBStorage.TrackedAddresses
 import com.myodov.unicherrygarden.api.GardenMessages.EthereumNodeStatus
 import com.myodov.unicherrygarden.api.types.SystemStatus
-import com.myodov.unicherrygarden.api.types.responseresult.{FailurePayload, ResponsePayload}
+import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload
 import com.myodov.unicherrygarden.api.{DBStorageAPI, GardenMessages}
 import com.myodov.unicherrygarden.cherrypicker.syncers.{HeadSyncer, TailSyncer}
 import com.myodov.unicherrygarden.messages.CherryPickerRequest
@@ -250,85 +250,85 @@ private class CherryPicker(
   private[this] def handleGetBalances(payload: GetBalances.GBRequestPayload): GetBalances.Response =
   // Construct all the response DB in a single atomic readonly DB transaction.
     DB readOnly { implicit session =>
-      new GetBalances.Response(
-        CherryGardenComponent.whenStateAndProgressAllow[BalanceRequestResultPayload](
-          state.ethereumStatus,
-          dbStorage.progress.getProgress,
-          "GetBalances",
-          null
-        ) { (ethereumNodeStatus, progress) =>
-          // Real use-case handling
-          val blocksTo = progress.blocks.to.get // non-empty, due to previous `case` check
-          val maxBlock = blocksTo - payload.confirmations
-          logger.debug(s"Get balances for $payload at $maxBlock")
+      CherryGardenComponent.whenStateAndProgressAllow[GetBalances.Response](
+        state.ethereumStatus,
+        dbStorage.progress.getProgress,
+        "GetBalances",
+        GetBalances.Response.fromCommonFailure(FailurePayload.CHERRY_GARDEN_NOT_READY)
+      ) { (ethereumNodeStatus, progress) =>
+        // Real use-case handling
+        val blocksTo = progress.blocks.to.get // non-empty, due to previous `case` check
+        val maxBlock = blocksTo - payload.confirmations
+        logger.debug(s"Get balances for $payload at $maxBlock")
 
-          val results = dbStorage.balances.getBalances(
-            payload.address,
-            maxBlock,
-            Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
-          )
+        val results = dbStorage.balances.getBalances(
+          payload.address,
+          maxBlock,
+          Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
+        )
+        new GetBalances.Response(
           new BalanceRequestResultPayload(
             CherryGardenComponent.buildSystemSyncStatus(ethereumNodeStatus, progress),
             results.asJava
           )
-        }
-      )
+        )
+      }
     }
 
   private[this] def handleGetTransfers(payload: GetTransfers.GTRequestPayload): GetTransfers.Response =
   // Construct all the response in a single atomic readonly DB transaction
     DB readOnly { implicit session =>
-      new GetTransfers.Response(
-        CherryGardenComponent.whenStateAndProgressAllow[TransfersRequestResultPayload](
-          state.ethereumStatus,
-          dbStorage.progress.getProgress,
-          "GetTransfers",
-          null
-        ) { (ethereumNodeStatus, progress) =>
-          // Real use-case handling
-          val blocksTo = progress.blocks.to.get // non-empty, due to previous `case` check
-          val maxBlock = blocksTo - payload.confirmations
+      CherryGardenComponent.whenStateAndProgressAllow[GetTransfers.Response](
+        state.ethereumStatus,
+        dbStorage.progress.getProgress,
+        "GetTransfers",
+        GetTransfers.Response.fromCommonFailure(FailurePayload.CHERRY_GARDEN_NOT_READY)
+      ) { (ethereumNodeStatus, progress) =>
+        // Real use-case handling
+        val blocksTo = progress.blocks.to.get // non-empty, due to previous `case` check
+        val maxBlock = blocksTo - payload.confirmations
 
-          val optEndBlock = Option(payload.endBlock).map(_.toInt) // of nullable; safe conversion to Option[Int]
+        val optEndBlock = Option(payload.endBlock).map(_.toInt) // of nullable; safe conversion to Option[Int]
 
-          val endBlock = optEndBlock match {
-            case None => maxBlock
-            case Some(endBlockCandidate) =>
-              Math.min(endBlockCandidate, maxBlock)
-          }
+        val endBlock = optEndBlock match {
+          case None => maxBlock
+          case Some(endBlockCandidate) =>
+            Math.min(endBlockCandidate, maxBlock)
+        }
 
-          logger.debug(s"Get transfers for $payload at $maxBlock ($endBlock)")
+        logger.debug(s"Get transfers for $payload at $maxBlock ($endBlock)")
 
-          val optSender = Option(payload.sender) // of nullable
-          val optReceiver = Option(payload.receiver) // of nullable
-          val optStartBlock = Option(payload.startBlock).map(_.toInt) // of nullable; safe conversion to Option[Int]
-          val optCurrencyKeys = Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
+        val optSender = Option(payload.sender) // of nullable
+        val optReceiver = Option(payload.receiver) // of nullable
+        val optStartBlock = Option(payload.startBlock).map(_.toInt) // of nullable; safe conversion to Option[Int]
+        val optCurrencyKeys = Option(payload.filterCurrencyKeys).map(_.asScala.toSet)
 
-          val transfers = dbStorage.transfers.getTransfers(
-            optSender,
-            optReceiver,
-            optStartBlock,
-            endBlock,
-            optCurrencyKeys
-          )
-          // We already have the transfers. But the query payload contained optional filters for sender and receiver;
-          // so let's try to get balances for both.
+        val transfers = dbStorage.transfers.getTransfers(
+          optSender,
+          optReceiver,
+          optStartBlock,
+          endBlock,
+          optCurrencyKeys
+        )
+        // We already have the transfers. But the query payload contained optional filters for sender and receiver;
+        // so let's try to get balances for both.
 
-          // Either sender; or receiver; or both; – can be optional. Make a sequence of those who are non-None.
-          val balanceKeys: Seq[String] = Seq(Option(payload.sender), Option(payload.receiver)).flatten
-          val balances: Map[String, List[BalanceRequestResultPayload.CurrencyBalanceFact]] =
-            if (payload.includeBalances)
-              balanceKeys.map(addr => addr -> dbStorage.balances.getBalances(addr, endBlock, optCurrencyKeys)).toMap
-            else
-              Map.empty
+        // Either sender; or receiver; or both; – can be optional. Make a sequence of those who are non-None.
+        val balanceKeys: Seq[String] = Seq(Option(payload.sender), Option(payload.receiver)).flatten
+        val balances: Map[String, List[BalanceRequestResultPayload.CurrencyBalanceFact]] =
+          if (payload.includeBalances)
+            balanceKeys.map(addr => addr -> dbStorage.balances.getBalances(addr, endBlock, optCurrencyKeys)).toMap
+          else
+            Map.empty
 
+        new GetTransfers.Response(
           new TransfersRequestResultPayload(
             CherryGardenComponent.buildSystemSyncStatus(ethereumNodeStatus, progress),
             transfers.asJava,
             balances.map { case (k, v) => k -> v.asJava }.asJava
           )
-        }
-      )
+        )
+      }
     }
 }
 

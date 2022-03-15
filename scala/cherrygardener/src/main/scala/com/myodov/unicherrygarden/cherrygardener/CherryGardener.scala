@@ -7,6 +7,7 @@ import com.myodov.unicherrygarden.api.DBStorageAPI
 import com.myodov.unicherrygarden.api.GardenMessages.EthereumNodeStatus
 import com.myodov.unicherrygarden.api.types.SystemStatus
 import com.myodov.unicherrygarden.api.types.dlt.Currency
+import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies.CurrenciesRequestResultPayload
 import com.myodov.unicherrygarden.messages.cherrygardener.Ping.PingRequestResultPayload
 import com.myodov.unicherrygarden.messages.cherrygardener.{GetCurrencies, Ping}
@@ -47,22 +48,23 @@ class CherryGardener(
         case message: Ping.Request => {
           context.log.debug(s"Received Ping($message) command")
 
-          val response = new Ping.Response(
-            CherryGardenComponent.whenStateAndProgressAllow[PingRequestResultPayload](
+          val response =
+            CherryGardenComponent.whenStateAndProgressAllow[Ping.Response](
               state.ethereumStatus,
               dbStorage.progress.getProgress,
               "Ping",
-              null
+              Ping.Response.fromCommonFailure(FailurePayload.CHERRY_GARDEN_NOT_READY)
             ) { (ethereumNodeStatus, progress) =>
-              new PingRequestResultPayload(
-                CherryGardenComponent.buildSystemSyncStatus(ethereumNodeStatus, progress),
-                realm,
-                chainId,
-                propVersionStr,
-                propBuildTimestampStr
+              new Ping.Response(
+                new PingRequestResultPayload(
+                  CherryGardenComponent.buildSystemSyncStatus(ethereumNodeStatus, progress),
+                  realm,
+                  chainId,
+                  propVersionStr,
+                  propBuildTimestampStr
+                )
               )
             }
-          )
           context.log.debug(s"Replying with $response")
           message.replyTo ! response
           Behaviors.same
@@ -70,7 +72,7 @@ class CherryGardener(
         case message: GetCurrencies.Request => {
           context.log.debug(s"Received GetCurrencies($message) command")
 
-          val response = getCurrencies(
+          val response = handleGetCurrencies(
             Option(message.payload.filterCurrencyKeys).map(_.asScala.toSet),
             message.payload.getVerified,
             message.payload.getUnverified)
@@ -86,28 +88,28 @@ class CherryGardener(
     }
 
   /** Reply to [[GetCurrencies]] request. */
-  def getCurrencies(
-                     filterCurrencyKeys: Option[Set[String]],
-                     getVerified: Boolean,
-                     getUnverified: Boolean
-                   ): GetCurrencies.Response =
+  private[this] def handleGetCurrencies(
+                                         filterCurrencyKeys: Option[Set[String]],
+                                         getVerified: Boolean,
+                                         getUnverified: Boolean
+                                       ): GetCurrencies.Response =
   // Construct all the response in a single atomic readonly DB transaction
     DB readOnly { implicit session =>
-      new GetCurrencies.Response(
-        CherryGardenComponent.whenStateAndProgressAllow[CurrenciesRequestResultPayload](
-          state.ethereumStatus,
-          dbStorage.progress.getProgress,
-          "GetCurrencies",
-          null
-        ) { (ethereumNodeStatus, progress) =>
-          // Real use-case handling
-          val result: List[Currency] = dbStorage.currencies.getCurrencies(filterCurrencyKeys, getVerified, getUnverified).map(_.asCurrency)
+      CherryGardenComponent.whenStateAndProgressAllow[GetCurrencies.Response](
+        state.ethereumStatus,
+        dbStorage.progress.getProgress,
+        "GetCurrencies",
+        GetCurrencies.Response.fromCommonFailure(FailurePayload.CHERRY_GARDEN_NOT_READY)
+      ) { (ethereumNodeStatus, progress) =>
+        // Real use-case handling
+        val result: List[Currency] = dbStorage.currencies.getCurrencies(filterCurrencyKeys, getVerified, getUnverified).map(_.asCurrency)
+        new GetCurrencies.Response(
           new CurrenciesRequestResultPayload(
             CherryGardenComponent.buildSystemSyncStatus(ethereumNodeStatus, progress),
             result.asJava
           )
-        }
-      )
+        )
+      }
     }
 }
 
