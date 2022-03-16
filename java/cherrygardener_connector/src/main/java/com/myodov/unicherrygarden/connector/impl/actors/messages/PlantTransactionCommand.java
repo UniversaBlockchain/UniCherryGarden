@@ -4,11 +4,12 @@ import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.Receptionist;
 import akka.actor.typed.receptionist.ServiceKey;
 import akka.japi.function.Function;
+import com.myodov.unicherrygarden.api.types.planted.transactions.SignedOutgoingTransfer;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorCommandImpl;
 import com.myodov.unicherrygarden.connector.impl.actors.ConnectorActorMessage;
-import com.myodov.unicherrygarden.messages.cherrypicker.GetAddressDetails;
 import com.myodov.unicherrygarden.messages.cherryplanter.PlantTransaction;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * Akka API command to “plant transaction” to Ethereum blockchain.
@@ -63,14 +64,15 @@ public class PlantTransactionCommand
      * containing the incoming arguments.
      */
     public static Function<ActorRef<Result>, ConnectorActorMessage> createReplier(
-            @NonNull byte[] bytes) {
-        assert bytes != null && bytes.length > 0: bytes;
+            @NonNull SignedOutgoingTransfer transfer,
+            @Nullable String comment
+    ) {
+        assert transfer != null : transfer;
 
         return (replyTo) -> new PlantTransactionCommand(
                 replyTo,
-                new PlantTransaction.PTRequestPayload(
-                        bytes
-                ));
+                new PlantTransaction.PTRequestPayload(transfer, comment)
+        );
     }
 
     @Override

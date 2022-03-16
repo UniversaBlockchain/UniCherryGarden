@@ -160,8 +160,12 @@ public interface Sender {
     /**
      * Enqueue the transaction for sending (try to send it to the blockchain, etc).
      *
+     * @param comment optional comment (may be null if omitted).
      * @return the typical network-related response as a result of network communication with CherryPlanter.
      */
     @SuppressWarnings("unused")
-    PlantTransaction.@NonNull Response sendTransaction(@NonNull SignedOutgoingTransfer tx);
+    PlantTransaction.@NonNull Response sendTransaction(
+            @NonNull SignedOutgoingTransfer tx,
+            @Nullable String comment
+    );
 }

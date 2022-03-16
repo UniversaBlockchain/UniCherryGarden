@@ -283,7 +283,10 @@ public final class SenderImpl implements Sender {
     }
 
     @Override
-    public PlantTransaction.@NonNull Response sendTransaction(@NonNull SignedOutgoingTransfer tx) {
+    public PlantTransaction.@NonNull Response sendTransaction(
+            @NonNull SignedOutgoingTransfer tx,
+            @Nullable String comment
+    ) {
         if (offlineMode) {
             throw new UniCherryGardenError.NotAvailableInOfflineModeError("Cannot execute sendTransaction!");
         }
@@ -291,7 +294,7 @@ public final class SenderImpl implements Sender {
         final CompletionStage<PlantTransactionCommand.Result> stage =
                 AskPattern.ask(
                         actorSystem,
-                        PlantTransactionCommand.createReplier(tx.getBytes()),
+                        PlantTransactionCommand.createReplier(tx, comment),
                         ConnectorActor.DEFAULT_CALL_TIMEOUT,
                         actorSystem.scheduler());
 

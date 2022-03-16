@@ -199,7 +199,8 @@ object DBStorage {
      */
     sealed case class TrackedAddress(address: String,
                                      comment: Option[String],
-                                     syncedFrom: Option[Int]
+                                     syncedFrom: Option[Int],
+                                     nextPlantingNonce: Option[Int]
                                     ) {
       lazy val toTrackedAddressInformation: TrackedAddressesRequestResultPayload.TrackedAddressInformation =
         new TrackedAddressesRequestResultPayload.TrackedAddressInformation(

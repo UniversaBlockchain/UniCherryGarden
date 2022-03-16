@@ -239,7 +239,7 @@ private class CherryPicker(
                 new GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails.Nonces(
                   nonceLatest,
                   optNoncePending.map(Integer.valueOf).orNull,
-                  null // TODO: add logic when CherryPlanter is created
+                  trackedAddr.flatMap(_.nextPlantingNonce).map(Integer.valueOf).orNull
                 )
               )
             )

@@ -11,8 +11,6 @@ import com.myodov.unicherrygarden.messages.CherryPlanterRequest
 import com.myodov.unicherrygarden.messages.cherryplanter.PlantTransaction
 import com.myodov.unicherrygarden.messages.cherryplanter.PlantTransaction.{PlantTransactionRequestResultFailure, PlantTransactionRequestResultPayload}
 import com.typesafe.scalalogging.LazyLogging
-import org.web3j.crypto.Hash
-import org.web3j.utils.Numeric
 import scalikejdbc.DB
 
 import scala.language.postfixOps
@@ -71,17 +69,20 @@ class CherryPlanter(
       ) { (ethereumNodeStatus, progress) =>
         // Real use-case handling
 
-        val expectedTxhash = Numeric.toHexString(Hash.sha3(payload.bytes))
-        logger.debug(s"Planting tx $expectedTxhash with bytes ${payload.bytes}")
+        val transfer = payload.transfer
+        logger.debug(s"Planting tx $transfer")
 
         // 1. Add the record to the DB.
         // Switch into read-write transaction for this.
         val (newlyPlanted, plantKey) = DB localTx { implicit session =>
-          dbStorage.plants.addTransactionToPlant(expectedTxhash, payload.bytes)
+          dbStorage.plants.addTransferToPlant(
+            transfer,
+            Option(payload.comment) // nullable
+          )
         }
 
         // 2. Try planting it into blockchain
-        ethereumConnector.ethSendRawTransaction(payload.bytes) match {
+        ethereumConnector.ethSendRawTransaction(transfer.getBytes) match {
           case Left(errorMessage) =>
             // 3.1. Error happened: update the planting status after the first attempt.
             // Switch into read-write transaction for this.
@@ -94,8 +95,8 @@ class CherryPlanter(
           case Right(txhash) =>
             // 3.2. Successful attempt to plant: update the planting status after the first attempt.
             // Switch into read-write transaction for this.
-            if (txhash != expectedTxhash) {
-              logger.warn(s"When planting, expected txhash \"$expectedTxhash\" but result was \"$txhash\"")
+            if (txhash != transfer.getHash) {
+              logger.warn(s"When planting, expected txhash \"${transfer.getHash}\" but result was \"$txhash\"")
             }
 
             DB localTx { implicit session =>

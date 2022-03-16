@@ -6,6 +6,7 @@ import com.myodov.unicherrygarden.Tools.seqIsIncrementing
 import com.myodov.unicherrygarden.api.DBStorage.Currencies.DBCurrency
 import com.myodov.unicherrygarden.api.types.MinedTransfer
 import com.myodov.unicherrygarden.api.types.dlt.{Block, MinedTx}
+import com.myodov.unicherrygarden.api.types.planted.transactions.SignedOutgoingTransfer
 import com.myodov.unicherrygarden.api.{DBStorageAPI, dlt}
 import com.myodov.unicherrygarden.ethereum.EthUtils
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
@@ -405,23 +406,28 @@ class PostgreSQLStorage(jdbcUrl: String,
                   filter_addresses != ARRAY[NULL]::TEXT[] AS has_filter_addresses
               FROM _vars
           )
-      SELECT
-          address,
-          CASE WHEN $includeComment THEN ucg_comment ELSE NULL END AS ucg_comment,
-          CASE WHEN $includeSyncedFrom THEN synced_from_block_number ELSE NULL END AS synced_from_block_number
+      SELECT DISTINCT
+          ucg_tracked_address.address,
+          CASE WHEN $includeComment THEN ucg_tracked_address.ucg_comment ELSE NULL END AS ucg_comment,
+          CASE WHEN $includeSyncedFrom THEN ucg_tracked_address.synced_from_block_number ELSE NULL END AS synced_from_block_number,
+          1 + first_value(ucg_planted_transfer.nonce) OVER w AS next_planting_nonce
       FROM
           vars,
           ucg_tracked_address
+          LEFT JOIN ucg_planted_transfer
+              ON ucg_planted_transfer.sender = ucg_tracked_address.address
       WHERE
           CASE
               WHEN has_filter_addresses
                   THEN ucg_tracked_address.address = ANY (filter_addresses)
               ELSE TRUE
-          END;
+          END
+          WINDOW w AS (PARTITION BY address ORDER BY nonce DESC);
       """.map(rs => TrackedAddress(
         rs.string("address"),
         rs.stringOpt("ucg_comment"),
-        rs.intOpt("synced_from_block_number")
+        rs.intOpt("synced_from_block_number"),
+        rs.intOpt("next_planting_nonce")
       )).list.apply()
     }
 
@@ -438,15 +444,22 @@ class PostgreSQLStorage(jdbcUrl: String,
                                         ): Option[TrackedAddress] = {
       sql"""
       SELECT
-       address,
-       ucg_comment,
-       synced_from_block_number
-      FROM ucg_tracked_address
-      WHERE address = $address;
+          ucg_tracked_address.address,
+          ucg_tracked_address.ucg_comment,
+          ucg_tracked_address.synced_from_block_number,
+          1 + first_value(ucg_planted_transfer.nonce) OVER w AS next_planting_nonce
+      FROM
+          ucg_tracked_address
+          LEFT JOIN ucg_planted_transfer
+                    ON ucg_planted_transfer.sender = ucg_tracked_address.address
+      WHERE
+          address = $address
+          WINDOW w AS (PARTITION BY address ORDER BY nonce DESC);
       """.map(rs => TrackedAddress(
         rs.string("address"),
         rs.stringOpt("ucg_comment"),
-        rs.intOpt("synced_from_block_number")
+        rs.intOpt("synced_from_block_number"),
+        rs.intOpt("next_planting_nonce")
       )).single
         .apply()
     }
@@ -956,12 +969,12 @@ class PostgreSQLStorage(jdbcUrl: String,
   }
 
   object plants extends DBStorageAPI.Plants {
-    override final def addTransactionToPlant(
-                                              txhash: String,
-                                              bytes: Array[Byte]
-                                            )(
-                                              implicit session: DBSession
-                                            ): (Boolean, Long) = {
+    override final def addTransferToPlant(
+                                           transfer: SignedOutgoingTransfer,
+                                           comment: Option[String]
+                                         )(
+                                           implicit session: DBSession
+                                         ): (Boolean, Long) = {
       (false, 5)
     }
   }

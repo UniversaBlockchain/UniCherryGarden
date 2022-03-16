@@ -4,6 +4,7 @@ import com.myodov.unicherrygarden.api.DBStorage.Currencies.DBCurrency
 import com.myodov.unicherrygarden.api.DBStorage.Progress.ProgressData
 import com.myodov.unicherrygarden.api.DBStorage.TrackedAddresses.TrackedAddress
 import com.myodov.unicherrygarden.api.types.MinedTransfer
+import com.myodov.unicherrygarden.api.types.planted.transactions.SignedOutgoingTransfer
 import com.myodov.unicherrygarden.messages.cherrypicker.AddTrackedAddresses.StartTrackingAddressMode
 import com.myodov.unicherrygarden.messages.cherrypicker.GetBalances.BalanceRequestResultPayload.CurrencyBalanceFact
 import scalikejdbc.{AutoSession, DBSession, ReadOnlyAutoSession}
@@ -199,8 +200,7 @@ object DBStorageAPI {
   }
 
   trait Plants {
-    /** Get information about ETH/ERC20 balances at some address `address` and no newer than at some block `maxBlock`,
-     * optionally filtered by currency keys `currencyKeys`.
+    /** Plant a new transfer.
      *
      * @return a tuple with the following components:
      *         <ul>
@@ -211,10 +211,12 @@ object DBStorageAPI {
      *         can be used for future reference of this plant.
      *         </ul>
      */
-    def addTransactionToPlant(
-                               txhash: String,
-                               bytes: Array[Byte]
-                             )(implicit session: DBSession = AutoSession): (Boolean, Long)
+    def addTransferToPlant(
+                            transfer: SignedOutgoingTransfer,
+                            comment: Option[String]
+                          )(
+                            implicit session: DBSession = AutoSession
+                          ): (Boolean, Long)
   }
 
 }

@@ -3,6 +3,7 @@ package com.myodov.unicherrygarden.messages.cherryplanter;
 import akka.actor.typed.ActorRef;
 import akka.actor.typed.receptionist.ServiceKey;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.myodov.unicherrygarden.api.types.planted.transactions.SignedOutgoingTransfer;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.CommonFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload.SpecificFailurePayload;
 import com.myodov.unicherrygarden.api.types.responseresult.ResponsePayload;
@@ -11,8 +12,8 @@ import com.myodov.unicherrygarden.messages.CherryGardenResponseWithPayload;
 import com.myodov.unicherrygarden.messages.CherryPlanterRequest;
 import com.myodov.unicherrygarden.messages.RequestPayload;
 import com.myodov.unicherrygarden.messages.RequestWithReplyTo;
-import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.Objects;
 
@@ -29,20 +30,25 @@ public class PlantTransaction {
             implements RequestPayload {
 
         @NonNull
-        public byte[] bytes;
+        public final SignedOutgoingTransfer transfer;
+
+        @Nullable
+        public final String comment;
 
         @JsonCreator
-        public PTRequestPayload(@NonNull byte[] bytes) {
-            assert bytes != null && bytes.length > 0 : bytes;
+        public PTRequestPayload(@NonNull SignedOutgoingTransfer transfer,
+                                @Nullable String comment) {
+            assert transfer != null : transfer;
 
-            this.bytes = bytes;
+            this.transfer = transfer;
+            this.comment = comment;
         }
 
         @Override
         public final String toString() {
-            return String.format("%s(%s)",
+            return String.format("%s(%s, %s)",
                     getClass().getSimpleName(),
-                    Hex.toHexString(bytes));
+                    transfer, comment);
         }
     }
 
