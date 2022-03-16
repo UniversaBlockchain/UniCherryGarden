@@ -2,9 +2,11 @@ package com.myodov.unicherrygarden.connector.impl;
 
 import akka.actor.typed.ActorSystem;
 import akka.actor.typed.javadsl.AskPattern;
-import com.myodov.unicherrygarden.api.types.PrivateKey;
+import com.myodov.unicherrygarden.api.Validators;
 import com.myodov.unicherrygarden.api.types.UniCherryGardenError;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
+import com.myodov.unicherrygarden.api.types.planted.transactions.SignedOutgoingTransaction;
+import com.myodov.unicherrygarden.api.types.planted.transactions.UnsignedOutgoingTransaction;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.connector.api.Sender;
@@ -16,26 +18,13 @@ import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import com.myodov.unicherrygarden.messages.cherrypicker.GetAddressDetails;
 import com.myodov.unicherrygarden.messages.cherryplanter.PlantTransaction;
-import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.web3j.abi.FunctionEncoder;
-import org.web3j.abi.TypeReference;
-import org.web3j.abi.datatypes.Function;
-import org.web3j.abi.datatypes.Type;
-import org.web3j.contracts.eip20.generated.ERC20;
-import org.web3j.crypto.Hash;
-import org.web3j.crypto.RawTransaction;
-import org.web3j.crypto.SignedRawTransaction;
-import org.web3j.crypto.TransactionEncoder;
-import org.web3j.utils.Numeric;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -47,296 +36,6 @@ import static com.myodov.unicherrygarden.NullTools.coalesce;
  */
 public final class SenderImpl implements Sender {
     final Logger logger = LoggerFactory.getLogger(SenderImpl.class);
-
-    // TODO: can be made sealed when minimal Java increased to Java15
-    static class ByteBasedOutgoingTransactionImpl
-            implements PreparedOutgoingTransaction {
-
-        protected final byte[] bytes;
-
-        private final boolean isSigned;
-
-        /**
-         * Primary constructor (from byte array).
-         */
-        ByteBasedOutgoingTransactionImpl(boolean isSigned,
-                                         byte[] bytes) {
-            this.isSigned = isSigned;
-            this.bytes = bytes.clone();
-        }
-
-        @Override
-        public final boolean isSigned() {
-            return isSigned;
-        }
-
-        @Override
-        public final byte[] getBytes() {
-            return bytes.clone();
-        }
-
-        @Override
-        @NonNull
-        public final String getBytesHexString() {
-            // Slightly optimized, final and no-copy version
-            return Hex.toHexString(bytes);
-        }
-
-        @Override
-        @NonNull
-        public final String getPublicRepresentation() {
-            // Slightly optimized, final and no-copy version
-            return Numeric.toHexString(bytes);
-        }
-    }
-
-    /**
-     * The default implementation for {@link UnsignedOutgoingTransaction} interface.
-     */
-    static final class UnsignedOutgoingTransactionImpl
-            extends ByteBasedOutgoingTransactionImpl
-            implements UnsignedOutgoingTransaction {
-
-        /**
-         * Primary constructor (from byte array).
-         */
-        @SuppressWarnings("unused")
-        UnsignedOutgoingTransactionImpl(byte[] bytes) {
-            super(false,
-                    bytes);
-        }
-
-        /**
-         * Secondary constructor (from {@link RawTransaction}).
-         */
-        @SuppressWarnings("unused")
-        UnsignedOutgoingTransactionImpl(@NonNull RawTransaction rawTransaction) {
-            this(TransactionEncoder.encode(rawTransaction));
-        }
-
-        @Override
-        public final String toString() {
-            return String.format("%s(bytes=\"%s\")",
-                    getClass().getSimpleName(), getBytesHexString());
-        }
-
-        /**
-         * Create a transaction to transfer the base currency of the blockchain
-         * (in case of Ethereum Mainnet, this is ETH; may be different for other blockchains,
-         * but for simplicity of referring to it let's call it “Ether Transaction”).
-         *
-         * @param receiver       the receiver of the transaction; i.e. the “to” field.
-         *                       Should be a valid Ethereum address, upper or lower case,
-         *                       e.g. <code>"0x34e1E4F805fCdC936068A760b2C17BC62135b5AE"</code>.
-         * @param amount         amount of currency (ETH in case of Ethereum Mainnet) to be transferred.
-         *                       This is the “end-user-interpretation” of the amount, i.e. the real number of ETH
-         *                       with decimal point, rather than internal uint256-based number of weis.
-         * @param nonce          nonce for the transaction.
-         * @param maxPriorityFee (EIP-1559) Max Priority Fee; measured in ETH, but in real scenarios
-         *                       it is often measured in Gweis; see the counterpart method.
-         * @param maxFee         (EIP-1559) Max Fee; measured in ETH, but in real scenarios
-         *                       it is often measured in Gweis; see the counterpart method.
-         * @apiNote Read <a href="https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1559.md">EIP-1559</a>
-         * to get more details about Max Priority Fee and Max Fee.
-         * Also, see the <a href="https://notes.ethereum.org/@vbuterin/eip-1559-faq">EIP-1559 FAQ</a>
-         * for practical explanation.
-         */
-        static UnsignedOutgoingTransactionImpl createEtherTransfer(
-                @NonNull String receiver,
-                @NonNull BigDecimal amount,
-                long chainId,
-                @NonNull BigInteger nonce,
-                @NonNull BigDecimal maxPriorityFee,
-                @NonNull BigDecimal maxFee
-        ) {
-            Validators.requireValidEthereumAddress(receiver);
-            assert amount != null && amount.compareTo(BigDecimal.ZERO) >= 0 : amount; // amount >= 0
-            Validators.requireValidNonce(nonce);
-            assert maxPriorityFee != null && maxPriorityFee.compareTo(BigDecimal.ZERO) >= 0 : maxPriorityFee; // maxPriorityFee >= 0
-            assert maxFee != null && maxFee.compareTo(BigDecimal.ZERO) >= 0 : maxFee; // maxFee >= 0
-
-            return new UnsignedOutgoingTransactionImpl(RawTransaction.createEtherTransaction(
-                    chainId,
-                    nonce,
-                    EthUtils.ETH_TRANSFER_GAS_LIMIT_BIGINTEGER,
-                    receiver.toLowerCase(),
-                    EthUtils.Wei.valueToWeis(amount),
-                    EthUtils.Wei.valueToWeis(maxPriorityFee),
-                    EthUtils.Wei.valueToWeis(maxFee)
-            ));
-        }
-
-        /**
-         * Create a transaction to transfer the ERC20-formed token.
-         *
-         * @param receiver       the receiver of the transaction; i.e. the “to” field.
-         *                       Should be a valid Ethereum address, upper or lower case,
-         *                       e.g. <code>"0x34e1E4F805fCdC936068A760b2C17BC62135b5AE"</code>.
-         * @param amountUint256  amount of token (not corrected for decimals) to be transferred.
-         *                       This is low-level uint256-based number to be recorded.
-         * @param nonce          nonce for the transaction.
-         * @param gasLimit       gas limit to use.
-         * @param maxPriorityFee (EIP-1559) Max Priority Fee; measured in ETH, but in real scenarios
-         *                       it is often measured in Gweis.
-         * @param maxFee         (EIP-1559) Max Fee; measured in ETH, but in real scenarios
-         *                       it is often measured in Gweis.
-         * @apiNote Read <a href="https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1559.md">EIP-1559</a>
-         * to get more details about Max Priority Fee and Max Fee.
-         * Also, see the <a href="https://notes.ethereum.org/@vbuterin/eip-1559-faq">EIP-1559 FAQ</a>
-         * for practical explanation.
-         */
-        static UnsignedOutgoingTransactionImpl createERC20Transfer(
-                @NonNull String receiver,
-                @NonNull BigInteger amountUint256,
-                @NonNull String erc20TokenAddress,
-                long chainId,
-                @NonNull BigInteger nonce,
-                @NonNull BigInteger gasLimit,
-                @NonNull BigDecimal maxPriorityFee,
-                @NonNull BigDecimal maxFee
-        ) {
-            Validators.requireValidEthereumAddress(receiver);
-            assert amountUint256 != null && amountUint256.compareTo(BigInteger.ZERO) >= 0 : amountUint256; // amountUint256 >= 0
-            Validators.requireValidLowercasedEthereumAddresses(erc20TokenAddress);
-            Validators.requireValidNonce(nonce);
-            assert maxPriorityFee != null && maxPriorityFee.compareTo(BigDecimal.ZERO) >= 0 : maxPriorityFee; // maxPriorityFee >= 0
-            assert maxFee != null && maxFee.compareTo(BigDecimal.ZERO) >= 0 : maxFee; // maxFee >= 0
-
-            final Function transferFunction = new Function(
-                    ERC20.FUNC_TRANSFER,
-                    Arrays.<Type>asList(new org.web3j.abi.datatypes.Address(receiver.toLowerCase()),
-                            new org.web3j.abi.datatypes.generated.Uint256(amountUint256)),
-                    Collections.<TypeReference<?>>emptyList());
-
-            return new UnsignedOutgoingTransactionImpl(RawTransaction.createTransaction(
-                    chainId,
-                    nonce,
-                    gasLimit,
-                    erc20TokenAddress,
-                    BigInteger.ZERO,
-                    FunctionEncoder.encode(transferFunction),
-                    EthUtils.Wei.valueToWeis(maxPriorityFee),
-                    EthUtils.Wei.valueToWeis(maxFee)
-            ));
-        }
-
-        /**
-         * Create a transaction to transfer the ERC20-formed token.
-         *
-         * @param receiver       the receiver of the transaction; i.e. the “to” field.
-         *                       Should be a valid Ethereum address, upper or lower case,
-         *                       e.g. <code>"0x34e1E4F805fCdC936068A760b2C17BC62135b5AE"</code>.
-         * @param amount         amount of token (not corrected for decimals) to be transferred.
-         *                       This is “end-user-interpretation” of the amount, i.e. the real number of token
-         *                       with decimal point.
-         * @param decimals       number of “decimals” for amount decimal point correction.
-         * @param nonce          nonce for the transaction.
-         * @param maxPriorityFee (EIP-1559) Max Priority Fee; measured in ETH, but in real scenarios
-         *                       it is often measured in Gweis.
-         * @param maxFee         (EIP-1559) Max Fee; measured in ETH, but in real scenarios
-         *                       it is often measured in Gweis.
-         * @apiNote Read <a href="https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1559.md">EIP-1559</a>
-         * to get more details about Max Priority Fee and Max Fee.
-         * Also, see the <a href="https://notes.ethereum.org/@vbuterin/eip-1559-faq">EIP-1559 FAQ</a>
-         * for practical explanation.
-         */
-        static UnsignedOutgoingTransactionImpl createERC20Transfer(
-                @NonNull String receiver,
-                @NonNull BigDecimal amount,
-                int decimals,
-                @NonNull String erc20TokenAddress,
-                long chainId,
-                @NonNull BigInteger nonce,
-                @NonNull BigInteger gasLimit,
-                @NonNull BigDecimal maxPriorityFee,
-                @NonNull BigDecimal maxFee
-        ) {
-            assert decimals >= 0 : decimals;
-            return createERC20Transfer(
-                    receiver,
-                    EthUtils.Uint256.valueToUint256(amount, decimals),
-                    erc20TokenAddress,
-                    chainId,
-                    nonce,
-                    gasLimit,
-                    maxPriorityFee,
-                    maxFee
-            );
-        }
-
-        @Override
-        @NonNull
-        public SignedOutgoingTransaction sign(@NonNull PrivateKey privateKey) {
-            final byte[] signed = TransactionEncoder.signMessage(
-                    getRawTransaction(), privateKey.getCredentials());
-            return new SignedOutgoingTransactionImpl(signed);
-        }
-    }
-
-    /**
-     * The default implementation for {@link SignedOutgoingTransaction} interface.
-     */
-    static class SignedOutgoingTransactionImpl
-            extends ByteBasedOutgoingTransactionImpl
-            implements SignedOutgoingTransaction {
-
-        /**
-         * Primary constructor (from byte array).
-         */
-        @SuppressWarnings("unused")
-        SignedOutgoingTransactionImpl(byte[] bytes) {
-            super(true,
-                    bytes);
-        }
-
-        /**
-         * Secondary constructor (from {@link SignedRawTransaction}).
-         */
-        @SuppressWarnings("unused")
-        SignedOutgoingTransactionImpl(@NonNull SignedRawTransaction signedRawTransaction) {
-            this(TransactionEncoder.encode(signedRawTransaction));
-        }
-
-        @Override
-        public String toString() {
-            return String.format("%s(bytes=\"%s\")",
-                    getClass().getSimpleName(), getBytesHexString());
-        }
-
-        @Override
-        @NonNull
-        public String getHash() {
-            return Numeric.toHexString(Hash.sha3(bytes));
-        }
-    }
-
-    // TODO: can be made sealed when minimal Java increased to Java15
-    static final class PlantedOutgoingTransactionImpl
-            extends SignedOutgoingTransactionImpl
-            implements PlantedOutgoingTransaction {
-        /**
-         * Primary constructor (from byte array).
-         *
-         * @param bytes
-         */
-        PlantedOutgoingTransactionImpl(byte[] bytes) {
-            super(bytes);
-        }
-
-        @Nullable
-        @Override
-        public BigInteger getNumberOfConfirmations() {
-            // TODO
-            throw new Error("getNumberOfConfirmations: not implemented yet!");
-        }
-
-        @Nullable
-        @Override
-        public BigInteger getBlockNumber() {
-            // TODO
-            throw new Error("getNumberOfConfirmations: not implemented yet!");
-        }
-    }
 
     /**
      * Null only if created in “offline mode”.
@@ -547,7 +246,7 @@ public final class SenderImpl implements Sender {
         final UnsignedOutgoingTransaction result;
         if (currencyKey.isEmpty()) {
             // ETH or other base currency
-            result = UnsignedOutgoingTransactionImpl.createEtherTransfer(
+            result = UnsignedOutgoingTransaction.createEtherTransfer(
                     receiver,
                     amount,
                     chainId,
@@ -559,7 +258,7 @@ public final class SenderImpl implements Sender {
             assert gasLimit != null : gasLimit;
 
             // Currently the only other option is ERC20
-            result = UnsignedOutgoingTransactionImpl.createERC20Transfer(
+            result = UnsignedOutgoingTransaction.createERC20Transfer(
                     receiver,
                     amount,
                     decimals,

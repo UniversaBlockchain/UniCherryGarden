@@ -1,14 +1,11 @@
 package com.myodov.unicherrygarden.connector.api;
 
-import com.myodov.unicherrygarden.api.types.PrivateKey;
+import com.myodov.unicherrygarden.api.types.planted.transactions.SignedOutgoingTransaction;
+import com.myodov.unicherrygarden.api.types.planted.transactions.UnsignedOutgoingTransaction;
 import com.myodov.unicherrygarden.messages.Serializable;
 import com.myodov.unicherrygarden.messages.cherryplanter.PlantTransaction;
-import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.web3j.crypto.RawTransaction;
-import org.web3j.crypto.TransactionDecoder;
-import org.web3j.utils.Numeric;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -46,95 +43,6 @@ public interface Sender {
          * @param selector “next by what data” you want to use to select your Nonce.
          */
         @NonNull NonceSource nextBy(@NonNull Selector selector);
-    }
-
-    interface PreparedOutgoingTransaction {
-        /**
-         * Whether the transaction is signed already.
-         */
-        boolean isSigned();
-
-        /**
-         * Get the bytes of transaction, as array of bytes.
-         */
-        byte[] getBytes();
-
-        /**
-         * Get the data of transaction, decoded as Web3j {@link RawTransaction} object.
-         */
-        @NonNull
-        default RawTransaction getRawTransaction() {
-            final RawTransaction result = TransactionDecoder.decode(getBytesHexString());
-            assert result != null : result;
-            return result;
-        }
-
-        /**
-         * Get the bytes of transaction, as a hex string (just hex, not starting from "0x").
-         */
-        @NonNull
-        default String getBytesHexString() {
-            return Hex.toHexString(getBytes());
-        }
-
-        /**
-         * Get an official public representation (hex string, starting with "0x")
-         * of the Ethereum transaction.
-         */
-        @NonNull
-        default String getPublicRepresentation() {
-            return Numeric.toHexString(getBytes());
-        }
-    }
-
-    interface UnsignedOutgoingTransaction extends PreparedOutgoingTransaction {
-        @Override
-        default boolean isSigned() {
-            return false;
-        }
-
-        /**
-         * Sign this transaction, using some private key.
-         */
-        @NonNull
-        SignedOutgoingTransaction sign(@NonNull PrivateKey privateKey);
-    }
-
-    interface SignedOutgoingTransaction extends PreparedOutgoingTransaction {
-        @Override
-        default boolean isSigned() {
-            return true;
-        }
-
-        /**
-         * Get tx hash (a string like <code>"0x8fc8b7de7cac3b2ae24ae2d67f35750bccf3d49996313f4d567929e6f6bef44c"</code>)
-         * of the Ethereum transaction.
-         */
-        @NonNull
-        String getHash();
-    }
-
-    /**
-     * The transaction that has been sent to the Ethereum blockchain, or at least attempted.
-     */
-    interface PlantedOutgoingTransaction extends SignedOutgoingTransaction {
-        /**
-         * Get the number of confirmation for the transaction.
-         *
-         * @return The number of confirmations,
-         * or <code>null</code> if the transaction hasn’t been successfully registered in the blockchain yet.
-         */
-        @Nullable
-        BigInteger getNumberOfConfirmations();
-
-        /**
-         * Get the blockchain block (number) in which the transaction has been registered.
-         *
-         * @return The blockchain block (number) in which the transaction has been registered,
-         * or <code>null</code> if the transaction hasn’t been successfully registered in the blockchain yet.
-         */
-        @Nullable
-        BigInteger getBlockNumber();
     }
 
     /**

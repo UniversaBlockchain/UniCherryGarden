@@ -175,6 +175,9 @@ lazy val cherryGardenerInterop = (project in file("java/cherrygardener_interop")
     name := "cherrygardener_interop",
     description := "UniCherryGarden: “interop” classes defining the Akka communication messages between Java and Scala code",
     libraryDependencies ++= Seq(
+      // Web3j library, for Ethereum-specific data and algorithms
+      "org.web3j" % "core" % web3jVersion,
+      "org.web3j" % "contracts" % web3jVersion,
       // Akka
       "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
       //      "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test, // or should not use "% Test"?
@@ -193,8 +196,6 @@ lazy val cherryGardenerConnector = (project in file("java/cherrygardener_connect
     name := "cherrygardener_connector",
     description := "UniCherryGarden: primary Java API to access the UniCherryGarden system from Java/Scala/Kotlin code",
     libraryDependencies ++= Seq(
-      "org.web3j" % "core" % web3jVersion,
-      "org.web3j" % "contracts" % web3jVersion,
       // Jackson used to parse JSON structures
       "com.fasterxml.jackson.core" % "jackson-core" % jacksonCoreVersion,
       "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonCoreVersion,

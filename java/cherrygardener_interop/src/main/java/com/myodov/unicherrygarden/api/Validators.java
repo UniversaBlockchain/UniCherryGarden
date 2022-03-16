@@ -1,4 +1,4 @@
-package com.myodov.unicherrygarden.connector.impl;
+package com.myodov.unicherrygarden.api;
 
 import com.myodov.unicherrygarden.api.types.UniCherryGardenError;
 import com.myodov.unicherrygarden.ethereum.EthUtils;

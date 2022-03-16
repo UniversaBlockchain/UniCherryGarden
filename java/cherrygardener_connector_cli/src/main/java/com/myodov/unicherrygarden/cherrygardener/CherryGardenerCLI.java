@@ -6,8 +6,8 @@ import com.myodov.unicherrygarden.api.types.dlt.Currency;
 import com.myodov.unicherrygarden.api.types.responseresult.ResponseWithPayload;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.connector.api.Observer;
-import com.myodov.unicherrygarden.connector.api.Sender;
-import com.myodov.unicherrygarden.connector.impl.Validators;
+import com.myodov.unicherrygarden.api.types.planted.transactions.UnsignedOutgoingTransaction;
+import com.myodov.unicherrygarden.api.Validators;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.messages.CherryGardenResponseWithPayload;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
@@ -1354,7 +1354,7 @@ public class CherryGardenerCLI {
                 // (we may need to detect it upon connecting to the connector);
                 // mandatory confirmations are irrelevant though..
                 try (final ClientConnector connector = connectionSettings.createClientConnector(0)) {
-                    final Sender.UnsignedOutgoingTransaction unsignedTx = connector.getSender().createOutgoingTransfer(
+                    final UnsignedOutgoingTransaction unsignedTx = connector.getSender().createOutgoingTransfer(
                             senderOpt.orElse(null),
                             receiver,
                             currencyKey,

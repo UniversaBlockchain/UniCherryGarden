@@ -47,13 +47,13 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
 
         assertJsonDeserialization(
                 eth,
-                "{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null}",
+                "{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"decimals\":null,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null}",
                 Currency.class
         );
 
         assertJsonDeserialization(
                 erc20,
-                "{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"transferGasLimit\":\"70000\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}",
+                "{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"decimals\":null,\"transferGasLimit\":\"70000\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}",
                 Currency.class
         );
 
@@ -66,8 +66,8 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
                         "\"cherryPicker\":{\"latestKnownBlock\":19,\"latestPartiallySyncedBlock\":15,\"latestFullySyncedBlock\":13}" +
                         "}," +
                         "\"currencies\":[" +
-                        "{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null}," +
-                        "{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"transferGasLimit\":\"70000\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}]}",
+                        "{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"decimals\":null,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null}," +
+                        "{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"decimals\":null,\"transferGasLimit\":\"70000\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}]}",
                 GetCurrencies.CurrenciesRequestResultPayload.class
         );
 
@@ -80,8 +80,8 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
                         "\"cherryPicker\":{\"latestKnownBlock\":19,\"latestPartiallySyncedBlock\":15,\"latestFullySyncedBlock\":13}" +
                         "}," +
                         "\"currencies\":[" +
-                        "{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null}," +
-                        "{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"transferGasLimit\":\"70000\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}]}}",
+                        "{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"decimals\":null,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null}," +
+                        "{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"decimals\":null,\"transferGasLimit\":\"70000\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}]}}",
                 GetCurrencies.Response.class
         );
 

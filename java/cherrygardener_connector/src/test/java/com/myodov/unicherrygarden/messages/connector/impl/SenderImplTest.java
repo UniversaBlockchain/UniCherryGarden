@@ -1,7 +1,8 @@
 package com.myodov.unicherrygarden.messages.connector.impl;
 
 import com.myodov.unicherrygarden.api.types.PrivateKey;
-import com.myodov.unicherrygarden.connector.api.Sender;
+import com.myodov.unicherrygarden.api.types.planted.transactions.SignedOutgoingTransaction;
+import com.myodov.unicherrygarden.api.types.planted.transactions.UnsignedOutgoingTransaction;
 import com.myodov.unicherrygarden.connector.impl.SenderImpl;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
@@ -110,7 +111,7 @@ public class SenderImplTest {
 
     private static final SenderImpl sender = new SenderImpl();
 
-    private static final Sender.UnsignedOutgoingTransaction txMainnetEthTo1AUnsigned =
+    private static final UnsignedOutgoingTransaction txMainnetEthTo1AUnsigned =
             sender.createOutgoingTransfer(
                     null,
                     CRED1.addr,
@@ -123,7 +124,7 @@ public class SenderImplTest {
                     maxPriorityFee,
                     maxFee
             );
-    private static final Sender.UnsignedOutgoingTransaction txRinkebyEthTo1AUnsigned =
+    private static final UnsignedOutgoingTransaction txRinkebyEthTo1AUnsigned =
             sender.createOutgoingTransfer(
                     null,
                     CRED1.addr,
@@ -137,7 +138,7 @@ public class SenderImplTest {
                     maxFee
             );
 
-    private static final Sender.UnsignedOutgoingTransaction txMainnetEthTo1BUnsigned =
+    private static final UnsignedOutgoingTransaction txMainnetEthTo1BUnsigned =
             sender.createOutgoingTransfer(
                     null,
                     CRED1.addr,
@@ -150,7 +151,7 @@ public class SenderImplTest {
                     maxPriorityFee,
                     maxFee
             );
-    private static final Sender.UnsignedOutgoingTransaction txMainnetTo2AUnsigned =
+    private static final UnsignedOutgoingTransaction txMainnetTo2AUnsigned =
             sender.createOutgoingTransfer(
                     null,
                     CRED2.addr,
@@ -163,7 +164,7 @@ public class SenderImplTest {
                     maxPriorityFee,
                     maxFee
             );
-    private static final Sender.UnsignedOutgoingTransaction txMainnetTo2BUnsigned =
+    private static final UnsignedOutgoingTransaction txMainnetTo2BUnsigned =
             sender.createOutgoingTransfer(
                     null,
                     CRED2.addr,
@@ -209,10 +210,10 @@ public class SenderImplTest {
 
         // Now let’s sign and see the differences
 
-        final Sender.SignedOutgoingTransaction tx1To1ASigned = txMainnetEthTo1AUnsigned.sign(CRED1.privateKey);
-        final Sender.SignedOutgoingTransaction tx2To1ASigned = txMainnetEthTo1AUnsigned.sign(CRED2.privateKey);
-        final Sender.SignedOutgoingTransaction tx1To1BSigned = txMainnetEthTo1BUnsigned.sign(CRED1.privateKey);
-        final Sender.SignedOutgoingTransaction tx2To1BSigned = txMainnetEthTo1BUnsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransaction tx1To1ASigned = txMainnetEthTo1AUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransaction tx2To1ASigned = txMainnetEthTo1AUnsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransaction tx1To1BSigned = txMainnetEthTo1BUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransaction tx2To1BSigned = txMainnetEthTo1BUnsigned.sign(CRED2.privateKey);
 
         {
             // Test extra methods for tx1To1ASigned, to be sure
@@ -257,10 +258,10 @@ public class SenderImplTest {
                 tx2To1BSigned.getHash()
         );
 
-        final Sender.SignedOutgoingTransaction tx1To2ASigned = txMainnetTo2AUnsigned.sign(CRED1.privateKey);
-        final Sender.SignedOutgoingTransaction tx2To2ASigned = txMainnetTo2AUnsigned.sign(CRED2.privateKey);
-        final Sender.SignedOutgoingTransaction tx1To2BSigned = txMainnetTo2BUnsigned.sign(CRED1.privateKey);
-        final Sender.SignedOutgoingTransaction tx2To2BSigned = txMainnetTo2BUnsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransaction tx1To2ASigned = txMainnetTo2AUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransaction tx2To2ASigned = txMainnetTo2AUnsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransaction tx1To2BSigned = txMainnetTo2BUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransaction tx2To2BSigned = txMainnetTo2BUnsigned.sign(CRED2.privateKey);
 
         assertEquals(
                 "0x02f86c01808230398301093282520894408a4ac0e80ba57210ea6a9ae6a9a7b687a5102385174876e80080c080a0301a93fcab38f33c1d80263e1b2618d2443df0fee3747b3ced18fe189929ce25a06759dcb91bef2c2c1aa93c3e1b8e91336c2efb0643101bc18553734eb6cd2a4b",
@@ -299,7 +300,7 @@ public class SenderImplTest {
 
     @Test
     public void testBuildSignEthTransactionTestnets() {
-        final Sender.UnsignedOutgoingTransaction ropstenTxTo1Unsigned = sender.createOutgoingTransfer(
+        final UnsignedOutgoingTransaction ropstenTxTo1Unsigned = sender.createOutgoingTransfer(
                 null,
                 CRED1.addr,
                 ethCurrencyKey,
@@ -311,7 +312,7 @@ public class SenderImplTest {
                 maxPriorityFee,
                 maxFee
         );
-        final Sender.UnsignedOutgoingTransaction rinkebyTxTo1Unsigned = sender.createOutgoingTransfer(
+        final UnsignedOutgoingTransaction rinkebyTxTo1Unsigned = sender.createOutgoingTransfer(
                 null,
                 CRED1.addr,
                 ethCurrencyKey,
@@ -333,10 +334,10 @@ public class SenderImplTest {
                 rinkebyTxTo1Unsigned.getPublicRepresentation()
         );
 
-        final Sender.SignedOutgoingTransaction ropstenTx1To1Signed = ropstenTxTo1Unsigned.sign(CRED1.privateKey);
-        final Sender.SignedOutgoingTransaction ropstenTx2To1Signed = ropstenTxTo1Unsigned.sign(CRED2.privateKey);
-        final Sender.SignedOutgoingTransaction rinkebyTx1To1Signed = rinkebyTxTo1Unsigned.sign(CRED1.privateKey);
-        final Sender.SignedOutgoingTransaction rinkebyTx2To1Signed = rinkebyTxTo1Unsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransaction ropstenTx1To1Signed = ropstenTxTo1Unsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransaction ropstenTx2To1Signed = ropstenTxTo1Unsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransaction rinkebyTx1To1Signed = rinkebyTxTo1Unsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransaction rinkebyTx2To1Signed = rinkebyTxTo1Unsigned.sign(CRED2.privateKey);
         logger.debug("Created transactions:\n  {},\n  {},\n  {},\n  {}",
                 ropstenTx1To1Signed, ropstenTx2To1Signed, rinkebyTx1To1Signed, rinkebyTx2To1Signed);
 
@@ -377,7 +378,7 @@ public class SenderImplTest {
 
     @Test
     public void testBuildSignERC20Transaction() {
-        final Sender.UnsignedOutgoingTransaction txMainnetUtnpTo1AUnsigned =
+        final UnsignedOutgoingTransaction txMainnetUtnpTo1AUnsigned =
                 sender.createOutgoingTransfer(
                         null,
                         CRED1.addr,
@@ -390,7 +391,7 @@ public class SenderImplTest {
                         maxPriorityFee,
                         maxFee
                 );
-        final Sender.UnsignedOutgoingTransaction txMainnetUsdtTo1AUnsigned =
+        final UnsignedOutgoingTransaction txMainnetUsdtTo1AUnsigned =
                 sender.createOutgoingTransfer(
                         null,
                         CRED1.addr,
@@ -403,7 +404,7 @@ public class SenderImplTest {
                         maxPriorityFee,
                         maxFee
                 );
-        final Sender.UnsignedOutgoingTransaction txRinkebyUtnpTo1AUnsigned =
+        final UnsignedOutgoingTransaction txRinkebyUtnpTo1AUnsigned =
                 sender.createOutgoingTransfer(
                         null,
                         CRED1.addr,
@@ -416,7 +417,7 @@ public class SenderImplTest {
                         maxPriorityFee,
                         maxFee
                 );
-        final Sender.UnsignedOutgoingTransaction txRinkebyUtnpTo1BUnsigned =
+        final UnsignedOutgoingTransaction txRinkebyUtnpTo1BUnsigned =
                 sender.createOutgoingTransfer(
                         null,
                         CRED1.addr,
@@ -466,15 +467,15 @@ public class SenderImplTest {
 
         // Sign and check the signed
 
-        final Sender.SignedOutgoingTransaction txMainnetUtnp1To1AUnsigned = txMainnetUtnpTo1AUnsigned.sign(CRED1.privateKey);
-        final Sender.SignedOutgoingTransaction txMainnetUsdt1To1AUnsigned = txMainnetUsdtTo1AUnsigned.sign(CRED1.privateKey);
-        final Sender.SignedOutgoingTransaction txRinkebyUtnp1To1AUnsigned = txRinkebyUtnpTo1AUnsigned.sign(CRED1.privateKey);
-        final Sender.SignedOutgoingTransaction txRinkebyUtnp1To1BUnsigned = txRinkebyUtnpTo1BUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransaction txMainnetUtnp1To1AUnsigned = txMainnetUtnpTo1AUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransaction txMainnetUsdt1To1AUnsigned = txMainnetUsdtTo1AUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransaction txRinkebyUtnp1To1AUnsigned = txRinkebyUtnpTo1AUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransaction txRinkebyUtnp1To1BUnsigned = txRinkebyUtnpTo1BUnsigned.sign(CRED1.privateKey);
 
-        final Sender.SignedOutgoingTransaction txMainnetUtnp2To1AUnsigned = txMainnetUtnpTo1AUnsigned.sign(CRED2.privateKey);
-        final Sender.SignedOutgoingTransaction txMainnetUsdt2To1AUnsigned = txMainnetUsdtTo1AUnsigned.sign(CRED2.privateKey);
-        final Sender.SignedOutgoingTransaction txRinkebyUtnp2To1AUnsigned = txRinkebyUtnpTo1AUnsigned.sign(CRED2.privateKey);
-        final Sender.SignedOutgoingTransaction txRinkebyUtnp2To1BUnsigned = txRinkebyUtnpTo1BUnsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransaction txMainnetUtnp2To1AUnsigned = txMainnetUtnpTo1AUnsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransaction txMainnetUsdt2To1AUnsigned = txMainnetUsdtTo1AUnsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransaction txRinkebyUtnp2To1AUnsigned = txRinkebyUtnpTo1AUnsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransaction txRinkebyUtnp2To1BUnsigned = txRinkebyUtnpTo1BUnsigned.sign(CRED2.privateKey);
 
         assertEquals(
                 "0x02f8ad01808230398301093283011170949e3319636e2126e3c0bc9e3134aec5e1508a46c780b844a9059cbb00000000000000000000000034e1e4f805fcdc936068a760b2c17bc62135b5ae000000000000000000000000000000000000000000000000000000e8d4a51000c001a03ba146568d631f28370366df935e35b107522601b6e212ab6b6b79a772e288bba007d9be0351a3ee715c26f8692e07c5cbde122284519a36ce279dd335f0ce5cbc",
@@ -551,9 +552,9 @@ public class SenderImplTest {
         // Most of the tests for binary signing correctness are performed in
         // testBuildEthTransactionMainnet and testBuildEthTransactionTestnets;
         // Here we just double-check the other path to sign transactions.
-        final Sender.SignedOutgoingTransaction mainnetTx2To1ASigned =
+        final SignedOutgoingTransaction mainnetTx2To1ASigned =
                 sender.signTransaction(txMainnetEthTo1AUnsigned, CRED2.bytes);
-        final Sender.SignedOutgoingTransaction rinkebyTx2To1ASigned =
+        final SignedOutgoingTransaction rinkebyTx2To1ASigned =
                 sender.signTransaction(txRinkebyEthTo1AUnsigned, CRED2.bytes);
 
         assertEquals(

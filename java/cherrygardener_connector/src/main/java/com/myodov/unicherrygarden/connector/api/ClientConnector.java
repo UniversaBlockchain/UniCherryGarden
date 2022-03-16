@@ -1,6 +1,6 @@
 package com.myodov.unicherrygarden.connector.api;
 
-import com.myodov.unicherrygarden.connector.impl.Validators;
+import com.myodov.unicherrygarden.api.Validators;
 import com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies;
 import com.myodov.unicherrygarden.messages.cherrygardener.Ping;
 import org.checkerframework.checker.nullness.qual.NonNull;

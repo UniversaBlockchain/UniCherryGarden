@@ -11,7 +11,7 @@ import java.util.Objects;
 /**
  * The class containing the information about the specific currency/token transfer (that has been mined).
  */
-public class MinedTransfer extends Transfer {
+public final class MinedTransfer extends Transfer {
 
     /**
      * Transaction, in which this transfer is present.
