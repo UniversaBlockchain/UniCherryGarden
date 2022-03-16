@@ -1,8 +1,8 @@
 package com.myodov.unicherrygarden.messages.connector.impl;
 
 import com.myodov.unicherrygarden.api.types.PrivateKey;
-import com.myodov.unicherrygarden.api.types.planted.transactions.SignedOutgoingTransaction;
-import com.myodov.unicherrygarden.api.types.planted.transactions.UnsignedOutgoingTransaction;
+import com.myodov.unicherrygarden.api.types.planted.transactions.SignedOutgoingTransfer;
+import com.myodov.unicherrygarden.api.types.planted.transactions.UnsignedOutgoingTransfer;
 import com.myodov.unicherrygarden.connector.impl.SenderImpl;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
@@ -111,7 +111,7 @@ public class SenderImplTest {
 
     private static final SenderImpl sender = new SenderImpl();
 
-    private static final UnsignedOutgoingTransaction txMainnetEthTo1AUnsigned =
+    private static final UnsignedOutgoingTransfer txMainnetEthTo1AUnsigned =
             sender.createOutgoingTransfer(
                     null,
                     CRED1.addr,
@@ -124,7 +124,7 @@ public class SenderImplTest {
                     maxPriorityFee,
                     maxFee
             );
-    private static final UnsignedOutgoingTransaction txRinkebyEthTo1AUnsigned =
+    private static final UnsignedOutgoingTransfer txRinkebyEthTo1AUnsigned =
             sender.createOutgoingTransfer(
                     null,
                     CRED1.addr,
@@ -138,7 +138,7 @@ public class SenderImplTest {
                     maxFee
             );
 
-    private static final UnsignedOutgoingTransaction txMainnetEthTo1BUnsigned =
+    private static final UnsignedOutgoingTransfer txMainnetEthTo1BUnsigned =
             sender.createOutgoingTransfer(
                     null,
                     CRED1.addr,
@@ -151,7 +151,7 @@ public class SenderImplTest {
                     maxPriorityFee,
                     maxFee
             );
-    private static final UnsignedOutgoingTransaction txMainnetTo2AUnsigned =
+    private static final UnsignedOutgoingTransfer txMainnetTo2AUnsigned =
             sender.createOutgoingTransfer(
                     null,
                     CRED2.addr,
@@ -164,7 +164,7 @@ public class SenderImplTest {
                     maxPriorityFee,
                     maxFee
             );
-    private static final UnsignedOutgoingTransaction txMainnetTo2BUnsigned =
+    private static final UnsignedOutgoingTransfer txMainnetTo2BUnsigned =
             sender.createOutgoingTransfer(
                     null,
                     CRED2.addr,
@@ -210,10 +210,10 @@ public class SenderImplTest {
 
         // Now let’s sign and see the differences
 
-        final SignedOutgoingTransaction tx1To1ASigned = txMainnetEthTo1AUnsigned.sign(CRED1.privateKey);
-        final SignedOutgoingTransaction tx2To1ASigned = txMainnetEthTo1AUnsigned.sign(CRED2.privateKey);
-        final SignedOutgoingTransaction tx1To1BSigned = txMainnetEthTo1BUnsigned.sign(CRED1.privateKey);
-        final SignedOutgoingTransaction tx2To1BSigned = txMainnetEthTo1BUnsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransfer tx1To1ASigned = txMainnetEthTo1AUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransfer tx2To1ASigned = txMainnetEthTo1AUnsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransfer tx1To1BSigned = txMainnetEthTo1BUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransfer tx2To1BSigned = txMainnetEthTo1BUnsigned.sign(CRED2.privateKey);
 
         {
             // Test extra methods for tx1To1ASigned, to be sure
@@ -258,10 +258,10 @@ public class SenderImplTest {
                 tx2To1BSigned.getHash()
         );
 
-        final SignedOutgoingTransaction tx1To2ASigned = txMainnetTo2AUnsigned.sign(CRED1.privateKey);
-        final SignedOutgoingTransaction tx2To2ASigned = txMainnetTo2AUnsigned.sign(CRED2.privateKey);
-        final SignedOutgoingTransaction tx1To2BSigned = txMainnetTo2BUnsigned.sign(CRED1.privateKey);
-        final SignedOutgoingTransaction tx2To2BSigned = txMainnetTo2BUnsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransfer tx1To2ASigned = txMainnetTo2AUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransfer tx2To2ASigned = txMainnetTo2AUnsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransfer tx1To2BSigned = txMainnetTo2BUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransfer tx2To2BSigned = txMainnetTo2BUnsigned.sign(CRED2.privateKey);
 
         assertEquals(
                 "0x02f86c01808230398301093282520894408a4ac0e80ba57210ea6a9ae6a9a7b687a5102385174876e80080c080a0301a93fcab38f33c1d80263e1b2618d2443df0fee3747b3ced18fe189929ce25a06759dcb91bef2c2c1aa93c3e1b8e91336c2efb0643101bc18553734eb6cd2a4b",
@@ -300,7 +300,7 @@ public class SenderImplTest {
 
     @Test
     public void testBuildSignEthTransactionTestnets() {
-        final UnsignedOutgoingTransaction ropstenTxTo1Unsigned = sender.createOutgoingTransfer(
+        final UnsignedOutgoingTransfer ropstenTxTo1Unsigned = sender.createOutgoingTransfer(
                 null,
                 CRED1.addr,
                 ethCurrencyKey,
@@ -312,7 +312,7 @@ public class SenderImplTest {
                 maxPriorityFee,
                 maxFee
         );
-        final UnsignedOutgoingTransaction rinkebyTxTo1Unsigned = sender.createOutgoingTransfer(
+        final UnsignedOutgoingTransfer rinkebyTxTo1Unsigned = sender.createOutgoingTransfer(
                 null,
                 CRED1.addr,
                 ethCurrencyKey,
@@ -325,6 +325,9 @@ public class SenderImplTest {
                 maxFee
         );
 
+        logger.debug("Created transactions:\n  {},\n  {}",
+                ropstenTxTo1Unsigned, rinkebyTxTo1Unsigned);
+
         assertEquals(
                 "0x02e90380823039830109328252089434e1e4f805fcdc936068a760b2c17bc62135b5ae85174876e80080c0",
                 ropstenTxTo1Unsigned.getPublicRepresentation()
@@ -334,11 +337,12 @@ public class SenderImplTest {
                 rinkebyTxTo1Unsigned.getPublicRepresentation()
         );
 
-        final SignedOutgoingTransaction ropstenTx1To1Signed = ropstenTxTo1Unsigned.sign(CRED1.privateKey);
-        final SignedOutgoingTransaction ropstenTx2To1Signed = ropstenTxTo1Unsigned.sign(CRED2.privateKey);
-        final SignedOutgoingTransaction rinkebyTx1To1Signed = rinkebyTxTo1Unsigned.sign(CRED1.privateKey);
-        final SignedOutgoingTransaction rinkebyTx2To1Signed = rinkebyTxTo1Unsigned.sign(CRED2.privateKey);
-        logger.debug("Created transactions:\n  {},\n  {},\n  {},\n  {}",
+        final SignedOutgoingTransfer ropstenTx1To1Signed = ropstenTxTo1Unsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransfer ropstenTx2To1Signed = ropstenTxTo1Unsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransfer rinkebyTx1To1Signed = rinkebyTxTo1Unsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransfer rinkebyTx2To1Signed = rinkebyTxTo1Unsigned.sign(CRED2.privateKey);
+
+        logger.debug("Signed transactions:\n  {},\n  {},\n  {},\n  {}",
                 ropstenTx1To1Signed, ropstenTx2To1Signed, rinkebyTx1To1Signed, rinkebyTx2To1Signed);
 
         assertEquals(
@@ -378,7 +382,7 @@ public class SenderImplTest {
 
     @Test
     public void testBuildSignERC20Transaction() {
-        final UnsignedOutgoingTransaction txMainnetUtnpTo1AUnsigned =
+        final UnsignedOutgoingTransfer txMainnetUtnpTo1AUnsigned =
                 sender.createOutgoingTransfer(
                         null,
                         CRED1.addr,
@@ -391,7 +395,7 @@ public class SenderImplTest {
                         maxPriorityFee,
                         maxFee
                 );
-        final UnsignedOutgoingTransaction txMainnetUsdtTo1AUnsigned =
+        final UnsignedOutgoingTransfer txMainnetUsdtTo1AUnsigned =
                 sender.createOutgoingTransfer(
                         null,
                         CRED1.addr,
@@ -404,7 +408,7 @@ public class SenderImplTest {
                         maxPriorityFee,
                         maxFee
                 );
-        final UnsignedOutgoingTransaction txRinkebyUtnpTo1AUnsigned =
+        final UnsignedOutgoingTransfer txRinkebyUtnpTo1AUnsigned =
                 sender.createOutgoingTransfer(
                         null,
                         CRED1.addr,
@@ -417,7 +421,7 @@ public class SenderImplTest {
                         maxPriorityFee,
                         maxFee
                 );
-        final UnsignedOutgoingTransaction txRinkebyUtnpTo1BUnsigned =
+        final UnsignedOutgoingTransfer txRinkebyUtnpTo1BUnsigned =
                 sender.createOutgoingTransfer(
                         null,
                         CRED1.addr,
@@ -430,6 +434,9 @@ public class SenderImplTest {
                         maxPriorityFee,
                         maxFee
                 );
+
+        logger.debug("Created transactions:\n  {},\n  {},\n  {},\n  {}",
+                txMainnetUtnpTo1AUnsigned, txMainnetUsdtTo1AUnsigned, txRinkebyUtnpTo1AUnsigned, txRinkebyUtnpTo1BUnsigned);
 
         assertEquals(
                 "0x02f86a01808230398301093283011170949e3319636e2126e3c0bc9e3134aec5e1508a46c780b844a9059cbb00000000000000000000000034e1e4f805fcdc936068a760b2c17bc62135b5ae000000000000000000000000000000000000000000000000000000e8d4a51000c0",
@@ -467,83 +474,89 @@ public class SenderImplTest {
 
         // Sign and check the signed
 
-        final SignedOutgoingTransaction txMainnetUtnp1To1AUnsigned = txMainnetUtnpTo1AUnsigned.sign(CRED1.privateKey);
-        final SignedOutgoingTransaction txMainnetUsdt1To1AUnsigned = txMainnetUsdtTo1AUnsigned.sign(CRED1.privateKey);
-        final SignedOutgoingTransaction txRinkebyUtnp1To1AUnsigned = txRinkebyUtnpTo1AUnsigned.sign(CRED1.privateKey);
-        final SignedOutgoingTransaction txRinkebyUtnp1To1BUnsigned = txRinkebyUtnpTo1BUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransfer txMainnetUtnp1To1ASigned = txMainnetUtnpTo1AUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransfer txMainnetUsdt1To1ASigned = txMainnetUsdtTo1AUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransfer txRinkebyUtnp1To1ASigned = txRinkebyUtnpTo1AUnsigned.sign(CRED1.privateKey);
+        final SignedOutgoingTransfer txRinkebyUtnp1To1BSigned = txRinkebyUtnpTo1BUnsigned.sign(CRED1.privateKey);
 
-        final SignedOutgoingTransaction txMainnetUtnp2To1AUnsigned = txMainnetUtnpTo1AUnsigned.sign(CRED2.privateKey);
-        final SignedOutgoingTransaction txMainnetUsdt2To1AUnsigned = txMainnetUsdtTo1AUnsigned.sign(CRED2.privateKey);
-        final SignedOutgoingTransaction txRinkebyUtnp2To1AUnsigned = txRinkebyUtnpTo1AUnsigned.sign(CRED2.privateKey);
-        final SignedOutgoingTransaction txRinkebyUtnp2To1BUnsigned = txRinkebyUtnpTo1BUnsigned.sign(CRED2.privateKey);
+        logger.debug("Signed transactions 1:\n  {},\n  {},\n  {},\n  {}",
+                txMainnetUtnp1To1ASigned, txMainnetUsdt1To1ASigned, txRinkebyUtnp1To1ASigned, txRinkebyUtnp1To1BSigned);
+
+        final SignedOutgoingTransfer txMainnetUtnp2To1ASigned = txMainnetUtnpTo1AUnsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransfer txMainnetUsdt2To1ASigned = txMainnetUsdtTo1AUnsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransfer txRinkebyUtnp2To1ASigned = txRinkebyUtnpTo1AUnsigned.sign(CRED2.privateKey);
+        final SignedOutgoingTransfer txRinkebyUtnp2To1BSigned = txRinkebyUtnpTo1BUnsigned.sign(CRED2.privateKey);
+
+        logger.debug("Signed transactions 2:\n  {},\n  {},\n  {},\n  {}",
+                txMainnetUtnp2To1ASigned, txMainnetUsdt2To1ASigned, txRinkebyUtnp2To1ASigned, txRinkebyUtnp2To1BSigned);
 
         assertEquals(
                 "0x02f8ad01808230398301093283011170949e3319636e2126e3c0bc9e3134aec5e1508a46c780b844a9059cbb00000000000000000000000034e1e4f805fcdc936068a760b2c17bc62135b5ae000000000000000000000000000000000000000000000000000000e8d4a51000c001a03ba146568d631f28370366df935e35b107522601b6e212ab6b6b79a772e288bba007d9be0351a3ee715c26f8692e07c5cbde122284519a36ce279dd335f0ce5cbc",
-                txMainnetUtnp1To1AUnsigned.getPublicRepresentation()
+                txMainnetUtnp1To1ASigned.getPublicRepresentation()
         );
         assertEquals(
                 "0x02f8ad010182303983010932830186a094dac17f958d2ee523a2206206994597c13d831ec780b844a9059cbb00000000000000000000000034e1e4f805fcdc936068a760b2c17bc62135b5ae0000000000000000000000000000000000000000000000000000000000000001c080a0e27f9337da23d4fe88c20df949cbfb60f39e8f2475a37a2929d313cc321bd28ea04762e68120033982dc9c81562636523aacf963dcf024fc3f17db93b073e252c1",
-                txMainnetUsdt1To1AUnsigned.getPublicRepresentation()
+                txMainnetUsdt1To1ASigned.getPublicRepresentation()
         );
         assertEquals(
                 "0x02f8ad04808230398301093283011170949e3319636e2126e3c0bc9e3134aec5e1508a46c780b844a9059cbb00000000000000000000000034e1e4f805fcdc936068a760b2c17bc62135b5ae000000000000000000000000000000000000000000000000000000e8d4a51000c080a0d842a7ff3569dab459d1d4def13a7b1fc38417bc8f7516b0efb95ad371254cbfa02c6514a690b2e049e27f40ebaff0a2693812145c2307abbac77c6bd6b69d32fe",
-                txRinkebyUtnp1To1AUnsigned.getPublicRepresentation()
+                txRinkebyUtnp1To1ASigned.getPublicRepresentation()
         );
         assertEquals(
                 "0x02f8ad04808230398301093283011170949e3319636e2126e3c0bc9e3134aec5e1508a46c780b844a9059cbb00000000000000000000000034e1e4f805fcdc936068a760b2c17bc62135b5ae000000000000000000000000000000000000000029c884ee257c3a548b200000c001a078149cafd0f4bd23daf5b35a71201b0941b9b79db3d981e3afc28d08cd4167eaa01239a2d99441977f82f67fd72beabb23db4b136cadfe4eebbebc61d9069d8f94",
-                txRinkebyUtnp1To1BUnsigned.getPublicRepresentation()
+                txRinkebyUtnp1To1BSigned.getPublicRepresentation()
         );
 
         assertEquals(
                 "0x02f8ad01808230398301093283011170949e3319636e2126e3c0bc9e3134aec5e1508a46c780b844a9059cbb00000000000000000000000034e1e4f805fcdc936068a760b2c17bc62135b5ae000000000000000000000000000000000000000000000000000000e8d4a51000c001a0ddfb3ff318baf80df41288a40adcbbb21d69eb814459d857ab91c6f1e91032bea05c8236981ff3f3e33b7a1b1be342ac03633fc301980068dbe38e9c9ca2cf66fe",
-                txMainnetUtnp2To1AUnsigned.getPublicRepresentation()
+                txMainnetUtnp2To1ASigned.getPublicRepresentation()
         );
         assertEquals(
                 "0x02f8ad010182303983010932830186a094dac17f958d2ee523a2206206994597c13d831ec780b844a9059cbb00000000000000000000000034e1e4f805fcdc936068a760b2c17bc62135b5ae0000000000000000000000000000000000000000000000000000000000000001c080a052a8d5035d5fde6aebc70736e91cc3ff20e2e1d7f036166dd88c3094a55a4796a04a15f3e183cc27254b19161a5cb58e5e714ba468e0d534b30e85aef6593e933c",
-                txMainnetUsdt2To1AUnsigned.getPublicRepresentation()
+                txMainnetUsdt2To1ASigned.getPublicRepresentation()
         );
         assertEquals(
                 "0x02f8ad04808230398301093283011170949e3319636e2126e3c0bc9e3134aec5e1508a46c780b844a9059cbb00000000000000000000000034e1e4f805fcdc936068a760b2c17bc62135b5ae000000000000000000000000000000000000000000000000000000e8d4a51000c001a0ae33e2d2c1bf6edbc91bf8c6a30556f078c1738faf12b4dac5e94076cb7ec1eaa07f9dbba42176b0c95819cf6c992f8596186a4d011755d45df1f07814e81769d3",
-                txRinkebyUtnp2To1AUnsigned.getPublicRepresentation()
+                txRinkebyUtnp2To1ASigned.getPublicRepresentation()
         );
         assertEquals(
                 "0x02f8ad04808230398301093283011170949e3319636e2126e3c0bc9e3134aec5e1508a46c780b844a9059cbb00000000000000000000000034e1e4f805fcdc936068a760b2c17bc62135b5ae000000000000000000000000000000000000000029c884ee257c3a548b200000c001a0dcb1a273023425eaad212515c19a37c490581d302d9eaa0801ddeacdb3f1680ca0204524dcff3488583b3502792f894b20a9645570a261f53a76c484c4d5cc82c7",
-                txRinkebyUtnp2To1BUnsigned.getPublicRepresentation()
+                txRinkebyUtnp2To1BSigned.getPublicRepresentation()
         );
 
 
         assertEquals(
                 "0x24b423e70cbd47b4df44d011909572bc9f77f8efa6859ecaeb5b497c99ba85f7",
-                txMainnetUtnp1To1AUnsigned.getHash()
+                txMainnetUtnp1To1ASigned.getHash()
         );
         assertEquals(
                 "0x8fc23289e3580cf352eb290ce7717e7c711211971334d48d6f13af0f634738ed",
-                txMainnetUsdt1To1AUnsigned.getHash()
+                txMainnetUsdt1To1ASigned.getHash()
         );
         assertEquals(
                 "0x58e4ffd8a8f39be238acef479cc4cc1a4ec1415eeb6250fa7ccabd47fdec765d",
-                txRinkebyUtnp1To1AUnsigned.getHash()
+                txRinkebyUtnp1To1ASigned.getHash()
         );
         assertEquals(
                 "0x4b67af764f911db97bfe3bff85a11f2425f7df8791a7b2271e7d1041cd996249",
-                txRinkebyUtnp1To1BUnsigned.getHash()
+                txRinkebyUtnp1To1BSigned.getHash()
         );
 
         assertEquals(
                 "0x959ef3149fadba69e301999f90e950e221cc51392e781b9a57d42eb4f20b57c5",
-                txMainnetUtnp2To1AUnsigned.getHash()
+                txMainnetUtnp2To1ASigned.getHash()
         );
         assertEquals(
                 "0x3183867617e0dc39ccbf152888a066093b09de796a123394cd27497f56d9d77a",
-                txMainnetUsdt2To1AUnsigned.getHash()
+                txMainnetUsdt2To1ASigned.getHash()
         );
         assertEquals(
                 "0x183fdf253667833ae44d11210ff5940ad74b65eac1bfce62b5b3ca00b873c998",
-                txRinkebyUtnp2To1AUnsigned.getHash()
+                txRinkebyUtnp2To1ASigned.getHash()
         );
         assertEquals(
                 "0x285148b5f29adfe8ebd78a1e11c5c3fdf2f04a773323334035b53ce0a44dc528",
-                txRinkebyUtnp2To1BUnsigned.getHash()
+                txRinkebyUtnp2To1BSigned.getHash()
         );
     }
 
@@ -552,9 +565,9 @@ public class SenderImplTest {
         // Most of the tests for binary signing correctness are performed in
         // testBuildEthTransactionMainnet and testBuildEthTransactionTestnets;
         // Here we just double-check the other path to sign transactions.
-        final SignedOutgoingTransaction mainnetTx2To1ASigned =
+        final SignedOutgoingTransfer mainnetTx2To1ASigned =
                 sender.signTransaction(txMainnetEthTo1AUnsigned, CRED2.bytes);
-        final SignedOutgoingTransaction rinkebyTx2To1ASigned =
+        final SignedOutgoingTransfer rinkebyTx2To1ASigned =
                 sender.signTransaction(txRinkebyEthTo1AUnsigned, CRED2.bytes);
 
         assertEquals(

@@ -17,41 +17,79 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
 
-public class UnsignedOutgoingTransaction extends PreparedOutgoingTransaction {
+public class UnsignedOutgoingTransfer extends OutgoingTransfer {
     /**
      * Primary constructor (from byte array).
      */
     @SuppressWarnings("unused")
-    public UnsignedOutgoingTransaction(byte[] bytes) {
-        super(false, bytes);
+    public UnsignedOutgoingTransfer(byte[] bytes,
+                                    // Components
+                                    @NonNull String receiver,
+                                    @NonNull BigDecimal amount,
+                                    @NonNull String currencyKey,
+                                    long chainId,
+                                    @NonNull BigInteger nonce,
+                                    @NonNull BigInteger gasLimit,
+                                    @NonNull BigDecimal maxPriorityFee,
+                                    @NonNull BigDecimal maxFee
+    ) {
+        super(false,
+                bytes,
+                // Components
+                receiver,
+                amount,
+                currencyKey,
+                chainId,
+                nonce,
+                gasLimit,
+                maxPriorityFee,
+                maxFee);
     }
 
     /**
      * Secondary constructor (from {@link RawTransaction}).
      */
     @SuppressWarnings("unused")
-    private UnsignedOutgoingTransaction(@NonNull RawTransaction rawTransaction) {
-        this(TransactionEncoder.encode(rawTransaction));
+    private UnsignedOutgoingTransfer(@NonNull RawTransaction rawTransaction,
+                                     // Components
+                                     @NonNull String receiver,
+                                     @NonNull BigDecimal amount,
+                                     @NonNull String currencyKey,
+                                     long chainId,
+                                     @NonNull BigInteger nonce,
+                                     @NonNull BigInteger gasLimit,
+                                     @NonNull BigDecimal maxPriorityFee,
+                                     @NonNull BigDecimal maxFee
+    ) {
+        this(TransactionEncoder.encode(rawTransaction),
+                receiver,
+                amount,
+                currencyKey,
+                chainId,
+                nonce,
+                gasLimit,
+                maxPriorityFee,
+                maxFee);
     }
-
-    @Override
-    public String toString() {
-        return String.format("%s(bytes=\"%s\")",
-                getClass().getSimpleName(),
-                getBytesHexString());
-    }
-
 
     /**
      * Sign this transaction, using some private key.
      */
     @NonNull
-    public final SignedOutgoingTransaction sign(@NonNull PrivateKey privateKey) {
-        final byte[] signed = TransactionEncoder.signMessage(
-                getRawTransaction(), privateKey.getCredentials());
-        return new SignedOutgoingTransaction(signed);
+    public final SignedOutgoingTransfer sign(@NonNull PrivateKey privateKey) {
+        final byte[] signed = TransactionEncoder.signMessage(getRawTransaction(), privateKey.getCredentials());
+        return new SignedOutgoingTransfer(
+                signed,
+                privateKey.getAddress(),
+                receiver,
+                amount,
+                currencyKey,
+                chainId,
+                nonce,
+                gasLimit,
+                maxPriorityFee,
+                maxFee);
     }
-
 
     /**
      * Create a transaction to transfer the base currency of the blockchain
@@ -74,7 +112,7 @@ public class UnsignedOutgoingTransaction extends PreparedOutgoingTransaction {
      * Also, see the <a href="https://notes.ethereum.org/@vbuterin/eip-1559-faq">EIP-1559 FAQ</a>
      * for practical explanation.
      */
-    public static UnsignedOutgoingTransaction createEtherTransfer(
+    public static UnsignedOutgoingTransfer createEtherTransfer(
             @NonNull String receiver,
             @NonNull BigDecimal amount,
             long chainId,
@@ -88,69 +126,25 @@ public class UnsignedOutgoingTransaction extends PreparedOutgoingTransaction {
         assert maxPriorityFee != null && maxPriorityFee.compareTo(BigDecimal.ZERO) >= 0 : maxPriorityFee; // maxPriorityFee >= 0
         assert maxFee != null && maxFee.compareTo(BigDecimal.ZERO) >= 0 : maxFee; // maxFee >= 0
 
-        return new UnsignedOutgoingTransaction(RawTransaction.createEtherTransaction(
+        return new UnsignedOutgoingTransfer(
+                RawTransaction.createEtherTransaction(
+                        chainId,
+                        nonce,
+                        EthUtils.ETH_TRANSFER_GAS_LIMIT_BIGINTEGER,
+                        receiver.toLowerCase(),
+                        EthUtils.Wei.valueToWeis(amount),
+                        EthUtils.Wei.valueToWeis(maxPriorityFee),
+                        EthUtils.Wei.valueToWeis(maxFee)
+                ),
+                receiver,
+                amount,
+                "",
                 chainId,
                 nonce,
                 EthUtils.ETH_TRANSFER_GAS_LIMIT_BIGINTEGER,
-                receiver.toLowerCase(),
-                EthUtils.Wei.valueToWeis(amount),
-                EthUtils.Wei.valueToWeis(maxPriorityFee),
-                EthUtils.Wei.valueToWeis(maxFee)
-        ));
-    }
-
-    /**
-     * Create a transaction to transfer the ERC20-formed token.
-     *
-     * @param receiver       the receiver of the transaction; i.e. the “to” field.
-     *                       Should be a valid Ethereum address, upper or lower case,
-     *                       e.g. <code>"0x34e1E4F805fCdC936068A760b2C17BC62135b5AE"</code>.
-     * @param amountUint256  amount of token (not corrected for decimals) to be transferred.
-     *                       This is low-level uint256-based number to be recorded.
-     * @param nonce          nonce for the transaction.
-     * @param gasLimit       gas limit to use.
-     * @param maxPriorityFee (EIP-1559) Max Priority Fee; measured in ETH, but in real scenarios
-     *                       it is often measured in Gweis.
-     * @param maxFee         (EIP-1559) Max Fee; measured in ETH, but in real scenarios
-     *                       it is often measured in Gweis.
-     * @apiNote Read <a href="https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1559.md">EIP-1559</a>
-     * to get more details about Max Priority Fee and Max Fee.
-     * Also, see the <a href="https://notes.ethereum.org/@vbuterin/eip-1559-faq">EIP-1559 FAQ</a>
-     * for practical explanation.
-     */
-    static UnsignedOutgoingTransaction createERC20Transfer(
-            @NonNull String receiver,
-            @NonNull BigInteger amountUint256,
-            @NonNull String erc20TokenAddress,
-            long chainId,
-            @NonNull BigInteger nonce,
-            @NonNull BigInteger gasLimit,
-            @NonNull BigDecimal maxPriorityFee,
-            @NonNull BigDecimal maxFee
-    ) {
-        Validators.requireValidEthereumAddress(receiver);
-        assert amountUint256 != null && amountUint256.compareTo(BigInteger.ZERO) >= 0 : amountUint256; // amountUint256 >= 0
-        Validators.requireValidLowercasedEthereumAddresses(erc20TokenAddress);
-        Validators.requireValidNonce(nonce);
-        assert maxPriorityFee != null && maxPriorityFee.compareTo(BigDecimal.ZERO) >= 0 : maxPriorityFee; // maxPriorityFee >= 0
-        assert maxFee != null && maxFee.compareTo(BigDecimal.ZERO) >= 0 : maxFee; // maxFee >= 0
-
-        final Function transferFunction = new Function(
-                ERC20.FUNC_TRANSFER,
-                Arrays.<Type>asList(new org.web3j.abi.datatypes.Address(receiver.toLowerCase()),
-                        new org.web3j.abi.datatypes.generated.Uint256(amountUint256)),
-                Collections.<TypeReference<?>>emptyList());
-
-        return new UnsignedOutgoingTransaction(RawTransaction.createTransaction(
-                chainId,
-                nonce,
-                gasLimit,
-                erc20TokenAddress,
-                BigInteger.ZERO,
-                FunctionEncoder.encode(transferFunction),
-                EthUtils.Wei.valueToWeis(maxPriorityFee),
-                EthUtils.Wei.valueToWeis(maxFee)
-        ));
+                maxPriorityFee,
+                maxFee
+        );
     }
 
     /**
@@ -173,7 +167,7 @@ public class UnsignedOutgoingTransaction extends PreparedOutgoingTransaction {
      * Also, see the <a href="https://notes.ethereum.org/@vbuterin/eip-1559-faq">EIP-1559 FAQ</a>
      * for practical explanation.
      */
-    public static UnsignedOutgoingTransaction createERC20Transfer(
+    public static UnsignedOutgoingTransfer createERC20Transfer(
             @NonNull String receiver,
             @NonNull BigDecimal amount,
             int decimals,
@@ -184,10 +178,34 @@ public class UnsignedOutgoingTransaction extends PreparedOutgoingTransaction {
             @NonNull BigDecimal maxPriorityFee,
             @NonNull BigDecimal maxFee
     ) {
-        assert decimals >= 0 : decimals;
-        return createERC20Transfer(
+        Validators.requireValidEthereumAddress(receiver);
+        assert amount != null && amount.compareTo(BigDecimal.ZERO) >= 0 : amount; // amountUint256 >= 0
+        Validators.requireValidLowercasedEthereumAddresses(erc20TokenAddress);
+        Validators.requireValidNonce(nonce);
+        assert maxPriorityFee != null && maxPriorityFee.compareTo(BigDecimal.ZERO) >= 0 : maxPriorityFee; // maxPriorityFee >= 0
+        assert maxFee != null && maxFee.compareTo(BigDecimal.ZERO) >= 0 : maxFee; // maxFee >= 0
+
+        final BigInteger amountUint256 = EthUtils.Uint256.valueToUint256(amount, decimals);
+
+        final Function transferFunction = new Function(
+                ERC20.FUNC_TRANSFER,
+                Arrays.<Type>asList(new org.web3j.abi.datatypes.Address(receiver.toLowerCase()),
+                        new org.web3j.abi.datatypes.generated.Uint256(amountUint256)),
+                Collections.<TypeReference<?>>emptyList());
+
+        return new UnsignedOutgoingTransfer(
+                RawTransaction.createTransaction(
+                        chainId,
+                        nonce,
+                        gasLimit,
+                        erc20TokenAddress,
+                        BigInteger.ZERO,
+                        FunctionEncoder.encode(transferFunction),
+                        EthUtils.Wei.valueToWeis(maxPriorityFee),
+                        EthUtils.Wei.valueToWeis(maxFee)
+                ),
                 receiver,
-                EthUtils.Uint256.valueToUint256(amount, decimals),
+                amount,
                 erc20TokenAddress,
                 chainId,
                 nonce,

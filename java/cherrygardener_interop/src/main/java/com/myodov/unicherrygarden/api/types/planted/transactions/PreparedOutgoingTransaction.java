@@ -1,5 +1,7 @@
 package com.myodov.unicherrygarden.api.types.planted.transactions;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.bouncycastle.util.encoders.Hex;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.web3j.crypto.RawTransaction;
@@ -14,6 +16,7 @@ public class PreparedOutgoingTransaction {
     /**
      * Primary constructor (from byte array).
      */
+    @JsonCreator
     public PreparedOutgoingTransaction(boolean isSigned,
                                        byte[] bytes) {
         assert bytes != null : bytes;
@@ -32,6 +35,7 @@ public class PreparedOutgoingTransaction {
     /**
      * Whether the transaction is signed already.
      */
+    @JsonIgnore
     public final boolean isSigned() {
         return isSigned;
     }
@@ -47,6 +51,7 @@ public class PreparedOutgoingTransaction {
     /**
      * Get the bytes of transaction, as a hex string (just hex, not starting from "0x").
      */
+    @JsonIgnore
     @NonNull
     public final String getBytesHexString() {
         return Hex.toHexString(bytes);
@@ -55,6 +60,7 @@ public class PreparedOutgoingTransaction {
     /**
      * Get the data of transaction, decoded as Web3j {@link RawTransaction} object.
      */
+    @JsonIgnore
     @NonNull
     public final RawTransaction getRawTransaction() {
         final RawTransaction result = TransactionDecoder.decode(getBytesHexString());
@@ -66,6 +72,7 @@ public class PreparedOutgoingTransaction {
      * Get an official public representation (hex string, starting with "0x")
      * of the Ethereum transaction.
      */
+    @JsonIgnore
     @NonNull
     public final String getPublicRepresentation() {
         return Numeric.toHexString(bytes);

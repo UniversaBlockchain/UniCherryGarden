@@ -45,20 +45,19 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
             add(erc20);
         }};
 
-        assertJsonDeserialization(
-                eth,
+        assertJsonSerialization(
                 "{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"decimals\":null,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null}",
+                eth,
                 Currency.class
         );
 
-        assertJsonDeserialization(
-                erc20,
+        assertJsonSerialization(
                 "{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"decimals\":null,\"transferGasLimit\":\"70000\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}",
+                erc20,
                 Currency.class
         );
 
-        assertJsonDeserialization(
-                new GetCurrencies.CurrenciesRequestResultPayload(systemStatus, currencies),
+        assertJsonSerialization(
                 "{\"@class\":\"com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies$CurrenciesRequestResultPayload\"," +
                         "\"systemStatus\":{" +
                         "\"actualAt\":{\"epochSecond\":1644936903,\"nano\":0}," +
@@ -68,11 +67,11 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
                         "\"currencies\":[" +
                         "{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"decimals\":null,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null}," +
                         "{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"decimals\":null,\"transferGasLimit\":\"70000\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}]}",
+                new GetCurrencies.CurrenciesRequestResultPayload(systemStatus, currencies),
                 GetCurrencies.CurrenciesRequestResultPayload.class
         );
 
-        assertJsonDeserialization(
-                new GetCurrencies.Response(new GetCurrencies.CurrenciesRequestResultPayload(systemStatus, currencies)),
+        assertJsonSerialization(
                 "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies$CurrenciesRequestResultPayload\"," +
                         "\"systemStatus\":{" +
                         "\"actualAt\":{\"epochSecond\":1644936903,\"nano\":0}," +
@@ -82,18 +81,19 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
                         "\"currencies\":[" +
                         "{\"name\":\"Ether\",\"symbol\":\"ETH\",\"comment\":null,\"verified\":true,\"decimals\":null,\"transferGasLimit\":\"21000\",\"type\":\"ETH\",\"dAppAddress\":null}," +
                         "{\"name\":\"Universa Token\",\"symbol\":\"UTNP\",\"comment\":\"UTNP comment\",\"verified\":false,\"decimals\":null,\"transferGasLimit\":\"70000\",\"type\":\"ERC20\",\"dAppAddress\":\"0x9e3319636e2126e3c0bc9e3134aec5e1508a46c7\"}]}}",
+                new GetCurrencies.Response(new GetCurrencies.CurrenciesRequestResultPayload(systemStatus, currencies)),
                 GetCurrencies.Response.class
         );
 
-        assertJsonDeserialization(
-                GetCurrencies.Response.fromCommonFailure(FailurePayload.CommonFailurePayload.CANCELLATION_COMPLETION_FAILURE),
+        assertJsonSerialization(
                 "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.api.types.responseresult.FailurePayload$CancellationCompletionFailure\"}}",
+                GetCurrencies.Response.fromCommonFailure(FailurePayload.CommonFailurePayload.CANCELLATION_COMPLETION_FAILURE),
                 GetCurrencies.Response.class
         );
 
-        assertJsonDeserialization(
-                new GetCurrencies.Response(new GetCurrencies.CurrenciesRequestResultFailure()),
+        assertJsonSerialization(
                 "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies$CurrenciesRequestResultFailure\"}}",
+                new GetCurrencies.Response(new GetCurrencies.CurrenciesRequestResultFailure()),
                 GetCurrencies.Response.class
         );
     }

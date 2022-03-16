@@ -5,8 +5,8 @@ import akka.actor.typed.javadsl.AskPattern;
 import com.myodov.unicherrygarden.api.Validators;
 import com.myodov.unicherrygarden.api.types.UniCherryGardenError;
 import com.myodov.unicherrygarden.api.types.dlt.Currency;
-import com.myodov.unicherrygarden.api.types.planted.transactions.SignedOutgoingTransaction;
-import com.myodov.unicherrygarden.api.types.planted.transactions.UnsignedOutgoingTransaction;
+import com.myodov.unicherrygarden.api.types.planted.transactions.SignedOutgoingTransfer;
+import com.myodov.unicherrygarden.api.types.planted.transactions.UnsignedOutgoingTransfer;
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload;
 import com.myodov.unicherrygarden.connector.api.ClientConnector;
 import com.myodov.unicherrygarden.connector.api.Sender;
@@ -81,7 +81,7 @@ public final class SenderImpl implements Sender {
 
     @Override
     @NonNull
-    public UnsignedOutgoingTransaction createOutgoingTransfer(
+    public UnsignedOutgoingTransfer createOutgoingTransfer(
             @Nullable String sender,
             @NonNull String receiver,
             @NonNull String currencyKey,
@@ -243,10 +243,10 @@ public final class SenderImpl implements Sender {
                         forceMaxFee :
                         EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(100));
 
-        final UnsignedOutgoingTransaction result;
+        final UnsignedOutgoingTransfer result;
         if (currencyKey.isEmpty()) {
             // ETH or other base currency
-            result = UnsignedOutgoingTransaction.createEtherTransfer(
+            result = UnsignedOutgoingTransfer.createEtherTransfer(
                     receiver,
                     amount,
                     chainId,
@@ -258,7 +258,7 @@ public final class SenderImpl implements Sender {
             assert gasLimit != null : gasLimit;
 
             // Currently the only other option is ERC20
-            result = UnsignedOutgoingTransaction.createERC20Transfer(
+            result = UnsignedOutgoingTransfer.createERC20Transfer(
                     receiver,
                     amount,
                     decimals,
@@ -276,14 +276,14 @@ public final class SenderImpl implements Sender {
 
     @Override
     @NonNull
-    public SignedOutgoingTransaction signTransaction(
-            @NonNull UnsignedOutgoingTransaction tx,
+    public SignedOutgoingTransfer signTransaction(
+            @NonNull UnsignedOutgoingTransfer tx,
             byte[] privateKey) {
         return tx.sign(new PrivateKeyImpl(privateKey));
     }
 
     @Override
-    public PlantTransaction.@NonNull Response sendTransaction(@NonNull SignedOutgoingTransaction tx) {
+    public PlantTransaction.@NonNull Response sendTransaction(@NonNull SignedOutgoingTransfer tx) {
         if (offlineMode) {
             throw new UniCherryGardenError.NotAvailableInOfflineModeError("Cannot execute sendTransaction!");
         }

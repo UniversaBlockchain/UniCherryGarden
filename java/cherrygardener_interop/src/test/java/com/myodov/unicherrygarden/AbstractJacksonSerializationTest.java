@@ -21,11 +21,11 @@ public abstract class AbstractJacksonSerializationTest {
         return new ObjectMapper().readValue(serialized, valueType);
     }
 
-    protected static <T> void assertJsonDeserialization(Object obj, String serialized, Class<T> valueType) throws JsonProcessingException {
+    protected static <T> void assertJsonSerialization(String expectedSerialized, Object actualObj, Class<T> valueType) throws JsonProcessingException {
         assertEquals(
                 "Serialization works well",
-                serialized,
-                makeJson(obj)
+                expectedSerialized,
+                makeJson(actualObj)
         );
 
 //        assertNotNull(

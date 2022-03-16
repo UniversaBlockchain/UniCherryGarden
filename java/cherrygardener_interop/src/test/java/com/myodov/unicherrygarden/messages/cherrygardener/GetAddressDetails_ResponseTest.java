@@ -11,7 +11,14 @@ public class GetAddressDetails_ResponseTest extends AbstractJacksonSerialization
     @Test
     public void testJacksonSerialization() throws IOException {
         // Response
-        assertJsonDeserialization(
+        assertJsonSerialization(
+                "{\"payload\":{" +
+                        "\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetAddressDetails$AddressDetailsRequestResultPayload\"," +
+                        "\"details\":{" +
+                        "\"address\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24\"," +
+                        "\"trackedAddressInformation\":{\"address\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24\",\"comment\":\"Some comment\",\"syncedFrom\":18374}," +
+                        "\"nonces\":{\"nextInBlockchain\":18350,\"nextInPendingPool\":18352,\"nextPlanting\":18354}}" +
+                        "}}",
                 new GetAddressDetails.Response(new GetAddressDetails.AddressDetailsRequestResultPayload(
                         new GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails(
                                 "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
@@ -27,18 +34,14 @@ public class GetAddressDetails_ResponseTest extends AbstractJacksonSerialization
                                 )
                         )
                 )),
-                "{\"payload\":{" +
-                        "\"@class\":\"com.myodov.unicherrygarden.messages.cherrypicker.GetAddressDetails$AddressDetailsRequestResultPayload\"," +
-                        "\"details\":{" +
-                        "\"address\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24\"," +
-                        "\"trackedAddressInformation\":{\"address\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24\",\"comment\":\"Some comment\",\"syncedFrom\":18374}," +
-                        "\"nonces\":{\"nextInBlockchain\":18350,\"nextInPendingPool\":18352,\"nextPlanting\":18354}}" +
-                        "}}",
                 GetAddressDetails.Response.class
         );
 
         // Just the payload
-        assertJsonDeserialization(
+        assertJsonSerialization(
+                "{\"address\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24\"," +
+                        "\"trackedAddressInformation\":{\"address\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24\",\"comment\":\"Some comment\",\"syncedFrom\":18374}," +
+                        "\"nonces\":{\"nextInBlockchain\":18350,\"nextInPendingPool\":18352,\"nextPlanting\":18354}}",
                 new GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails(
                         "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24",
                         new GetTrackedAddresses.TrackedAddressesRequestResultPayload.TrackedAddressInformation(
@@ -52,14 +55,14 @@ public class GetAddressDetails_ResponseTest extends AbstractJacksonSerialization
                                 18354
                         )
                 ),
-                "{\"address\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24\"," +
-                        "\"trackedAddressInformation\":{\"address\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d24\",\"comment\":\"Some comment\",\"syncedFrom\":18374}," +
-                        "\"nonces\":{\"nextInBlockchain\":18350,\"nextInPendingPool\":18352,\"nextPlanting\":18354}}",
                 GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails.class
         );
 
         // Payload with all nulls where nullable (but address is tracked)
-        assertJsonDeserialization(
+        assertJsonSerialization(
+                "{\"address\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d25\"," +
+                        "\"trackedAddressInformation\":{\"address\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d25\",\"comment\":null,\"syncedFrom\":null}," +
+                        "\"nonces\":{\"nextInBlockchain\":18355,\"nextInPendingPool\":null,\"nextPlanting\":null}}",
                 new GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails(
                         "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d25",
                         new GetTrackedAddresses.TrackedAddressesRequestResultPayload.TrackedAddressInformation(
@@ -73,14 +76,14 @@ public class GetAddressDetails_ResponseTest extends AbstractJacksonSerialization
                                 null
                         )
                 ),
-                "{\"address\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d25\"," +
-                        "\"trackedAddressInformation\":{\"address\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d25\",\"comment\":null,\"syncedFrom\":null}," +
-                        "\"nonces\":{\"nextInBlockchain\":18355,\"nextInPendingPool\":null,\"nextPlanting\":null}}",
                 GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails.class
         );
 
         // Payload with all nulls where nullable (and address is untracked)
-        assertJsonDeserialization(
+        assertJsonSerialization(
+                "{\"address\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d26\"," +
+                        "\"trackedAddressInformation\":null," +
+                        "\"nonces\":{\"nextInBlockchain\":18360,\"nextInPendingPool\":null,\"nextPlanting\":null}}",
                 new GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails(
                         "0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d26",
                         null,
@@ -90,9 +93,6 @@ public class GetAddressDetails_ResponseTest extends AbstractJacksonSerialization
                                 null
                         )
                 ),
-                "{\"address\":\"0xd701edf8f9c5d834bcb9add73ddeff2d6b9c3d26\"," +
-                        "\"trackedAddressInformation\":null," +
-                        "\"nonces\":{\"nextInBlockchain\":18360,\"nextInPendingPool\":null,\"nextPlanting\":null}}",
                 GetAddressDetails.AddressDetailsRequestResultPayload.AddressDetails.class
         );
     }

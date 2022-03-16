@@ -1,7 +1,7 @@
 package com.myodov.unicherrygarden.connector.api;
 
-import com.myodov.unicherrygarden.api.types.planted.transactions.SignedOutgoingTransaction;
-import com.myodov.unicherrygarden.api.types.planted.transactions.UnsignedOutgoingTransaction;
+import com.myodov.unicherrygarden.api.types.planted.transactions.SignedOutgoingTransfer;
+import com.myodov.unicherrygarden.api.types.planted.transactions.UnsignedOutgoingTransfer;
 import com.myodov.unicherrygarden.messages.Serializable;
 import com.myodov.unicherrygarden.messages.cherryplanter.PlantTransaction;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -88,7 +88,7 @@ public interface Sender {
      * No network communication is performed. Can be used in the connector launched in “offline” mode.
      */
     @NonNull
-    UnsignedOutgoingTransaction createOutgoingTransfer(
+    UnsignedOutgoingTransfer createOutgoingTransfer(
             @Nullable String sender,
             @NonNull String receiver,
             @NonNull String currencyKey,
@@ -133,7 +133,7 @@ public interface Sender {
      */
     @SuppressWarnings("unused")
     @NonNull
-    default UnsignedOutgoingTransaction createOutgoingTransfer(
+    default UnsignedOutgoingTransfer createOutgoingTransfer(
             @NonNull String sender,
             @NonNull String receiver,
             @NonNull String currencyKey,
@@ -152,8 +152,8 @@ public interface Sender {
      */
     @SuppressWarnings("unused")
     @NonNull
-    SignedOutgoingTransaction signTransaction(
-            @NonNull UnsignedOutgoingTransaction tx,
+    SignedOutgoingTransfer signTransaction(
+            @NonNull UnsignedOutgoingTransfer tx,
             byte[] privateKey
     );
 
@@ -163,5 +163,5 @@ public interface Sender {
      * @return the typical network-related response as a result of network communication with CherryPlanter.
      */
     @SuppressWarnings("unused")
-    PlantTransaction.@NonNull Response sendTransaction(@NonNull SignedOutgoingTransaction tx);
+    PlantTransaction.@NonNull Response sendTransaction(@NonNull SignedOutgoingTransfer tx);
 }

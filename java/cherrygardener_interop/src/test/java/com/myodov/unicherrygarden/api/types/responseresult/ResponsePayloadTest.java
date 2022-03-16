@@ -9,27 +9,27 @@ import java.io.IOException;
 public class ResponsePayloadTest extends AbstractJacksonSerializationTest {
     @Test
     public void testJacksonSerialization() throws IOException {
-        assertJsonDeserialization(
-                new FailurePayload.UnspecifiedFailure("Some error message"),
+        assertJsonSerialization(
                 "{\"@class\":\"com.myodov.unicherrygarden.api.types.responseresult.FailurePayload$UnspecifiedFailure\",\"msg\":\"Some error message\"}",
+                new FailurePayload.UnspecifiedFailure("Some error message"),
                 FailurePayload.UnspecifiedFailure.class
         );
 
-        assertJsonDeserialization(
-                new FailurePayload.UnspecifiedFailure("Some error message"),
+        assertJsonSerialization(
                 "{\"@class\":\"com.myodov.unicherrygarden.api.types.responseresult.FailurePayload$UnspecifiedFailure\",\"msg\":\"Some error message\"}",
+                new FailurePayload.UnspecifiedFailure("Some error message"),
                 FailurePayload.UnspecifiedFailure.class
         );
 
-        assertJsonDeserialization(
-                FailurePayload.CommonFailurePayload.NO_RESPONSE_FROM_CHERRYGARDEN,
+        assertJsonSerialization(
                 "{\"@class\":\"com.myodov.unicherrygarden.api.types.responseresult.FailurePayload$NoResponseFromCherryGarden\"}",
+                FailurePayload.CommonFailurePayload.NO_RESPONSE_FROM_CHERRYGARDEN,
                 FailurePayload.CommonFailurePayload.class
         );
 
-        assertJsonDeserialization(
-                FailurePayload.CommonFailurePayload.CANCELLATION_COMPLETION_FAILURE,
+        assertJsonSerialization(
                 "{\"@class\":\"com.myodov.unicherrygarden.api.types.responseresult.FailurePayload$CancellationCompletionFailure\"}",
+                FailurePayload.CommonFailurePayload.CANCELLATION_COMPLETION_FAILURE,
                 FailurePayload.CommonFailurePayload.class
         );
     }

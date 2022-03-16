@@ -18,7 +18,7 @@ import static org.web3j.crypto.Sign.getEthereumMessageHash;
 /**
  * Default implementation of {@link PrivateKey} interface.
  */
-public class PrivateKeyImpl implements PrivateKey {
+public final class PrivateKeyImpl implements PrivateKey {
     private final byte[] bytes;
 
     @NonNull
