@@ -216,7 +216,15 @@ object DBStorageAPI {
                             comment: Option[String]
                           )(
                             implicit session: DBSession = AutoSession
-                          ): (Boolean, Long)
+                          ): Option[(Boolean, Long)]
+
+    /** For an existing transfer (known by its plantKey), set it as errorneous, and put the error message. */
+    def markPlantAsError(
+                          plantKey: Long,
+                          errorMessage: String
+                        )(
+                          implicit session: DBSession
+                        ): Unit
   }
 
 }

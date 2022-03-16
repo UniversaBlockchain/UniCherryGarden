@@ -974,8 +974,59 @@ class PostgreSQLStorage(jdbcUrl: String,
                                            comment: Option[String]
                                          )(
                                            implicit session: DBSession
-                                         ): (Boolean, Long) = {
-      (false, 5)
+                                         ): Option[(Boolean, Long)] = {
+      sql"""
+      INSERT INTO
+          ucg_planted_transfer(
+              sender, receiver, currency_id, amount, txhash,
+              data, chain_id, nonce,
+              gas_limit, max_priority_fee, max_fee,
+              ucg_comment)
+      VALUES
+      (
+          ${transfer.sender},
+          ${transfer.receiver},
+          ucg_get_currencies_for_keys_filter(TRUE, ARRAY[${transfer.currencyKey}]::TEXT[]),
+          ${transfer.amount},
+          ${transfer.getHash},
+          ${transfer.getBytes},
+          ${transfer.chainId},
+          ${transfer.nonce},
+          ${transfer.gasLimit},
+          ${transfer.maxPriorityFee},
+          ${transfer.maxFee},
+          $comment
+      )
+      ON CONFLICT (txhash) DO UPDATE
+          SET
+              modified_at       = now(),
+              broadcasted_at    = now(),
+              next_broadcast_at = now() + '5 minutes'
+      RETURNING
+          id,
+          (xmax = 0) AS inserted;
+      """.map(rs => (
+        rs.boolean("inserted"),
+        rs.long("id")
+      )).single
+        .apply()
+    }
+
+    override final def markPlantAsError(
+                                         plantKey: Long,
+                                         errorMessage: String
+                                       )(
+                                         implicit session: DBSession
+                                       ): Unit = {
+      sql"""
+        UPDATE ucg_planted_transfer
+        SET
+            modified_at = now(),
+            next_broadcast_at = NULL,
+            error = $errorMessage
+        WHERE
+            id = $plantKey
+        """.execute.apply()
     }
   }
 

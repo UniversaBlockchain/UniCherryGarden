@@ -18,6 +18,9 @@ CREATE TABLE ucg_planted_transfer
             ON DELETE CASCADE,
     amount            NUMERIC(158, 79)         NOT NULL
         CHECK (amount >= 0),
+    txhash            CHAR(66)                 NOT NULL
+        CHECK (ucg_is_valid_hex_hash(sender, 66))
+        UNIQUE,
     data              BYTEA                    NOT NULL,
     chain_id          INTEGER                  NOT NULL
         CHECK (chain_id = -1 OR chain_id >= 1),
