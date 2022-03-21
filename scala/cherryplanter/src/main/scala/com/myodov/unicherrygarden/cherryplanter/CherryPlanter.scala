@@ -1,5 +1,7 @@
 package com.myodov.unicherrygarden
 
+import java.util.UUID
+
 import akka.actor.typed.Behavior
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
@@ -8,6 +10,7 @@ import com.myodov.unicherrygarden.api.GardenMessages.EthereumNodeStatus
 import com.myodov.unicherrygarden.api.types.SystemStatus
 import com.myodov.unicherrygarden.api.types.responseresult.FailurePayload
 import com.myodov.unicherrygarden.messages.CherryPlanterRequest
+import com.myodov.unicherrygarden.messages.cherrygardener.Ping
 import com.myodov.unicherrygarden.messages.cherryplanter.PlantTransaction
 import com.myodov.unicherrygarden.messages.cherryplanter.PlantTransaction.{PlantTransactionRequestResultFailure, PlantTransactionRequestResultPayload}
 import com.typesafe.scalalogging.LazyLogging
@@ -44,11 +47,15 @@ class CherryPlanter(
           state.ethereumStatus = Some(status)
           Behaviors.same
         case message: PlantTransaction.Request =>
-          context.log.debug(s"Received PlantTransaction($message) command")
-          // TODO: probably, should happen in a child Actor, similarly to `requestHandlerActor`
-          val response = handlePlantTransaction(message.payload)
-          context.log.debug(s"Replying with $response")
-          message.replyTo ! response
+          val msgName = "PlantTransaction"
+          context.spawn(
+            CherryGardenComponent.requestHandlerActor[PlantTransaction.Response](
+              msgName,
+              message.replyTo,
+              msg => PlantTransaction.Response.fromCommonFailure(new FailurePayload.UnspecifiedFailure(msg))
+            ) { () => handlePlantTransaction(message.payload) },
+            s"$msgName-${UUID.randomUUID}"
+          )
           Behaviors.same
         case message: CherryPlanterRequest =>
           logger.debug(s"Receiving CherryPlanter message: $message")
@@ -60,7 +67,6 @@ class CherryPlanter(
   private[this] def handlePlantTransaction(payload: PlantTransaction.PTRequestPayload): PlantTransaction.Response =
   // Construct all the response in a single atomic readonly DB transaction
     DB readOnly { implicit session =>
-
       CherryGardenComponent.whenStateAndProgressAllow[PlantTransaction.Response](
         state.ethereumStatus,
         dbStorage.progress.getProgress,
