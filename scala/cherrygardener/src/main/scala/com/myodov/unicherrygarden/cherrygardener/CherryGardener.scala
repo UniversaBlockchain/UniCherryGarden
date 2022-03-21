@@ -47,31 +47,13 @@ class CherryGardener(
           Behaviors.same
         case message: Ping.Request => {
           context.log.debug(s"Received Ping($message) command")
-
-          val response =
-            CherryGardenComponent.whenStateAndProgressAllow[Ping.Response](
-              state.ethereumStatus,
-              dbStorage.progress.getProgress,
-              "Ping",
-              Ping.Response.fromCommonFailure(FailurePayload.CHERRY_GARDEN_NOT_READY)
-            ) { (ethereumNodeStatus, progress) =>
-              new Ping.Response(
-                new PingRequestResultPayload(
-                  CherryGardenComponent.buildSystemSyncStatus(ethereumNodeStatus, progress),
-                  realm,
-                  chainId,
-                  propVersionStr,
-                  propBuildTimestampStr
-                )
-              )
-            }
+          val response = handlePing()
           context.log.debug(s"Replying with $response")
           message.replyTo ! response
           Behaviors.same
         }
         case message: GetCurrencies.Request => {
           context.log.debug(s"Received GetCurrencies($message) command")
-
           val response = handleGetCurrencies(
             Option(message.payload.filterCurrencyKeys).map(_.asScala.toSet),
             message.payload.getVerified,
@@ -84,6 +66,28 @@ class CherryGardener(
           context.log.error(s"Unknown CherryGardener message: $unknown")
           Behaviors.same
         }
+      }
+    }
+
+  /** Reply to [[Ping]] request. */
+  private[this] def handlePing(): Ping.Response =
+  // Construct all the response in a single atomic readonly DB transaction
+    DB readOnly { implicit session =>
+      CherryGardenComponent.whenStateAndProgressAllow[Ping.Response](
+        state.ethereumStatus,
+        dbStorage.progress.getProgress,
+        "Ping",
+        Ping.Response.fromCommonFailure(FailurePayload.CHERRY_GARDEN_NOT_READY)
+      ) { (ethereumNodeStatus, progress) =>
+        new Ping.Response(
+          new PingRequestResultPayload(
+            CherryGardenComponent.buildSystemSyncStatus(ethereumNodeStatus, progress),
+            realm,
+            chainId,
+            propVersionStr,
+            propBuildTimestampStr
+          )
+        )
       }
     }
 

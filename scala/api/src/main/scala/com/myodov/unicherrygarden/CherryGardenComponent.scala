@@ -2,6 +2,8 @@ package com.myodov.unicherrygarden
 
 import java.time.Instant
 
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, Behavior}
 import com.myodov.unicherrygarden.api.DBStorage.Progress
 import com.myodov.unicherrygarden.api.types.SystemStatus
 import com.myodov.unicherrygarden.api.{DBStorage, DBStorageAPI}
@@ -9,6 +11,7 @@ import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.control.NonFatal
 
 /**
  * Any actor/component of the cluster, such as: CherryGardener, CherryPicker, CherryPlanter.
@@ -69,4 +72,34 @@ object CherryGardenComponent extends LazyLogging {
       cherryPickerStatusOpt.orNull
     )
   }
+
+  /** For a message incoming to some CherryGardenComponent, launch a new handler as a child Actor.
+   *
+   * @param messageName the name of the message (to use in logs and as the name for the Actor).
+   * @param replyTo     the actor that will receive a reply (typed `RESP`) to to the request.
+   * @param onError     a function generating a proper “on error” response message to reply, in case of any exception.
+   * @param handler     the code that will generate the proper reply (typed `RESP`) to the requestor
+   *                    (likely located at `replyTo`).
+   */
+  @inline
+  final def requestHandlerActor[RESP](messageName: String,
+                                      replyTo: ActorRef[RESP],
+                                      onError: String => RESP)
+                                     (handler: () => RESP): Behavior[Any] = Behaviors.setup { context =>
+    logger.debug(s"Handling $messageName message in child actor")
+
+    val response: RESP = try {
+      handler()
+    } catch {
+      case NonFatal(e) =>
+        val msg = s"Unexpected error in handling $messageName"
+        logger.error(msg, e)
+        onError(s"{msg}: $e")
+    }
+
+    logger.debug(s"Replying to $messageName") // do not log $response here, it may be very large
+    replyTo ! response
+    Behaviors.stopped
+  }
+
 }

@@ -22,7 +22,6 @@ import scalikejdbc.DB
 
 import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
-import scala.util.control.NonFatal
 
 /** The main actor “cherry-picking” the data from the Ethereum blockchain into the DB.
  *
@@ -91,7 +90,7 @@ private class CherryPicker(
         case message: GetTrackedAddresses.Request => {
           val msgName = "GetTrackedAddresses"
           context.spawn(
-            requestHandlerActor[GetTrackedAddresses.Response](
+            CherryGardenComponent.requestHandlerActor[GetTrackedAddresses.Response](
               msgName,
               message.replyTo,
               msg => GetTrackedAddresses.Response.fromCommonFailure(new FailurePayload.UnspecifiedFailure(msg))
@@ -103,7 +102,7 @@ private class CherryPicker(
         case message: AddTrackedAddresses.Request => {
           val msgName = "AddTrackedAddresses"
           context.spawn(
-            requestHandlerActor[AddTrackedAddresses.Response](
+            CherryGardenComponent.requestHandlerActor[AddTrackedAddresses.Response](
               msgName,
               message.replyTo,
               msg => AddTrackedAddresses.Response.fromCommonFailure(new FailurePayload.UnspecifiedFailure(msg))
@@ -115,7 +114,7 @@ private class CherryPicker(
         case message: GetAddressDetails.Request => {
           val msgName = "GetAddressDetails"
           context.spawn(
-            requestHandlerActor[GetAddressDetails.Response](
+            CherryGardenComponent.requestHandlerActor[GetAddressDetails.Response](
               msgName,
               message.replyTo,
               msg => GetAddressDetails.Response.fromCommonFailure(new FailurePayload.UnspecifiedFailure(msg))
@@ -127,7 +126,7 @@ private class CherryPicker(
         case message: GetBalances.Request => {
           val msgName = "GetBalances"
           context.spawn(
-            requestHandlerActor[GetBalances.Response](
+            CherryGardenComponent.requestHandlerActor[GetBalances.Response](
               msgName,
               message.replyTo,
               msg => GetBalances.Response.fromCommonFailure(new FailurePayload.UnspecifiedFailure(msg))
@@ -139,7 +138,7 @@ private class CherryPicker(
         case message: GetTransfers.Request => {
           val msgName = "GetTransfers"
           context.spawn(
-            requestHandlerActor[GetTransfers.Response](
+            CherryGardenComponent.requestHandlerActor[GetTransfers.Response](
               msgName,
               message.replyTo,
               msg => GetTransfers.Response.fromCommonFailure(new FailurePayload.UnspecifiedFailure(msg))
@@ -360,33 +359,4 @@ object CherryPicker extends LazyLogging {
       tailSyncerBatchSize,
       catchUpBrakeMaxLeadSetting
     ).launch()
-
-  /** For a message incoming to CherryPicker, launch a new handler as a child Actor.
-   *
-   * @param messageName the name of the message (to use in logs and as the name for the Actor).
-   * @param replyTo     the actor that will receive a reply (typed `RESP`) to to the request.
-   * @param onError     a function generating a proper “on error” response message to reply, in case of any exception.
-   * @param handler     the code that will generate the proper reply (typed `RESP`) to the requestor
-   *                    (likely located at `replyTo`).
-   */
-  @inline
-  private[CherryPicker] final def requestHandlerActor[RESP](messageName: String,
-                                                            replyTo: ActorRef[RESP],
-                                                            onError: String => RESP)
-                                                           (handler: () => RESP): Behavior[Any] = Behaviors.setup { context =>
-    logger.debug(s"Handling $messageName message in child actor")
-
-    val response: RESP = try {
-      handler()
-    } catch {
-      case NonFatal(e) =>
-        val msg = s"Unexpected error in handling $messageName"
-        logger.error(msg, e)
-        onError(s"{msg}: $e")
-    }
-
-    logger.debug(s"Replying to $messageName") // do not log $response here, it may be very large
-    replyTo ! response
-    Behaviors.stopped
-  }
 }
