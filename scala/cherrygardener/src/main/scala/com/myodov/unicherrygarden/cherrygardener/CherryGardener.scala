@@ -1,5 +1,7 @@
 package com.myodov.unicherrygarden.cherrygardener
 
+import java.util.UUID
+
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
@@ -46,20 +48,33 @@ class CherryGardener(
           state.ethereumStatus = Some(status)
           Behaviors.same
         case message: Ping.Request => {
-          context.log.debug(s"Received Ping($message) command")
-          val response = handlePing()
-          context.log.debug(s"Replying with $response")
-          message.replyTo ! response
+          val msgName = "Ping"
+          context.spawn(
+            CherryGardenComponent.requestHandlerActor[Ping.Response](
+              msgName,
+              message.replyTo,
+              msg => Ping.Response.fromCommonFailure(new FailurePayload.UnspecifiedFailure(msg))
+            ) { () => handlePing() },
+            s"$msgName-${UUID.randomUUID}"
+          )
           Behaviors.same
         }
         case message: GetCurrencies.Request => {
-          context.log.debug(s"Received GetCurrencies($message) command")
-          val response = handleGetCurrencies(
-            Option(message.payload.filterCurrencyKeys).map(_.asScala.toSet),
-            message.payload.getVerified,
-            message.payload.getUnverified)
-          context.log.debug(s"Replying with $response")
-          message.replyTo ! response
+          val msgName = "GetCurrencies"
+          context.spawn(
+            CherryGardenComponent.requestHandlerActor[GetCurrencies.Response](
+              msgName,
+              message.replyTo,
+              msg => GetCurrencies.Response.fromCommonFailure(new FailurePayload.UnspecifiedFailure(msg))
+            ) { () =>
+              handleGetCurrencies(
+                Option(message.payload.filterCurrencyKeys).map(_.asScala.toSet),
+                message.payload.getVerified,
+                message.payload.getUnverified
+              )
+            },
+            s"$msgName-${UUID.randomUUID}"
+          )
           Behaviors.same
         }
         case unknown => {
