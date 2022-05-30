@@ -5,7 +5,7 @@ schema {
     mutation: Mutation
 }
 
-"EIP-2718 "
+"EIP-2718"
 type AccessTuple {
     address: Address!
     storageKeys: [Bytes32!]!
@@ -42,7 +42,7 @@ type Account {
 type Block {
     "Account fetches an Ethereum account at the current block's state."
     account(address: Address!): Account!
-    "BaseFeePerGas is the fee perunit of gas burned by the protocol in this block."
+    "BaseFeePerGas is the fee per unit of gas burned by the protocol in this block."
     baseFeePerGas: BigInt
     "Call executes a local call operation at the current block's state."
     call(data: CallData!): CallResult
@@ -74,6 +74,8 @@ type Block {
     miner(block: Long): Account!
     "MixHash is the hash that was used as an input to the PoW process."
     mixHash: Bytes32!
+    "NextBaseFeePerGas is the fee per unit of gas which needs to be burned in the next block."
+    nextBaseFeePerGas: BigInt
     "Nonce is the block nonce, an 8 byte sequence determined by the miner."
     nonce: Bytes!
     "Number is the number of this block, starting at 0 for the genesis block."
@@ -106,6 +108,10 @@ type Block {
     ommers: [Block]
     "Parent is the parent block of this block."
     parent: Block
+    "Raw is the RLP encoding of the block."
+    raw: Bytes!
+    "RawHeader is the RLP encoding of the block's header."
+    rawHeader: Bytes!
     "ReceiptsRoot is the keccak256 hash of the trie of transaction receipts in this block."
     receiptsRoot: Bytes32!
     "StateRoot is the keccak256 hash of the state trie after this block was processed."
@@ -272,6 +278,8 @@ type Transaction {
     maxPriorityFeePerGas as the transaction's gas price.
     """
     effectiveGasPrice: BigInt
+    "EffectiveTip is the actual amount of reward going to miner after considering the max fee cap."
+    effectiveTip: BigInt
     """
 
     From is the account that sent this transaction - this will always be
@@ -304,13 +312,26 @@ type Transaction {
     transaction has not yet been mined, this field will be null.
     """
     logs: [Log!]
-    "MaxFeePerGas is the maximum fee per gas offered to include a transaction, in wei. "
+    "MaxFeePerGas is the maximum fee per gas offered to include a transaction, in wei."
     maxFeePerGas: BigInt
-    "MaxPriorityFeePerGas is the maximum miner tip per gas offered to include a transaction, in wei. "
+    "MaxPriorityFeePerGas is the maximum miner tip per gas offered to include a transaction, in wei."
     maxPriorityFeePerGas: BigInt
     "Nonce is the nonce of the account this transaction was generated with."
     nonce: Long!
     r: BigInt!
+    """
+
+    Raw is the canonical encoding of the transaction.
+    For legacy transactions, it returns the RLP encoding.
+    For EIP-2718 typed transactions, it returns the type and payload.
+    """
+    raw: Bytes!
+    """
+
+    RawReceipt is the canonical encoding of the receipt. For post EIP-2718 typed transactions
+    this is equivalent to TxType || ReceiptEncoding.
+    """
+    rawReceipt: Bytes!
     s: BigInt!
     """
 
@@ -332,6 +353,30 @@ type Transaction {
     "Value is the value, in wei, sent along with this transaction."
     value: BigInt!
 }
+
+"Address is a 20 byte Ethereum address, represented as 0x-prefixed hexadecimal."
+scalar Address
+
+"""
+
+BigInt is a large integer. Input is accepted as either a JSON number or as a string.
+Strings may be either decimal or 0x-prefixed hexadecimal. Output values are all
+0x-prefixed hexadecimal.
+"""
+scalar BigInt
+
+"""
+
+Bytes is an arbitrary length binary string, represented as 0x-prefixed hexadecimal.
+An empty byte string is represented as '0x'. Byte strings must have an even number of hexadecimal nybbles.
+"""
+scalar Bytes
+
+"Bytes32 is a 32 byte binary string, represented as 0x-prefixed hexadecimal."
+scalar Bytes32
+
+"Long is a 64 bit unsigned integer."
+scalar Long
 
 """
 
@@ -376,9 +421,9 @@ input CallData {
     gas: Long
     "GasPrice is the price, in wei, offered for each unit of gas."
     gasPrice: BigInt
-    "MaxFeePerGas is the maximum fee per gas offered, in wei. "
+    "MaxFeePerGas is the maximum fee per gas offered, in wei."
     maxFeePerGas: BigInt
-    "MaxPriorityFeePerGas is the maximum miner tip per gas offered, in wei. "
+    "MaxPriorityFeePerGas is the maximum miner tip per gas offered, in wei."
     maxPriorityFeePerGas: BigInt
     "To is the address the call is sent to."
     to: Address
@@ -422,26 +467,3 @@ input FilterCriteria {
     """
     topics: [[Bytes32!]!]
 }
-
-
-"Address is a 20 byte Ethereum address, represented as 0x-prefixed hexadecimal."
-scalar Address
-
-"""
-BigInt is a large integer. Input is accepted as either a JSON number or as a string.
-Strings may be either decimal or 0x-prefixed hexadecimal. Output values are all
-0x-prefixed hexadecimal.
-"""
-scalar BigInt
-
-"""
-Bytes is an arbitrary length binary string, represented as 0x-prefixed hexadecimal.
-An empty byte string is represented as '0x'. Byte strings must have an even number of hexadecimal nybbles.
-"""
-scalar Bytes
-
-"Bytes32 is a 32 byte binary string, represented as 0x-prefixed hexadecimal."
-scalar Bytes32
-
-"Long is a 64 bit unsigned integer."
-scalar Long
