@@ -33,6 +33,7 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
                                 30029295L,
                                 3063440L,
                                 BigInteger.valueOf(0x15d3c1b812L),
+                                BigInteger.valueOf(0x15d3c1b813L),
                                 Instant.ofEpochSecond(0x620a9050L)
                         ),
                         BigInteger.valueOf(0x3b9aca00L)
@@ -61,7 +62,7 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
                 "{\"@class\":\"com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies$CurrenciesRequestResultPayload\"," +
                         "\"systemStatus\":{" +
                         "\"actualAt\":{\"epochSecond\":1644936903,\"nano\":0}," +
-                        "\"blockchain\":{\"syncingData\":{\"currentBlock\":14205560,\"highestBlock\":14205570},\"latestBlock\":{\"number\":14205590,\"gasLimit\":30029295,\"gasUsed\":3063440,\"baseFeePerGas\":\"93747001362\",\"timestamp\":{\"epochSecond\":1644859472,\"nano\":0}},\"maxPriorityFeePerGas\":\"1000000000\"}," +
+                        "\"blockchain\":{\"syncingData\":{\"currentBlock\":14205560,\"highestBlock\":14205570},\"latestBlock\":{\"number\":14205590,\"gasLimit\":30029295,\"gasUsed\":3063440,\"baseFeePerGas\":\"93747001362\",\"nextBaseFeePerGas\":\"93747001363\",\"timestamp\":{\"epochSecond\":1644859472,\"nano\":0}},\"maxPriorityFeePerGas\":\"1000000000\"}," +
                         "\"cherryPicker\":{\"latestKnownBlock\":19,\"latestPartiallySyncedBlock\":15,\"latestFullySyncedBlock\":13}" +
                         "}," +
                         "\"currencies\":[" +
@@ -75,7 +76,7 @@ public class GetCurrencies_ResponseTest extends AbstractJacksonSerializationTest
                 "{\"payload\":{\"@class\":\"com.myodov.unicherrygarden.messages.cherrygardener.GetCurrencies$CurrenciesRequestResultPayload\"," +
                         "\"systemStatus\":{" +
                         "\"actualAt\":{\"epochSecond\":1644936903,\"nano\":0}," +
-                        "\"blockchain\":{\"syncingData\":{\"currentBlock\":14205560,\"highestBlock\":14205570},\"latestBlock\":{\"number\":14205590,\"gasLimit\":30029295,\"gasUsed\":3063440,\"baseFeePerGas\":\"93747001362\",\"timestamp\":{\"epochSecond\":1644859472,\"nano\":0}},\"maxPriorityFeePerGas\":\"1000000000\"}," +
+                        "\"blockchain\":{\"syncingData\":{\"currentBlock\":14205560,\"highestBlock\":14205570},\"latestBlock\":{\"number\":14205590,\"gasLimit\":30029295,\"gasUsed\":3063440,\"baseFeePerGas\":\"93747001362\",\"nextBaseFeePerGas\":\"93747001363\",\"timestamp\":{\"epochSecond\":1644859472,\"nano\":0}},\"maxPriorityFeePerGas\":\"1000000000\"}," +
                         "\"cherryPicker\":{\"latestKnownBlock\":19,\"latestPartiallySyncedBlock\":15,\"latestFullySyncedBlock\":13}" +
                         "}," +
                         "\"currencies\":[" +

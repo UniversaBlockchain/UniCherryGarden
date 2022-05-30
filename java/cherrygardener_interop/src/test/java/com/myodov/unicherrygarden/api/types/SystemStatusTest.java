@@ -17,6 +17,7 @@ public class SystemStatusTest {
                 30029295L,
                 3063440L,
                 BigInteger.valueOf(0x15d3c1b812L),
+                BigInteger.valueOf(0x15d3c1b813L),
                 Instant.ofEpochSecond(0x620a9050L)
         );
         final SystemStatus.Blockchain blockchain = SystemStatus.Blockchain.create(
@@ -37,13 +38,13 @@ public class SystemStatusTest {
                 syncingData.toString()
         );
         assertEquals(
-                "Blockchain.LatestBlock(14205590, 30029295, 3063440, 93747001362, 2022-02-14T17:24:32Z)",
+                "Blockchain.LatestBlock(14205590, 30029295, 3063440, 93747001362, 93747001363, 2022-02-14T17:24:32Z)",
                 latestBlock.toString()
         );
         assertEquals(
                 "SystemStatus.Blockchain(" +
                         "Blockchain.SyncingData(14205560, 14205570), " +
-                        "Blockchain.LatestBlock(14205590, 30029295, 3063440, 93747001362, 2022-02-14T17:24:32Z), " +
+                        "Blockchain.LatestBlock(14205590, 30029295, 3063440, 93747001362, 93747001363, 2022-02-14T17:24:32Z), " +
                         "1000000000" +
                         ")",
                 blockchain.toString()
@@ -57,7 +58,7 @@ public class SystemStatusTest {
                         "2022-02-15T14:55:03Z, " +
                         "SystemStatus.Blockchain(" +
                         "Blockchain.SyncingData(14205560, 14205570), " +
-                        "Blockchain.LatestBlock(14205590, 30029295, 3063440, 93747001362, 2022-02-14T17:24:32Z), " +
+                        "Blockchain.LatestBlock(14205590, 30029295, 3063440, 93747001362, 93747001363, 2022-02-14T17:24:32Z), " +
                         "1000000000), " +
                         "SystemStatus.CherryPicker(19, 15, 13)" +
                         ")",

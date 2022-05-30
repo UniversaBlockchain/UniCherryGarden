@@ -86,6 +86,13 @@ public class SystemStatus {
             public final BigInteger baseFeePerGas;
 
             /**
+             * `nextBaseFeePerGas`, as per EIP-1559. May be null in pre-London blocks
+             * (but if the Ethereum node is well synced, it won’t be null).
+             */
+            @Nullable
+            public final BigInteger nextBaseFeePerGas;
+
+            /**
              * Timestamp of the block. Note that this timestamp can be different from the timestamp
              * of the whole {@link SystemStatus} object.
              */
@@ -97,18 +104,22 @@ public class SystemStatus {
                                long gasLimit,
                                long gasUsed,
                                @Nullable BigInteger baseFeePerGas,
+                               @Nullable BigInteger nextBaseFeePerGas,
                                @NonNull Instant timestamp) {
                 assert number >= 0 : number;
                 assert gasLimit >= 0 : gasLimit;
                 assert gasUsed >= 0 : gasUsed;
                 assert baseFeePerGas == null || baseFeePerGas.compareTo(BigInteger.ZERO) >= 0 :
                         baseFeePerGas; // baseFeePerGas >= 0
+                assert nextBaseFeePerGas == null || nextBaseFeePerGas.compareTo(BigInteger.ZERO) >= 0 :
+                        nextBaseFeePerGas; // nextBaseFeePerGas >= 0
                 assert timestamp != null;
 
                 this.number = number;
                 this.gasLimit = gasLimit;
                 this.gasUsed = gasUsed;
                 this.baseFeePerGas = baseFeePerGas;
+                this.nextBaseFeePerGas = nextBaseFeePerGas;
                 this.timestamp = timestamp;
             }
 
@@ -116,20 +127,22 @@ public class SystemStatus {
                                              long gasLimit,
                                              long gasUsed,
                                              @Nullable BigInteger baseFeePerGas,
+                                             @Nullable BigInteger nextBaseFeePerGas,
                                              @NonNull Instant timestamp) {
                 return new LatestBlock(
                         number,
                         gasLimit,
                         gasUsed,
                         baseFeePerGas,
+                        nextBaseFeePerGas,
                         timestamp);
             }
 
             @Override
             public String toString() {
-                return String.format("%s.%s(%s, %s, %s, %s, %s)",
+                return String.format("%s.%s(%s, %s, %s, %s, %s, %s)",
                         getClass().getEnclosingClass().getSimpleName(), getClass().getSimpleName(),
-                        number, gasLimit, gasUsed, baseFeePerGas, timestamp);
+                        number, gasLimit, gasUsed, baseFeePerGas, nextBaseFeePerGas, timestamp);
             }
         }
 

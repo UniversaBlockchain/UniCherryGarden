@@ -74,6 +74,7 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
             nonLatestBlock.getGasLimit.longValueExact,
             nonLatestBlock.getGasUsed.longValueExact,
             Option(nonLatestBlock.getBaseFeePerGas).orNull,
+            null,  // TODO: Option(nonLatestBlock.getNextBaseFeePerGas).orNull
             Instant.ofEpochSecond(nonLatestBlock.getTimestamp.longValueExact)
           ),
           maxPriorityFeePerGas.bigInteger
@@ -96,6 +97,7 @@ class EthereumSingleNodeJsonRpcConnector(nodeUrl: String)
             latestBlock.getGasLimit.longValueExact,
             latestBlock.getGasUsed.longValueExact,
             Option(latestBlock.getBaseFeePerGas).orNull,
+            null, // TODO: Option(latestBlock.getNextBaseFeePerGas).orNull,
             Instant.ofEpochSecond(latestBlock.getTimestamp.longValueExact)
           ),
           maxPriorityFeePerGas.bigInteger

@@ -29,6 +29,7 @@ final case class BlockLatestView(number: Long,
                                  gasLimit: Long,
                                  gasUsed: Long,
                                  baseFeePerGas: Option[BigInt],
+                                 nextBaseFeePerGas: Option[BigInt],
                                  timestamp: Long) {
   lazy val asLatestBlock: SystemStatus.Blockchain.LatestBlock =
     SystemStatus.Blockchain.LatestBlock.create(
@@ -36,6 +37,7 @@ final case class BlockLatestView(number: Long,
       gasLimit,
       gasUsed,
       baseFeePerGas.map(_.bigInteger).orNull,
+      nextBaseFeePerGas.map(_.bigInteger).orNull,
       Instant.ofEpochSecond(timestamp)
     )
 }
@@ -48,6 +50,7 @@ object BlockLatest {
       Block.gasLimit ~
       Block.gasUsed ~
       Block.baseFeePerGas ~
+      Block.nextBaseFeePerGas ~
       Block.timestamp
   }.mapN(BlockLatestView)
 }

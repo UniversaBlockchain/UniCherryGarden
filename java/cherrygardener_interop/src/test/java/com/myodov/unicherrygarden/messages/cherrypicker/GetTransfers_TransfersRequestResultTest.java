@@ -48,6 +48,7 @@ public class GetTransfers_TransfersRequestResultTest {
                                     12481486L,
                                     12449124L,
                                     null,
+                                    null,
                                     Instant.ofEpochSecond(0x60704389L)
                             ),
                             BigInteger.valueOf(0x3b9aca00L)
