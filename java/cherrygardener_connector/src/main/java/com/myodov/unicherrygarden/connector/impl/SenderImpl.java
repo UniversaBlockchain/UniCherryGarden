@@ -35,6 +35,42 @@ import static com.myodov.unicherrygarden.NullTools.coalesce;
  * The default implementation for {@link Sender} interface.
  */
 public final class SenderImpl implements Sender {
+
+    public static final class FeeSuggestionImpl implements FeeSuggestion {
+
+        @NonNull
+        private final BigDecimal maxPriorityFee;
+
+        @NonNull
+        private final BigDecimal maxFee;
+
+        FeeSuggestionImpl(@NonNull BigDecimal maxPriorityFee, @NonNull BigDecimal maxFee) {
+            assert maxPriorityFee != null && maxPriorityFee.compareTo(BigDecimal.ZERO) >= 0 : maxPriorityFee;
+            assert maxFee != null && maxFee.compareTo(BigDecimal.ZERO) >= 0 : maxFee;
+
+            this.maxPriorityFee = maxPriorityFee;
+            this.maxFee = maxFee;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("FeeSuggestionImpl(%s, %s)",
+                    maxPriorityFee.toPlainString(), maxFee.toPlainString());
+        }
+
+        @Override
+        @NonNull
+        public BigDecimal getMaxPriorityFee() {
+            return maxPriorityFee;
+        }
+
+        @Override
+        @NonNull
+        public BigDecimal getMaxFee() {
+            return maxFee;
+        }
+    }
+
     final Logger logger = LoggerFactory.getLogger(SenderImpl.class);
 
     /**
@@ -78,6 +114,14 @@ public final class SenderImpl implements Sender {
         this(null);
     }
 
+
+    @Override
+    public @NonNull FeeSuggestion suggestFees() {
+        return new FeeSuggestionImpl(
+                EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(2)),
+                EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(100))
+        );
+    }
 
     @Override
     @NonNull
@@ -233,15 +277,25 @@ public final class SenderImpl implements Sender {
         logger.debug("Will use Chain ID {}, gas limit {}, nonce {}, decimals {}",
                 chainId, gasLimit, nonce, decimals);
 
-        // TODO: calculation/estimation
-        final BigDecimal maxPriorityFee =
-                (forceMaxPriorityFee != null) ?
-                        forceMaxPriorityFee :
-                        EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(2));
-        final BigDecimal maxFee =
-                (forceMaxFee != null) ?
-                        forceMaxFee :
-                        EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(100));
+        final BigDecimal maxPriorityFee;
+        final BigDecimal maxFee;
+
+        // If we don’t know/haven’t forced at least one of maxPriorityFee or maxFee, we need to discover them
+        if (forceMaxPriorityFee == null || forceMaxFee == null) {
+            final FeeSuggestion feeSuggestion = suggestFees();
+            logger.debug("Received fee suggestion: {}", feeSuggestion);
+
+            maxPriorityFee = (forceMaxPriorityFee != null) ?
+                    forceMaxPriorityFee :
+                    feeSuggestion.getMaxPriorityFee();
+            maxFee = (forceMaxFee != null) ?
+                    forceMaxFee :
+                    EthUtils.Wei.valueFromGweis(BigDecimal.valueOf(100));
+        } else {
+            maxPriorityFee = forceMaxPriorityFee;
+            maxFee = forceMaxFee;
+        }
+        logger.debug("Will be using max priority fee {}, max fee ", maxPriorityFee, maxFee);
 
         final UnsignedOutgoingTransfer result;
         if (currencyKey.isEmpty()) {

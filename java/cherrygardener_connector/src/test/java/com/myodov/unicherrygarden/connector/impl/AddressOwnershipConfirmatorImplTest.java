@@ -1,4 +1,4 @@
-package com.myodov.unicherrygarden.messages.connector.impl;
+package com.myodov.unicherrygarden.connector.impl;
 
 import com.myodov.unicherrygarden.api.types.PrivateKey;
 import com.myodov.unicherrygarden.connector.api.AddressOwnershipConfirmator;

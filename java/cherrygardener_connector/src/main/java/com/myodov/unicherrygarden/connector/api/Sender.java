@@ -46,6 +46,47 @@ public interface Sender {
     }
 
     /**
+     * The information about suggested gas price details
+     */
+    interface FeeSuggestion {
+        /**
+         * Suggest the `maxPriorityFee` that can be used for the transactions;
+         * put it in to the `forceMaxPriorityFee` argument when creating transactions.
+         * <p>
+         * Measured in ETH (or the other primary basic currency of the underlying Ethereum-compatible blockchain).
+         */
+        @NonNull BigDecimal getMaxPriorityFee();
+
+        /**
+         * Suggest the `maxFee` that can be used for the transactions;
+         * put it in to the `forceMaxFee` argument when creating transactions.
+         * <p>
+         * Measured in ETH (or the other primary basic currency of the underlying Ethereum-compatible blockchain).
+         */
+        @NonNull BigDecimal getMaxFee();
+
+        /**
+         * Estimate the (maximum) total cost of doing some operation in the Ethereum network.
+         * The actual total cost will most likely be lower.
+         * <p>
+         * Measured in ETH (or the other primary basic currency of the underlying Ethereum-compatible blockchain).
+         *
+         * @param gasLimit the gas limit for an operation (21_000 for ETH transfer; may be higher for other operations).
+         */
+        @NonNull
+        default BigDecimal estimateTotalFee(@NonNull BigInteger gasLimit) {
+            assert gasLimit != null && gasLimit.compareTo(BigInteger.ZERO) >= 0 : gasLimit;
+            return getMaxFee().multiply(new BigDecimal(gasLimit));
+        }
+    }
+
+    /**
+     * Give a suggestion of the gas prices/fees for transfer operations.
+     */
+    @NonNull
+    FeeSuggestion suggestFees();
+
+    /**
      * Prepare outgoing transaction without signing it. User should somehow sign it and use it
      * in {@link #sendTransaction}.
      * The signing could be performed either with connector's provided signature function locally or by

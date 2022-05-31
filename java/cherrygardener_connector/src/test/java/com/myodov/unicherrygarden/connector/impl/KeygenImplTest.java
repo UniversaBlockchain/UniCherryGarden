@@ -1,8 +1,8 @@
-package com.myodov.unicherrygarden.messages.connector.impl;
+package com.myodov.unicherrygarden.connector.impl;
 
+import com.myodov.unicherrygarden.SampleCredentials;
 import com.myodov.unicherrygarden.api.types.PrivateKey;
 import com.myodov.unicherrygarden.connector.api.Keygen;
-import com.myodov.unicherrygarden.connector.impl.KeygenImpl;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
-import static com.myodov.unicherrygarden.SampleCredentials.CRED1;
 import static org.junit.Assert.*;
 
 public class KeygenImplTest {
@@ -153,10 +152,10 @@ public class KeygenImplTest {
             final String bytesHexCopy;
 
             // Using via try-with-resources
-            try (final PrivateKey pk = keygen.loadPrivateKey(CRED1.pk)) {
+            try (final PrivateKey pk = keygen.loadPrivateKey(SampleCredentials.CRED1.pk)) {
 
                 assertEquals(
-                        CRED1.addr.toLowerCase(),
+                        SampleCredentials.CRED1.addr.toLowerCase(),
                         pk.getAddress()
                 );
 

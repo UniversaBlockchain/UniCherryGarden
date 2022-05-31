@@ -206,7 +206,10 @@ lazy val cherryGardenerConnector = (project in file("java/cherrygardener_connect
     ),
     Compile / resourceGenerators += versionFileTask("cherrygardener_connector.properties").taskValue,
   )
-  .dependsOn(commonJava, cherryGardenerInterop)
+  .dependsOn(
+    commonJava,
+    cherryGardenerInterop % "test->test;compile->compile"
+  )
 
 
 lazy val cherryGardenerConnectorCLI = (project in file("java/cherrygardener_connector_cli"))

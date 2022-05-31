@@ -1,9 +1,8 @@
-package com.myodov.unicherrygarden.messages.connector.impl;
+package com.myodov.unicherrygarden.connector.impl;
 
 import com.myodov.unicherrygarden.api.types.PrivateKey;
 import com.myodov.unicherrygarden.api.types.planted.transactions.SignedOutgoingTransfer;
 import com.myodov.unicherrygarden.api.types.planted.transactions.UnsignedOutgoingTransfer;
-import com.myodov.unicherrygarden.connector.impl.SenderImpl;
 import com.myodov.unicherrygarden.ethereum.EthUtils;
 import com.myodov.unicherrygarden.impl.types.PrivateKeyImpl;
 import com.typesafe.config.Config;
@@ -54,8 +53,8 @@ import static org.junit.Assert.*;
  * amount of primary currency in this network (ETH/ETHRINKEBY/RIN/whatever), typically the one provided
  * by MyEtherWallet faucet or other faucets.
  */
-public class SenderImplTest {
-    final Logger logger = LoggerFactory.getLogger(SenderImplTest.class);
+public class SenderImplTestnetTest {
+    final Logger logger = LoggerFactory.getLogger(SenderImplTestnetTest.class);
 
     public static final class TestnetSettings {
         public final long chainId;
