@@ -2,6 +2,7 @@ package com.myodov.unicherrygarden.connector.api;
 
 import com.myodov.unicherrygarden.api.types.planted.transactions.SignedOutgoingTransfer;
 import com.myodov.unicherrygarden.api.types.planted.transactions.UnsignedOutgoingTransfer;
+import com.myodov.unicherrygarden.connector.impl.SenderImpl;
 import com.myodov.unicherrygarden.messages.Serializable;
 import com.myodov.unicherrygarden.messages.cherryplanter.PlantTransaction;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -9,6 +10,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Objects;
 
 /**
  * The client connector part that ensures sending of the Ethereum ETH/ERC20 payments.
